@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản trị ShopX - Bảng điều khiển</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../../assets/css/index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1E40AF;
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) #1E40AF;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="flex h-screen overflow-hidden">
+        <div class="sidebar bg-blue-800 text-white w-64 flex-shrink-0 flex flex-col">
+            <div
+                class="flex items-center justify-between p-4 border-b border-blue-700 sticky top-0 bg-blue-800 z-10 flex-shrink-0">
+                <div class="flex items-center space-x-2 sidebar-header-text">
+                    <img data-image-keyword="logo" data-image-color="white"
+                        src="https://cdn-icons-png.flaticon.com/512/196/196566.png" class="h-8">
+                    <span class="text-xl font-bold">Quản trị ShopX</span>
+                </div>
+                <button id="sidebarToggle" class="text-white hover:text-blue-200">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+
+            <div class="p-4 flex-shrink-0">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="sidebar-item-text">
+                        <p class="font-medium">Quản trị viên</p>
+                        <p class="text-xs text-blue-200">Quyền cao nhất</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-grow overflow-y-auto custom-scrollbar pb-4">
+                <nav class="space-y-1 px-4">
+                    <a href="#" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg bg-blue-700 text-white">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span class="sidebar-item-text">Bảng điều khiển</span>
+                    </a>
+
+                    <div class="sidebar-group">
+                        <div
+                            class="flex items-center justify-between p-3 rounded-lg hover:bg-blue-700 cursor-pointer sidebar-group-toggle">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-box"></i>
+                                <span class="sidebar-item-text">Sản phẩm</span>
+                            </div>
+                            <i class="fas fa-chevron-down text-sm sidebar-item-text transition-transform"></i>
+                        </div>
+                        <div class="sidebar-group-content pl-4">
+                            <a href="#" class="block p-3 pl-3 rounded hover:bg-blue-700"><i
+                                    class="far fa-circle mr-2"></i> Quản lý sản phẩm</a>
+                            <a href="#" class="block p-3 pl-3 rounded hover:bg-blue-700"><i
+                                    class="far fa-circle mr-2"></i> Danh mục</a>
+                            <a href="#" class="block p-3 pl-3 rounded hover:bg-blue-700"><i
+                                    class="far fa-circle mr-2"></i> Tồn kho</a>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-group">
+                        <div
+                            class="flex items-center justify-between p-3 rounded-lg hover:bg-blue-700 cursor-pointer sidebar-group-toggle relative">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-shopping-cart text-lg"></i>
+                                <span
+                                    class="badge-collapsed absolute top-1 left-6 hidden bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full z-10"
+                                    data-count="150"></span>
+                                <span class="sidebar-item-text ml-3 flex items-center space-x-2">
+                                    <span>Đơn hàng</span>
+                                    <span class="badge-expanded bg-red-500 text-white text-xs px-2 py-0.5 rounded-full"
+                                        data-count="150"></span>
+                                </span>
+                            </div>
+                            <i class="fas fa-chevron-down text-sm sidebar-item-text transition-transform"></i>
+                        </div>
+                        <div class="sidebar-group-content pl-4">
+                            <a href="#" class="block p-3 pl-3 rounded hover:bg-blue-700"><i
+                                    class="far fa-circle mr-2"></i> Danh sách đơn hàng</a>
+                            <a href="#" class="block p-3 pl-3 rounded hover:bg-blue-700"><i
+                                    class="far fa-circle mr-2"></i> Đơn hàng mới</a>
+                            <a href="#" class="block p-3 pl-3 rounded hover:bg-blue-700"><i
+                                    class="far fa-circle mr-2"></i> Đơn hàng đang xử lý</a>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-group">
+                        <div
+                            class="flex items-center justify-between p-3 rounded-lg hover:bg-blue-700 cursor-pointer sidebar-group-toggle">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-ticket-alt text-lg"></i>
+                                <span class="sidebar-item-text">Mã giảm giá</span>
+                            </div>
+                            <i class="fas fa-chevron-down text-sm sidebar-item-text transition-transform"></i>
+                        </div>
+                        <div class="sidebar-group-content pl-4">
+                            <a href="#" class="block p-3 pl-3 rounded hover:bg-blue-700"><i
+                                    class="far fa-circle mr-2"></i> Quản lý Mã giảm giá</a>
+                            <a href="#" class="block p-3 pl-3 rounded hover:bg-blue-700"><i
+                                    class="far fa-circle mr-2"></i> Tạo mới mã giảm giá</a>
+                            <a href="#" class="block p-3 pl-3 rounded hover:bg-blue-700"><i
+                                    class="far fa-circle mr-2"></i> Cập nhật mã giảm giá</a>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </div>
+
+        <div class="content-area flex-1 overflow-auto">
+            <header class="bg-white shadow-sm sticky top-0 z-10">
+                <div class="flex items-center justify-between p-6">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-xl font-bold text-gray-800" id="pageTitle">Bảng điều khiển</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <button class="text-gray-600 hover:text-blue-600">
+                                <i class="fas fa-bell"></i>
+                                <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+                            </button>
+                        </div>
+                        <div class="relative group">
+                            <button id="adminToggle" class="flex items-center space-x-2 focus:outline-none">
+                                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="fas fa-user text-blue-600"></i>
+                                </div>
+                                <span class="hidden md:inline">Quản trị viên</span>
+                            </button>
+                            <div id="adminSubmenu"
+                                class="submenu absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden">
+                                <a href="user.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Hồ sơ</a>
+                                <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Cài đặt</a>
+                                <div class="border-t border-gray-200"></div>
+                                <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Đăng xuất</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+
+            <main class="p-6 mx-auto">
+                <!-- Thông tin chi tiết đơn hàng -->
+                <section class="mt-10 bg-white shadow rounded-lg p-6">
+                    <h3 class="text-xl font-bold mb-4 border-b">Chi tiết đơn hàng #2001</h3>
+                    <h2 class="text-xl font-bold mb-4">Thông tin người đặt hàng</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-700 mb-4">
+                        <div>
+                            <span class="font-medium">Tên người đặt:</span>
+                            <span class="text-gray-800">Nguyễn Văn A</span>
+                        </div>
+                        <div>
+                            <span class="font-medium">Số điện thoại:</span>
+                            <span class="text-gray-800">0987 654 321</span>
+                        </div>
+                        <div>
+                            <span class="font-medium">Địa chỉ:</span>
+                            <span class="text-gray-800">123 Đường ABC, Quận 1, TP.HCM</span>
+                        </div>
+                        <div>
+                            <span class="font-medium">Trạng thái đơn hàng:</span>
+                            <button onclick="changeStatus(2001)"
+                                class="bg-green-500 text-white py-1 w-36 rounded text-center hover:bg-green-600">
+                                Đang chờ xử lí
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white border rounded-lg shadow-md">
+                            <thead class="bg-gray-100 text-gray-700">
+                                <tr>
+                                    <th class="py-3 px-4 text-left">STT</th>
+                                    <th class="py-3 px-4 hidden">Order Detail ID</th>
+                                    <th class="py-3 px-4 hidden">Product ID</th>
+                                    <th class="py-3 px-4 text-left">Hình ảnh</th>
+                                    <th class="py-3 px-4 text-left">Tên sản phẩm</th>
+                                    <th class="py-3 px-4 text-left">Số lượng</th>
+                                    <th class="py-3 px-4 text-left">Đơn giá</th>
+                                    <th class="py-3 px-4 text-left">Tổng phụ</th>
+                                    <th class="py-3 px-4 text-left">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-gray-700">
+                                <tr>
+                                    <td class="py-3 px-4 border-b">1</td>
+                                    <td class="py-3 px-4 border-b hidden">5001</td>
+                                    <td class="py-3 px-4 border-b hidden">101</td>
+                                    <td class="py-3 px-4 border-b">
+                                        <img src="https://cdn.thewirecutter.com/wp-content/media/2024/07/laptopstopicpage-2048px-3685-2x1-1.jpg?width=2048&quality=75&crop=2:1&auto=webp"
+                                            class="w-14 h-14 rounded object-cover" alt="Sản phẩm 1">
+                                    </td>
+                                    <td class="py-3 px-4 border-b">Tai nghe Bluetooth</td>
+                                    <td class="py-3 px-4 border-b">2</td>
+                                    <td class="py-3 px-4 border-b">350.000đ</td>
+                                    <td class="py-3 px-4 border-b">700.000đ</td>
+                                    <td class="py-3 px-4 border-b space-x-2">
+                                        <button
+                                            class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition duration-200 edit-btn"
+                                            data-id="1">
+                                            <i class="fas fa-edit mr-1"></i> Sửa
+                                        </button>
+                                        <button
+                                            class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition duration-200 delete-btn"
+                                            data-id="1">
+                                            <i class="fas fa-trash-alt mr-1"></i> Xóa
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 border-b">2</td>
+                                    <td class="py-3 px-4 border-b hidden">5002</td>
+                                    <td class="py-3 px-4 border-b hidden">102</td>
+                                    <td class="py-3 px-4 border-b">
+                                        <img src="https://cdn.thewirecutter.com/wp-content/media/2024/07/laptopstopicpage-2048px-3685-2x1-1.jpg?width=2048&quality=75&crop=2:1&auto=webp"
+                                            class="w-14 h-14 rounded object-cover" alt="Sản phẩm 2">
+                                    </td>
+                                    <td class="py-3 px-4 border-b">Chuột không dây Logitech</td>
+                                    <td class="py-3 px-4 border-b">1</td>
+                                    <td class="py-3 px-4 border-b">800.000đ</td>
+                                    <td class="py-3 px-4 border-b">800.000đ</td>
+                                    <td class="py-3 px-4 border-b space-x-2">
+                                        <button
+                                            class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition duration-200 edit-btn"
+                                            data-id="1">
+                                            <i class="fas fa-edit mr-1"></i> Sửa
+                                        </button>
+                                        <button
+                                            class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition duration-200 delete-btn"
+                                            data-id="1">
+                                            <i class="fas fa-trash-alt mr-1"></i> Xóa
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                <!-- Pagination -->
+                <div class="flex justify-between items-center mt-6">
+                    <div class="text-sm text-gray-600">
+                        Hiển thị <span id="currentPage">1</span> / <span id="totalPages">10</span> trang
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="prevPage"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-1 px-3 rounded disabled:opacity-50"
+                            disabled>Trước</button>
+                        <button id="nextPage"
+                            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded">Sau</button>
+                    </div>
+                </div>
+            </main>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../../assets/js/product.js"></script>
+    <script src="../../assets/js/index.js"></script>
+    <script>
+        const revenueData = { 2025: [50, 60, 55, 70, 65, 80, 90, 85, 100, 95, 110, 120], 2024: [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 100] };
+        function initChart(year) { /* ... */ }
+        let revenueChart = initChart('2025');
+        document.getElementById('yearSelect')?.addEventListener('change', function () { /* ... */ });
+    </script>
+    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'934a77e3bce553f9',t:'MTc0NTM4MDk3Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
+</html>
