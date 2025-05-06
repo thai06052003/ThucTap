@@ -426,7 +426,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     throw new Error('Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.');
                 }
 
-                const userResponse = await fetch('https://localhost:5191/api/Auth', {
+                const userResponse = await fetch('https://localhost:5191/api/Auth/user-info', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,

@@ -338,5 +338,27 @@ namespace ShopxEX1.Controllers
                 IsActive = user.IsActive
             });
         }
+
+        [HttpPut("update")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] ShopxEX1.Dtos.Users.UserProfileUpdateDto dto)
+        {
+            var userIdClaim = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new { message = "Không xác định được người dùng từ token." });
+            }
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound(new { message = "Không tìm thấy người dùng." });
+            }
+            if (!string.IsNullOrEmpty(dto.FullName)) user.FullName = dto.FullName;
+            if (!string.IsNullOrEmpty(dto.Phone)) user.Phone = dto.Phone;
+            if (!string.IsNullOrEmpty(dto.Address)) user.Address = dto.Address;
+            // Có thể bổ sung các trường khác nếu cần
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Cập nhật thông tin thành công." });
+        }
     }
 }
