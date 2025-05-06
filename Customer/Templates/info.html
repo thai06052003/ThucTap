@@ -15,9 +15,9 @@
             <div class="flex items-center justify-between py-4 gap-6">
                 <!-- Logo và Navigation -->
                 <div class="flex items-center gap-12">
-                    <a href="#" class="text-2xl font-bold text-blue-600">ShopX</a>
+                    <a href="index.html" class="text-2xl font-bold text-blue-600">ShopX</a>
                     <nav class="hidden md:flex items-center gap-6">
-                        <a href="#" class="text-gray-700 hover:text-blue-600 transition">Trang chủ</a>
+                        <a href="index.html" class="text-gray-700 hover:text-blue-600 transition">Trang chủ</a>
                         <!-- Danh mục với dropdown -->
                         <div class="relative group" x-data="{ open: false }">
                             <button @click="open = !open"
@@ -82,9 +82,9 @@
                                 <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Phụ kiện gaming</a>
                             </div>
                         </div>
-                        <a href="#" class="text-gray-700 hover:text-blue-600 transition">Sản phẩm</a>
+                        <a href="products.html" class="text-gray-700 hover:text-blue-600 transition">Sản phẩm</a>
                         <a href="#" class="text-gray-700 hover:text-blue-600 transition">Khuyến mãi</a>
-                        <a href="#" class="text-gray-700 hover:text-blue-600 transition">Liên hệ</a>
+                        <a href="contact.html" class="text-gray-700 hover:text-blue-600 transition">Liên hệ</a>
                     </nav>
                 </div>
                 <!-- Tìm kiếm, Giỏ hàng, Yêu thích, Tài khoản -->
@@ -193,9 +193,8 @@
                                 <p id="userName" class="font-medium text-gray-700">Nguyễn Văn A</p>
                                 <p id="userEmail" class="text-sm text-gray-500"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="732640564173564b525e435f561d505c5e">[email&#160;protected]</a></p>
                             </div>
-                            <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Thông tin tài khoản</a>
-                            <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Đơn hàng của tôi</a>
-                            <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Sản phẩm yêu thích</a>
+                            <a href="info.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Thông tin tài khoản</a>
+                            <a href="cart.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Đơn hàng của tôi</a>
                             <a href="#" id="logoutButton" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Đăng xuất</a>
                         </div>
                     </div>
@@ -312,7 +311,7 @@
                                 <!-- Email -->
                                 <div>
                                     <label for="email" class="block text-gray-700 font-medium mb-2">Email</label>
-                                    <input type="email" id="email" name="email"  disabled
+                                    <input type="email" id="email" name="email" disabled
                                         class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-100">
                                 </div>
                                 <!-- Số điện thoại -->
@@ -321,19 +320,24 @@
                                     <input type="tel" id="phone" name="phone" disabled
                                         class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-100">
                                 </div>
-                               <!-- Ngày sinh (hiển thị dd/mm/yyyy) -->
-                                <div>
+                                <!-- Ngày sinh -->
+                                <div class="relative">
                                     <label for="birthdate" class="block text-gray-700 font-medium mb-2">Ngày sinh</label>
-                                    <input type="date" id="birthdate" name="birthdate" disabled
-                                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-100">
-                                </div>
-  
+                                    <input
+                                      type="date"
+                                      id="birthdate"
+                                      name="birthdate"
+                                      class="block w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-gray-50"
+                                      placeholder=" " /* Thêm placeholder trống để label hoạt động nếu dùng floating label sau này */
+                                    >
+                                    <span id="birthdateDisplay" class="hidden text-xs text-red-500 mt-1"></span>
+                                  </div>
                                 <!-- Giới tính -->
                                 <div>
                                     <label class="block text-gray-700 font-medium mb-2">Giới tính</label>
                                     <div class="flex items-center space-x-4">
                                         <label class="flex items-center">
-                                            <input type="radio" name="gender" value="male" checked disabled class="mr-2 disabled:opacity-70">
+                                            <input type="radio" name="gender" value="male" disabled class="mr-2 disabled:opacity-70">
                                             <span>Nam</span>
                                         </label>
                                         <label class="flex items-center">
@@ -350,37 +354,6 @@
                             <hr class="my-6 border-gray-200">
                             <h3 class="text-lg font-semibold mb-4">Địa chỉ mặc định</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Tỉnh/Thành phố -->
-                                <div>
-                                    <label for="province" class="block text-gray-700 font-medium mb-2">Tỉnh/Thành phố</label>
-                                    <select id="province" name="province" disabled
-                                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-100">
-                                        <option value="hcm" selected>TP. Hồ Chí Minh</option>
-                                        <option value="hn">Hà Nội</option>
-                                        <option value="dn">Đà Nẵng</option>
-                                        <option value="hue">Huế</option>
-                                    </select>
-                                </div>
-                                <!-- Quận/Huyện -->
-                                <div>
-                                    <label for="district" class="block text-gray-700 font-medium mb-2">Quận/Huyện</label>
-                                    <select id="district" name="district" disabled
-                                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-100">
-                                        <option value="q1" selected>Quận 1</option>
-                                        <option value="q2">Quận 2</option>
-                                        <option value="q3">Quận 3</option>
-                                    </select>
-                                </div>
-                                <!-- Phường/Xã -->
-                                <div>
-                                    <label for="ward" class="block text-gray-700 font-medium mb-2">Phường/Xã</label>
-                                    <select id="ward" name="ward" disabled
-                                        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-100">
-                                        <option value="p1" selected>Phường Bến Nghé</option>
-                                        <option value="p2">Phường Bến Thành</option>
-                                        <option value="p3">Phường Đa Kao</option>
-                                    </select>
-                                </div>
                                 <!-- Địa chỉ cụ thể -->
                                 <div>
                                     <label for="address" class="block text-gray-700 font-medium mb-2">Địa chỉ cụ thể</label>
@@ -580,5 +553,6 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script src="../assets/js/info.js"></script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9352c8a8fe59bd1b',t:'MTc0NTQ2ODE3MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93745483fa6cbf72',t:'MTc0NTgxOTkzMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>

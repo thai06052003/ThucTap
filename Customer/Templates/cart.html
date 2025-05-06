@@ -192,7 +192,7 @@
                             <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
                                 <i class="fas fa-user text-gray-600"></i>
                             </div>
-                            <span class="text-gray-700">Tài khoản</span>
+                            <span id="accountName" class="text-gray-700">Tài khoản</span>
                         </button>
                         <div x-show="isOpen" @click.outside="isOpen = false" 
                             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200 z-50"
@@ -202,7 +202,7 @@
                             x-transition:leave="transition ease-in duration-150"
                             x-transition:leave-start="opacity-100 scale-100" 
                             x-transition:leave-end="opacity-0 scale-95">
-                            <a href="seller.html" @click="isOpen = false" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Tài khoản của tôi</a>
+                            <a href="info.html" @click="isOpen = false" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Tài khoản của tôi</a>
                             <a href="admin.html" @click="isOpen = false" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Truy cập với quyền ADMIN</a>
                             <button id="logoutButton" class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100" @click="logout(); isOpen = false">
                                 Đăng xuất
@@ -408,6 +408,8 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.12.0/dist/cdn.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="../assets/js/cart.js"></script>
+    <script src="../assets/js/info.js"></script>
+    <script src="../assets/js/index.js"></script>
     <script>
         // Kiểm tra xem Alpine.js đã tải thành công chưa
         document.addEventListener('alpine:init', () => {

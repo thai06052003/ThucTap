@@ -33,14 +33,8 @@ namespace ShopxEX1.Controllers
             }
 
             // Update only allowed properties
-            if (!string.IsNullOrEmpty(sellerDto.Name))
-                seller.Name = sellerDto.Name;
-            if (!string.IsNullOrEmpty(sellerDto.Email))
-                seller.Email = sellerDto.Email;
-            if (!string.IsNullOrEmpty(sellerDto.Phone))
-                seller.Phone = sellerDto.Phone;
-            if (!string.IsNullOrEmpty(sellerDto.Address))
-                seller.Address = sellerDto.Address;
+           
+            
             if (!string.IsNullOrEmpty(sellerDto.ShopName))
                 seller.ShopName = sellerDto.ShopName;
 

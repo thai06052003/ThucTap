@@ -31,7 +31,7 @@
           <i class="fas fa-list-alt"></i>
           <span class="sidebar-text">Quản lý danh mục</span>
         </a>
-        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100">
+        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" data-section="products">
           <i class="fas fa-box-open"></i>
           <span class="sidebar-text">Sản phẩm</span>
         </a>
@@ -324,6 +324,36 @@
             </div>
           </div>
         </section>
+
+        <!-- Products Management Section -->
+        <section id="products-section" class="section">
+          <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-lg font-semibold">Quản lý sản phẩm</h2>
+              <button id="add-product-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">
+                <i class="fas fa-plus mr-2"></i>Thêm sản phẩm
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hình ảnh</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên sản phẩm</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Danh mục</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody id="product-table-body" class="bg-white divide-y divide-gray-200">
+                  <!-- Danh sách sản phẩm sẽ được thêm bằng JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -345,6 +375,51 @@
         <div class="flex justify-end space-x-3">
           <button type="button" id="cancel-btn" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition action-btn">Hủy</button>
           <button type="submit" id="save-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal for Add/Edit Product -->
+  <div id="product-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+    <div class="modal-backdrop fixed inset-0 bg-black opacity-50"></div>
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl relative">
+      <h3 id="product-modal-title" class="text-lg font-semibold mb-4"></h3>
+      <form id="product-form">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="mb-4">
+            <label for="product-name" class="block text-sm font-medium text-gray-700">Tên sản phẩm</label>
+            <input type="text" id="product-name" name="product-name" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+          </div>
+          <div class="mb-4">
+            <label for="product-category" class="block text-sm font-medium text-gray-700">Danh mục</label>
+            <select id="product-category" name="product-category" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+              <!-- Danh mục sẽ được thêm bằng JavaScript -->
+            </select>
+          </div>
+          <div class="mb-4">
+            <label for="product-price" class="block text-sm font-medium text-gray-700">Giá</label>
+            <input type="number" id="product-price" name="product-price" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+          </div>
+          <div class="mb-4">
+            <label for="product-quantity" class="block text-sm font-medium text-gray-700">Số lượng</label>
+            <input type="number" id="product-quantity" name="product-quantity" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+          </div>
+          <div class="mb-4 md:col-span-2">
+            <label for="product-description" class="block text-sm font-medium text-gray-700">Mô tả</label>
+            <textarea id="product-description" name="product-description" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="3"></textarea>
+          </div>
+          <div class="mb-4 md:col-span-2">
+            <label for="product-images" class="block text-sm font-medium text-gray-700">Hình ảnh</label>
+            <input type="file" id="product-images" name="product-images" multiple accept="image/*" class="mt-1 block w-full">
+            <div id="image-preview" class="mt-2 grid grid-cols-4 gap-2">
+              <!-- Preview images will be added here -->
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end space-x-3">
+          <button type="button" id="product-cancel-btn" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition action-btn">Hủy</button>
+          <button type="submit" id="product-save-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">Lưu</button>
         </div>
       </form>
     </div>

@@ -106,12 +106,18 @@ namespace ShopxEX1.Services.Implementations
                 }
                 else // Không tìm thấy -> Tạo user mới
                 {
-                    // _logger?.LogInformation("Creating new user via social login for email {Email}", socialLoginDto.Email);
                     isNewUser = true;
-                    user = _mapper.Map<User>(socialLoginDto);
-                    user.PasswordHash = $"SOCIAL_LOGIN_{Guid.NewGuid()}"; // Placeholder
-                    user.IsActive = true;
-                    user.CreatedAt = DateTime.UtcNow;
+                    user = new User
+                    {
+                        Email = socialLoginDto.Email,
+                        FullName = socialLoginDto.Email.Split('@')[0], // Tạm thời lấy phần trước @ làm tên
+                        PasswordHash = $"SOCIAL_LOGIN_{Guid.NewGuid()}", // Placeholder
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        SocialProvider = socialLoginDto.Provider,
+                        SocialID = socialLoginDto.UserId,
+                        Role = "Customer"
+                    };
                     _context.Users.Add(user);
                 }
             }

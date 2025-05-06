@@ -1,12 +1,37 @@
-// API base URL (replace with your backend URL)
-const API_BASE_URL = 'https://your-backend-api.com/api';
+const API_BASE_URL = 'https://localhost:5191/api/Users';
+
+// Hàm tiện ích cho cookie
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/";
+}
+
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
+function deleteCookie(name) {
+    document.cookie = name + '=; Max-Age=-99999999; path=/';
+}
 
 // Format currency
 function formatCurrency(amount) {
     return amount.toLocaleString('vi-VN') + '₫';
 }
 
-// Mock cart data (since no backend is available)
+// Mock cart data
 const mockCartData = {
     items: [
         {
@@ -37,13 +62,13 @@ const mockCartData = {
             quantity: 1
         }
     ],
-    subtotal: 350000 + (450000 * 2) + 650000, // 1.900.000₫
-    discount: 50000, // 50.000₫
-    shipping: 30000, // 30.000₫
-    total: (350000 + (450000 * 2) + 650000) - 50000 + 30000 // 1.930.000₫
+    subtotal: 350000 + (450000 * 2) + 650000,
+    discount: 50000,
+    shipping: 30000,
+    total: (350000 + (450000 * 2) + 650000) - 50000 + 30000
 };
 
-// Mock order history data (since no backend is available)
+// Mock order history data
 const mockOrderHistory = [
     {
         orderId: '001',
@@ -59,7 +84,7 @@ const mockOrderHistory = [
     }
 ];
 
-// Mock notification data (since no backend is available)
+// Mock notification data
 const mockNotifications = [
     {
         id: 1,
@@ -84,14 +109,7 @@ const mockNotifications = [
 // Load cart data
 async function loadCart() {
     try {
-        // Uncomment the following lines when backend is available
-        // const response = await axios.get(`${API_BASE_URL}/cart`);
-        // const cart = response.data;
-
-        // Use mock data for now
         const cart = mockCartData;
-
-        // Update cart count
         const cartCount = cart.items.length;
         document.getElementById('cart-count').textContent = cartCount;
         document.getElementById('mobile-cart-count').textContent = cartCount;
@@ -99,7 +117,6 @@ async function loadCart() {
         document.getElementById('summary-items-count').textContent = cartCount;
         document.getElementById('cart-title').textContent = `Giỏ hàng (${cartCount})`;
 
-        // Update cart items in main content
         const cartItemsList = document.getElementById('cart-items-list');
         cartItemsList.innerHTML = '';
         cart.items.forEach(item => {
@@ -132,7 +149,6 @@ async function loadCart() {
             cartItemsList.innerHTML += itemElement;
         });
 
-        // Update cart dropdown in header
         const cartDropdownItems = document.getElementById('cart-items');
         cartDropdownItems.innerHTML = '';
         cart.items.forEach(item => {
@@ -150,7 +166,6 @@ async function loadCart() {
             cartDropdownItems.innerHTML += dropdownItem;
         });
 
-        // Update summary
         document.getElementById('subtotal').textContent = formatCurrency(cart.subtotal);
         document.getElementById('discount').textContent = formatCurrency(cart.discount);
         document.getElementById('shipping').textContent = formatCurrency(cart.shipping);
@@ -165,19 +180,11 @@ async function loadCart() {
 // Load notifications
 async function loadNotifications() {
     try {
-        // Uncomment the following lines when backend is available
-        // const response = await axios.get(`${API_BASE_URL}/notifications`);
-        // const notifications = response.data;
-
-        // Use mock data for now
         const notifications = mockNotifications;
-
-        // Update notification count
         const notificationCount = notifications.length;
         document.getElementById('wishlist-count').textContent = notificationCount;
         document.querySelector('#notificationButton h3').textContent = `Thông báo (${notificationCount})`;
 
-        // Update notification dropdown
         const notificationItems = document.getElementById('notification-items');
         notificationItems.innerHTML = '';
         notifications.forEach(notification => {
@@ -204,7 +211,7 @@ async function markNotificationAsRead(notificationId) {
     try {
         const response = await axios.patch(`${API_BASE_URL}/notifications/mark-read`, { notificationId });
         if (response.data.success) {
-            loadNotifications(); // Reload notifications after marking as read
+            loadNotifications();
         }
     } catch (error) {
         console.error('Error marking notification as read:', error);
@@ -215,13 +222,7 @@ async function markNotificationAsRead(notificationId) {
 // Load order history
 async function loadOrderHistory() {
     try {
-        // Uncomment the following lines when backend is available
-        // const response = await axios.get(`${API_BASE_URL}/orders`);
-        // const orders = response.data;
-
-        // Use mock data for now
         const orders = mockOrderHistory;
-
         const orderHistory = document.getElementById('order-history');
         orderHistory.innerHTML = '';
         orders.forEach(order => {
@@ -251,7 +252,7 @@ async function updateQuantity(itemId, change) {
     try {
         const response = await axios.patch(`${API_BASE_URL}/cart/update`, { itemId, change });
         if (response.data.success) {
-            loadCart(); // Reload cart after update
+            loadCart();
         }
     } catch (error) {
         console.error('Error updating quantity:', error);
@@ -264,7 +265,7 @@ async function removeItem(itemId) {
     try {
         const response = await axios.delete(`${API_BASE_URL}/cart/remove`, { data: { itemId } });
         if (response.data.success) {
-            loadCart(); // Reload cart after removal
+            loadCart();
         }
     } catch (error) {
         console.error('Error removing item:', error);
@@ -283,7 +284,7 @@ async function deleteSelected() {
     try {
         const response = await axios.delete(`${API_BASE_URL}/cart/remove`, { data: { itemIds: selectedItems } });
         if (response.data.success) {
-            loadCart(); // Reload cart after deletion
+            loadCart();
         }
     } catch (error) {
         console.error('Error deleting selected items:', error);
@@ -305,7 +306,7 @@ async function checkout(selectedOnly = false) {
     try {
         const response = await axios.post(`${API_BASE_URL}/checkout`, { selectedItems: selectedOnly ? itemsToCheckout : null });
         if (response.data.success) {
-            window.location.href = '/checkout-success'; // Redirect to success page
+            window.location.href = '/checkout-success';
         }
     } catch (error) {
         console.error('Error during checkout:', error);
@@ -315,21 +316,31 @@ async function checkout(selectedOnly = false) {
 
 // Check login status
 async function checkLoginStatus() {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/user`);
-        const userMenu = document.getElementById('userMenu');
-        userMenu.__x.$data.isLoggedIn = response.data.isLoggedIn;
-    } catch (error) {
-        console.error('Error checking login status:', error);
-        alert('Không thể kiểm tra trạng thái đăng nhập. Vui lòng thử lại sau.');
-    }
-}
+    const token = getCookie('token');
+    const isLoggedIn = getCookie('isLoggedIn');
+    const userMenu = document.getElementById('userMenu');
 
+    if (!token || isLoggedIn !== 'true') {
+        console.warn('No valid token or login status found.');
+        if (userMenu && userMenu.__x && userMenu.__x.$data) {
+            userMenu.__x.$data.isLoggedIn = false;
+        }
+        alert('Vui lòng đăng nhập để tiếp tục.');
+        window.location.href = 'login.html';
+        return false;
+    }
+
+    if (userMenu && userMenu.__x && userMenu.__x.$data) {
+        userMenu.__x.$data.isLoggedIn = true;
+    }
+    return true;
+}
 // Logout
 async function logout() {
     try {
         const response = await axios.post(`${API_BASE_URL}/logout`);
         if (response.data.success) {
+            deleteCookie('token');
             window.location.href = '/login';
         }
     } catch (error) {
@@ -344,8 +355,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadOrderHistory();
     loadNotifications();
     checkLoginStatus();
+    
 
-    // Quantity adjustment and item removal
     document.getElementById('cart-items-list').addEventListener('click', (e) => {
         if (e.target.classList.contains('increase-quantity')) {
             const itemId = e.target.getAttribute('data-id');
@@ -359,7 +370,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Notification actions
     document.getElementById('notification-items').addEventListener('click', (e) => {
         if (e.target.classList.contains('mark-as-read') || e.target.closest('.mark-as-read')) {
             const notificationId = e.target.getAttribute('data-id') || e.target.closest('.mark-as-read').getAttribute('data-id');
@@ -367,7 +377,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Select all checkbox
     document.getElementById('selectAll').addEventListener('change', function() {
         const checkboxes = document.querySelectorAll('input[type="checkbox"]:not(#selectAll)');
         checkboxes.forEach(checkbox => {
@@ -375,10 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Delete selected items
     document.getElementById('delete-selected').addEventListener('click', deleteSelected);
-
-    // Checkout buttons
     document.getElementById('checkout-selected').addEventListener('click', () => checkout(true));
     document.getElementById('checkout-all').addEventListener('click', () => checkout(false));
 });
