@@ -1,21 +1,14 @@
 using AutoMapper;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ShopxEX1.Data;
 using ShopxEX1.Dtos.Products;
 using ShopxEX1.Dtos;
 using ShopxEX1.Helpers;
 using ShopxEX1.Models;
-using ShopxEX1.Services;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 
 namespace ShopxEX1.Services.Implementations
 {

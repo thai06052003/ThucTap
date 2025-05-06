@@ -4,6 +4,14 @@
 # API
 /ShopxEX1/appsettings.json
 /ShopxEX1/bin/
+/ShopxEX1/obj/
+/ShopxEX1/appsettings.Development.json
+/ShopxEX1.sln
+/ShopxEX1/ShopxEX1.csproj
+/ShopxEX1/ShopxEX1.csproj.user
+/ShopxEX1/ShopxEX1.http
+/ShopxEX1/ShopxEX1.sln
+
 
 # Client
 /TMDTShop_Client/exp.index.html

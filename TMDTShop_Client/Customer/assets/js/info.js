@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         try {
             console.log('Đang kiểm tra token...');
-            const response = await fetch('https://localhost:5191/api/Auth/validate-token', {
+            const response = await fetch('https://localhost:7088/api/Auth/validate-token', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,

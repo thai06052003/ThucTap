@@ -47,31 +47,6 @@ document.addEventListener('DOMContentLoaded', function () {
       document.cookie = name + '=; Max-Age=-99999999; path=/';
   }
 
-  // Xử lý submenu
-  const submenuGroups = document.querySelectorAll('.submenu-group');
-
-  submenuGroups.forEach(group => {
-      const submenu = group.querySelector('.submenu');
-      group.addEventListener('mouseenter', () => submenu.style.display = 'block');
-      group.addEventListener('mouseleave', () => submenu.style.display = 'none');
-  });
-
-  // Xử lý giỏ hàng
-  document.getElementById('cartButton')?.addEventListener('click', function () {
-      this.querySelector('.cart-dropdown')?.classList.toggle('active');
-  });
-
-  // Hiệu ứng fade-in
-  const fadeElements = document.querySelectorAll('.fade-in');
-  const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-          if (entry.isIntersecting) {
-              entry.target.classList.add('visible');
-          }
-      });
-  }, { threshold: 0.1 });
-  fadeElements.forEach(element => observer.observe(element));
-
   // Xử lý menu tài khoản
   const userMenu = document.getElementById('userMenu');
   const button = userMenu?.querySelector('button');
@@ -132,7 +107,7 @@ displayAccountName();
           const token = getCookie("token");
 
           try {
-              await fetch("https://localhost:5191/api/Auth/logout", {
+              await fetch("https://localhost:7088/api/Auth/logout", {
                   method: "POST",
                   headers: {
                       "Content-Type": "application/json",

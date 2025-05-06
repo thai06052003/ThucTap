@@ -2,8 +2,6 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ShopxEX1.Dtos.Products;
 using ShopxEX1.Helpers;
-using System.Threading.Tasks;
-using ShopxEX1.Dtos;
 
 namespace ShopxEX1.Services
 {

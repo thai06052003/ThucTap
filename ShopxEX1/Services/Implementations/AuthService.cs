@@ -93,18 +93,12 @@ namespace ShopxEX1.Services.Implementations
                 }
                 else // Không tìm thấy -> Tạo user mới
                 {
+                    // _logger?.LogInformation("Creating new user via social login for email {Email}", socialLoginDto.Email);
                     isNewUser = true;
-                    user = new User
-                    {
-                        Email = socialLoginDto.Email,
-                        FullName = socialLoginDto.Email.Split('@')[0], // Tạm thời lấy phần trước @ làm tên
-                        PasswordHash = $"SOCIAL_LOGIN_{Guid.NewGuid()}", // Placeholder
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow,
-                        SocialProvider = socialLoginDto.Provider,
-                        SocialID = socialLoginDto.UserId,
-                        Role = "Customer"
-                    };
+                    user = _mapper.Map<User>(socialLoginDto);
+                    user.PasswordHash = $"SOCIAL_LOGIN_{Guid.NewGuid()}"; // Placeholder
+                    user.IsActive = true;
+                    user.CreatedAt = DateTime.UtcNow;
                     _context.Users.Add(user);
                 }
             }
@@ -206,13 +200,16 @@ namespace ShopxEX1.Services.Implementations
             var user = await _context.Users.FindAsync(userId);
             if (user == null) throw new KeyNotFoundException($"Không tìm thấy người dùng.");
 
+            // Kiểm tra trạng thái active trước khi cho đổi pass
             if (!user.IsActive)
             {
+                // _logger?.LogWarning("Change password attempt for inactive user {UserId}", userId);
                 throw new InvalidOperationException("Tài khoản này hiện đang bị khóa.");
             }
 
             if (string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(changePasswordDto.CurrentPassword, user.PasswordHash))
             {
+                // _logger?.LogWarning("Change password failed for user {UserId}: Incorrect current password.", userId);
                 throw new UnauthorizedAccessException("Mật khẩu hiện tại không chính xác.");
             }
 
@@ -224,13 +221,18 @@ namespace ShopxEX1.Services.Implementations
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
             _context.Users.Update(user);
 
+            // Không cần thu hồi refresh token nữa
+
             try
             {
-                return await _context.SaveChangesAsync() > 0;
+                var result = await _context.SaveChangesAsync() > 0;
+                // if(result) _logger?.LogInformation("Password changed successfully for user {UserId}", userId);
+                return result;
             }
-            catch
+            catch (Exception ex)
             {
-                throw new Exception("Đã xảy ra lỗi khi cập nhật mật khẩu.");
+                // _logger?.LogError(ex, "Error changing password for user {UserId}", userId);
+                throw new Exception("Đã xảy ra lỗi khi cập nhật mật khẩu.", ex);
             }
         }
 
@@ -241,10 +243,12 @@ namespace ShopxEX1.Services.Implementations
         // --- Hàm Tạo Token JWT (Giữ nguyên) ---
         private (string Token, DateTime Expiration) GenerateJwtToken(User user)
         {
-            var jwtKey = _configuration["Jwt:SecretKey"];
-            var issuer = _configuration["Jwt:Issuer"];
-            var audience = _configuration["Jwt:Audience"];
-            var expiryInMinutes = _configuration.GetValue<int>("Jwt:ExpiryInMinutes", 60);
+            var jwtSettings = _configuration.GetSection("JwtSettings");
+            var jwtKey = jwtSettings["Key"];
+            var issuer = jwtSettings["Issuer"];
+            var audience = jwtSettings["Audience"];
+            // Tăng thời gian hết hạn của Access Token vì không có Refresh Token
+            var expiryInMinutes = jwtSettings.GetValue<int>("ExpiryInMinutes", 1200); // Ví dụ: 60 phút
 
             if (string.IsNullOrEmpty(jwtKey)) throw new InvalidOperationException("JWT Key chưa được cấu hình.");
 
@@ -252,11 +256,12 @@ namespace ShopxEX1.Services.Implementations
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim> {
-                new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserID.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()), // Thường giống Sub
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(JwtRegisteredClaimNames.Exp, DateTimeOffset.UtcNow.AddMinutes(expiryInMinutes).ToUnixTimeSeconds().ToString())
+                // Jti không còn cần thiết cho blacklist
+                // new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
             if (user.Role == "Seller" && user.SellerProfile != null)
@@ -264,7 +269,7 @@ namespace ShopxEX1.Services.Implementations
                 claims.Add(new Claim("SellerId", user.SellerProfile.SellerID.ToString()));
             }
 
-            var expires = DateTime.UtcNow.AddMinutes(expiryInMinutes);
+            var expires = DateTime.UtcNow.AddMinutes(expiryInMinutes); // Nên dùng UtcNow
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
