@@ -48,27 +48,27 @@ namespace ShopxEX1.Services.Implementations
                               .Include(p => p.Category)
                               .Where(p => p.IsActive);
 
-            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            if (!string.IsNullOrWhiteSpace(filter?.SearchTerm))
             {
                 query = query.Where(p => p.ProductName.Contains(filter.SearchTerm));
             }
-            if (filter.CategoryId.HasValue)
+            if (filter?.CategoryId.HasValue == true)
             {
                 query = query.Where(p => p.CategoryID == filter.CategoryId.Value);
             }
-            if (filter.SellerID.HasValue)
+            if (filter?.SellerID.HasValue == true)
             {
                 query = query.Where(p => p.SellerID == filter.SellerID.Value);
             }
-            if (filter.SellerCategoryID.HasValue)
+            if (filter?.SellerCategoryID.HasValue == true)
             {
                 query = query.Where(p => p.SellerCategoryID == filter.SellerCategoryID.Value);
             }
-            if (filter.MinPrice.HasValue)
+            if (filter?.MinPrice.HasValue == true)
             {
                 query = query.Where(p => p.Price >= filter.MinPrice.Value);
             }
-            if (filter.MaxPrice.HasValue)
+            if (filter?.MaxPrice.HasValue == true)
             {
                 query = query.Where(p => p.Price <= filter.MaxPrice.Value);
             }
@@ -76,7 +76,7 @@ namespace ShopxEX1.Services.Implementations
             Expression<Func<Product, object>> orderByExpression = p => p.ProductID;
             bool ascending = true;
 
-            if (!string.IsNullOrWhiteSpace(filter.SortBy))
+            if (!string.IsNullOrWhiteSpace(filter?.SortBy))
             {
                 switch (filter.SortBy.ToLowerInvariant())
                 {
@@ -166,7 +166,7 @@ namespace ShopxEX1.Services.Implementations
             return _mapper.Map<ProductDto>(createdProduct);
         }
 
-        public async Task<ApiResponse> UpdateProductAsync(int productId, int sellerId, ProductUpdateDto updateDto)
+        public async Task<bool> UpdateProductAsync(int productId, int sellerId, ProductUpdateDto updateDto)
         {
             try
             {
@@ -175,13 +175,13 @@ namespace ShopxEX1.Services.Implementations
 
                 if (product == null)
                 {
-                    return new ApiResponse { Success = false, Message = "Không tìm thấy sản phẩm." };
+                    return false;
                 }
 
                 // Nếu sellerId = 0 là Admin, bỏ qua kiểm tra quyền
                 if (sellerId != 0 && product.SellerID != sellerId)
                 {
-                    return new ApiResponse { Success = false, Message = "Bạn không có quyền cập nhật sản phẩm này." };
+                    return false;
                 }
 
                 // Cập nhật các trường bắt buộc
@@ -189,16 +189,10 @@ namespace ShopxEX1.Services.Implementations
                 product.Price = updateDto.Price;
                 product.StockQuantity = updateDto.StockQuantity;
                 product.IsActive = updateDto.IsActive;
+                product.CategoryID = updateDto.CategoryID;
+                product.SellerCategoryID = updateDto.SellerCategoryID;
 
                 // Cập nhật các trường có thể null
-                if (updateDto.CategoryID.HasValue)
-                {
-                    product.CategoryID = updateDto.CategoryID.Value;
-                }
-                if (updateDto.SellerCategoryID.HasValue)
-                {
-                    product.SellerCategoryID = updateDto.SellerCategoryID.Value;
-                }
                 if (!string.IsNullOrEmpty(updateDto.Description))
                 {
                     product.Description = updateDto.Description;
@@ -211,11 +205,11 @@ namespace ShopxEX1.Services.Implementations
                 product.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
-                return new ApiResponse { Success = true, Message = "Cập nhật sản phẩm thành công." };
+                return true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return new ApiResponse { Success = false, Message = "Lỗi hệ thống khi cập nhật sản phẩm: " + ex.Message };
+                return false;
             }
         }
 
@@ -247,6 +241,80 @@ namespace ShopxEX1.Services.Implementations
                 }
                 return true;
             }
+        }
+
+        public async Task<PagedResult<ProductSummaryDto>> GetProductsBySellerAsync(ProductFilterDto? filter, int pageNumber, int pageSize, int userId)
+        {
+            var query = _context.Products
+                              .Include(p => p.Category)
+                              .Where(p => p.IsActive && p.SellerID == userId);
+
+            if (!string.IsNullOrWhiteSpace(filter?.SearchTerm))
+            {
+                query = query.Where(p => p.ProductName.Contains(filter.SearchTerm));
+            }
+            if (filter?.CategoryId.HasValue == true)
+            {
+                query = query.Where(p => p.CategoryID == filter.CategoryId.Value);
+            }
+            if (filter?.SellerCategoryID.HasValue == true)
+            {
+                query = query.Where(p => p.SellerCategoryID == filter.SellerCategoryID.Value);
+            }
+            if (filter?.MinPrice.HasValue == true)
+            {
+                query = query.Where(p => p.Price >= filter.MinPrice.Value);
+            }
+            if (filter?.MaxPrice.HasValue == true)
+            {
+                query = query.Where(p => p.Price <= filter.MaxPrice.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                                .Skip((pageNumber - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToListAsync();
+            
+            var productDtos = _mapper.Map<IEnumerable<ProductSummaryDto>>(items);
+            return new PagedResult<ProductSummaryDto>(productDtos, pageNumber, pageSize, totalCount);
+        }
+
+        public async Task<PagedResult<ProductSummaryDto>> GetProductsByCategoryAsync(ProductFilterDto? filter, int pageNumber, int pageSize, int categoryId)
+        {
+            var query = _context.Products
+                              .Include(p => p.Category)
+                              .Where(p => p.IsActive && p.CategoryID == categoryId);
+
+            if (!string.IsNullOrWhiteSpace(filter?.SearchTerm))
+            {
+                query = query.Where(p => p.ProductName.Contains(filter.SearchTerm));
+            }
+            if (filter?.SellerID.HasValue == true)
+            {
+                query = query.Where(p => p.SellerID == filter.SellerID.Value);
+            }
+            if (filter?.SellerCategoryID.HasValue == true)
+            {
+                query = query.Where(p => p.SellerCategoryID == filter.SellerCategoryID.Value);
+            }
+            if (filter?.MinPrice.HasValue == true)
+            {
+                query = query.Where(p => p.Price >= filter.MinPrice.Value);
+            }
+            if (filter?.MaxPrice.HasValue == true)
+            {
+                query = query.Where(p => p.Price <= filter.MaxPrice.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                                .Skip((pageNumber - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToListAsync();
+            
+            var productDtos = _mapper.Map<IEnumerable<ProductSummaryDto>>(items);
+            return new PagedResult<ProductSummaryDto>(productDtos, pageNumber, pageSize, totalCount);
         }
     }
 }

@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.cookie = name + '=; Max-Age=0; path=/; SameSite=Lax; Secure';
     }
 
+    const API_BASE = "https://localhost:7088/api/Auth";
+
     // Hàm kiểm tra token hợp lệ
     async function isTokenValid(token) {
         if (!token) {
@@ -35,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         try {
             console.log('Đang kiểm tra token...');
-            const response = await fetch('https://localhost:7088/api/Auth/validate-token', {
+            const response = await fetch(`${API_BASE}/check-auth`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -48,11 +50,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 return false;
             }
 
-            if (response.status === 404) {
-                console.log('Không tìm thấy endpoint xác thực token');
-                return false;
-            }
-
             if (!response.ok) {
                 console.log('Lỗi khi xác thực token:', response.status, response.statusText);
                 return false;
@@ -60,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             const data = await response.json();
             console.log('Token validation response:', data);
-            return true;
+            return data.isAuthenticated;
         } catch (error) {
             console.error('Lỗi khi kiểm tra token:', error);
             return false;
@@ -69,16 +66,40 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Hàm chuyển đổi định dạng ngày từ dd/MM/yyyy sang yyyy-MM-dd
     function convertToInputDateFormat(dateStr) {
-        if (!dateStr || !/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return '';
-        const [day, month, year] = dateStr.split('/');
-        return `${year}-${month}-${day}`;
+        if (!dateStr) return '';
+        // Nếu là ISO string (từ database)
+        if (dateStr.includes('T')) {
+            return dateStr.split('T')[0];
+        }
+        // Nếu là dd/MM/yyyy
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+            const [day, month, year] = dateStr.split('/');
+            return `${year}-${month}-${day}`;
+        }
+        // Nếu là yyyy-MM-dd
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            return dateStr;
+        }
+        return '';
     }
 
     // Hàm chuyển đổi định dạng ngày từ yyyy-MM-dd sang dd/MM/yyyy
     function convertToDisplayDateFormat(dateStr) {
-        if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return '';
-        const [year, month, day] = dateStr.split('-');
-        return `${day}/${month}/${year}`;
+        if (!dateStr) return '';
+        // Nếu là ISO string (từ database)
+        if (dateStr.includes('T')) {
+            dateStr = dateStr.split('T')[0];
+        }
+        // Nếu là yyyy-MM-dd
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('-');
+            return `${day}/${month}/${year}`;
+        }
+        // Nếu là dd/MM/yyyy
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+            return dateStr;
+        }
+        return '';
     }
 
     // Hàm chuyển đổi ngày về định dạng yyyy-MM-dd cho input type date
@@ -133,7 +154,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         const birthdateField = document.getElementById('birthdate');
         const genderMale = document.querySelector('input[name="gender"][value="male"]');
         const genderFemale = document.querySelector('input[name="gender"][value="female"]');
-        const genderOther = document.querySelector('input[name="gender"][value="other"]');
         const provinceField = document.getElementById('province');
         const districtField = document.getElementById('district');
         const wardField = document.getElementById('ward');
@@ -144,11 +164,25 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (phoneField) phoneField.value = phone || '';
         if (birthdateField) {
             if (birthday) {
-                birthdateField.value = toInputDateFormat(birthday);
+                // Đảm bảo luôn là yyyy-MM-dd cho input type="date"
+                let formattedDate = '';
+                if (typeof birthday === 'string' && birthday.includes('T')) {
+                    formattedDate = birthday.split('T')[0];
+                } else if (/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+                    formattedDate = birthday;
+                } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(birthday)) {
+                    const [day, month, year] = birthday.split('/');
+                    formattedDate = `${year}-${month}-${day}`;
+                } else if (/^\d{2}-\d{2}-\d{4}$/.test(birthday)) {
+                    const [day, month, year] = birthday.split('-');
+                    formattedDate = `${year}-${month}-${day}`;
+                }
+                birthdateField.value = formattedDate;
+                // Xóa phần hiển thị ngày sinh chữ đỏ nếu có
                 const birthdateDisplay = document.getElementById('birthdateDisplay');
                 if (birthdateDisplay) {
-                    birthdateDisplay.textContent = convertToDisplayDateFormat(birthday);
-                    birthdateDisplay.classList.remove('hidden');
+                    birthdateDisplay.textContent = '';
+                    birthdateDisplay.classList.add('hidden');
                 }
             } else {
                 birthdateField.value = '';
@@ -159,10 +193,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             }
         }
-        if (genderMale && genderFemale && genderOther) {
-            if (gender === true) genderMale.checked = true;
-            else if (gender === false) genderFemale.checked = true;
-            else genderOther.checked = true;
+        if (genderMale && genderFemale) {
+            let genderNormalized = gender;
+            if (typeof genderNormalized === 'string') {
+                if (genderNormalized === 'true' || genderNormalized === '1') genderNormalized = true;
+                else if (genderNormalized === 'false' || genderNormalized === '0') genderNormalized = false;
+                else genderNormalized = null;
+            }
+            genderMale.checked = false;
+            genderFemale.checked = false;
+            if (genderNormalized === true || genderNormalized === 1) genderMale.checked = true;
+            else if (genderNormalized === false || genderNormalized === 0) genderFemale.checked = true;
         }
         if (provinceField) provinceField.value = province || '';
         if (districtField) districtField.value = district || '';
@@ -177,8 +218,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             const isLoggedIn = getCookie('isLoggedIn');
             console.log('Token từ cookie:', token);
 
-            if (!token) {
-                console.log('Không tìm thấy token, chuyển hướng đến trang đăng nhập');
+            if (!token || isLoggedIn !== 'true') {
+                console.log('Không tìm thấy token hoặc chưa đăng nhập, chuyển hướng đến trang đăng nhập');
                 window.location.href = 'login.html';
                 return;
             }
@@ -188,13 +229,19 @@ document.addEventListener('DOMContentLoaded', async function() {
                 console.log('Token không hợp lệ hoặc đã hết hạn, chuyển hướng đến trang đăng nhập');
                 deleteCookie('token');
                 deleteCookie('isLoggedIn');
+                deleteCookie('userName');
+                deleteCookie('userEmail');
+                deleteCookie('userPhone');
+                deleteCookie('userBirthdate');
+                deleteCookie('userGender');
+                deleteCookie('userAddress');
                 window.location.href = 'login.html';
                 return;
             }
 
             // Lấy thông tin người dùng từ API
             console.log('Đang lấy thông tin người dùng...');
-            const response = await fetch('https://localhost:5191/api/Auth/user-info', {
+            const response = await fetch(`${API_BASE}/check-auth`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -204,32 +251,40 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             if (!response.ok) {
                 console.log('Lỗi khi lấy thông tin người dùng:', response.status, response.statusText);
-                if (response.status === 401 || response.status === 404) {
-                    console.log('Không được phép truy cập hoặc không tìm thấy endpoint, chuyển hướng đến trang đăng nhập');
+                if (response.status === 401) {
+                    console.log('Không được phép truy cập, chuyển hướng đến trang đăng nhập');
                     deleteCookie('token');
                     deleteCookie('isLoggedIn');
+                    deleteCookie('userName');
+                    deleteCookie('userEmail');
+                    deleteCookie('userPhone');
+                    deleteCookie('userBirthdate');
+                    deleteCookie('userGender');
+                    deleteCookie('userAddress');
                     window.location.href = 'login.html';
                     return;
                 }
                 throw new Error('Không thể lấy dữ liệu người dùng');
             }
 
-            const userData = await response.json();
-            console.log('Dữ liệu người dùng từ API:', userData);
+            const data = await response.json();
+            console.log('Dữ liệu người dùng từ API:', data);
 
-            if (!userData || !userData.userID) {
+            if (!data || !data.user) {
                 console.log('Dữ liệu người dùng không hợp lệ');
                 throw new Error('Dữ liệu người dùng không hợp lệ');
             }
 
+            const userData = data.user;
+            console.log('Birthday from API:', userData.birthday);
+
             // Lưu thông tin vào cookie
-            setCookie('userID', userData.userID, 7);
             setCookie('userName', userData.fullName, 7);
             setCookie('userEmail', userData.email, 7);
-            setCookie('userPhone', userData.phone, 7);
-            setCookie('userBirthdate', userData.birthday, 7);
-            setCookie('userGender', userData.gender, 7);
-            setCookie('userAddress', userData.address, 7);
+            setCookie('userPhone', userData.phone || '', 7);
+            setCookie('userBirthdate', userData.birthday || '', 7);
+            setCookie('userGender', userData.gender || '', 7);
+            setCookie('userAddress', userData.address || '', 7);
 
             // Cập nhật giao diện với dữ liệu mới
             updateUserInfo(
@@ -354,11 +409,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         formFields.forEach(field => {
             field.disabled = false;
         });
+        // Enable all gender radio buttons
+        document.querySelectorAll('input[name="gender"]').forEach(radio => {
+            radio.disabled = false;
+        });
     }
 
     function disableFields() {
         formFields.forEach(field => {
             field.disabled = true;
+        });
+        // Disable all gender radio buttons
+        document.querySelectorAll('input[name="gender"]').forEach(radio => {
+            radio.disabled = true;
         });
     }
 
@@ -404,21 +467,29 @@ document.addEventListener('DOMContentLoaded', async function() {
             const email = document.getElementById('email').value;
             const phone = document.getElementById('phone').value;
             const birthdateInput = document.getElementById('birthdate').value;
-            const gender = document.querySelector('input[name="gender"]:checked')?.value;
-
-            const date = new Date(birthdateInput);
-            if (isNaN(date.getTime())) {
-                alert('Ngày sinh không hợp lệ!');
-                return;
+            const genderRadio = document.querySelector('input[name="gender"]:checked');
+            let genderValue = null;
+            if (genderRadio) {
+                if (genderRadio.value === 'male') genderValue = true;
+                else if (genderRadio.value === 'female') genderValue = false;
+                else genderValue = null;
             }
+            const address = document.getElementById('address').value;
 
-            const today = new Date();
-            if (date > today) {
-                alert('Ngày sinh không được là ngày trong tương lai!');
-                return;
+            // Validate ngày sinh
+            if (birthdateInput) {
+                const date = new Date(birthdateInput);
+                if (isNaN(date.getTime())) {
+                    alert('Ngày sinh không hợp lệ!');
+                    return;
+                }
+
+                const today = new Date();
+                if (date > today) {
+                    alert('Ngày sinh không được là ngày trong tương lai!');
+                    return;
+                }
             }
-
-            const formattedBirthday = convertToDisplayDateFormat(birthdateInput);
 
             try {
                 const token = getCookie('token');
@@ -426,7 +497,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     throw new Error('Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.');
                 }
 
-                const userResponse = await fetch('https://localhost:5191/api/Auth/user-info', {
+                const userResponse = await fetch(`${API_BASE}/check-auth`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -439,24 +510,23 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
 
                 const userData = await userResponse.json();
-                const currentEmail = userData.email;
+                const currentEmail = userData.user.email;
 
                 const body = {
                     fullName: fullName,
                     phone: phone,
-                    birthday: formattedBirthday,
-                    gender: gender === 'male' ? true : gender === 'female' ? false : null,
-                    province: '',
-                    district: '',
-                    ward: '',
-                    address: userData.address
+                    birthday: birthdateInput,
+                    gender: genderValue,
+                    address: address
                 };
 
                 if (email !== currentEmail) {
                     body.email = email;
                 }
 
-                const response = await fetch('https://localhost:5191/api/Auth/update', {
+                console.log('Sending update request with body:', body);
+
+                const response = await fetch(`${API_BASE}/update-profile`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -466,29 +536,30 @@ document.addEventListener('DOMContentLoaded', async function() {
                 });
 
                 console.log('Update response status:', response.status);
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.log('Error response:', errorData);
-                    if (errorData.message === "Email already exists.") {
-                        throw new Error("Email này đã được sử dụng. Vui lòng chọn email khác hoặc giữ nguyên email hiện tại.");
-                    }
-                    throw new Error(`Error ${response.status}: ${errorData.message || 'Unknown error'}`);
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server response was not JSON');
                 }
 
-                setCookie('userName', fullName, 7);
-                setCookie('userEmail', email, 7);
-                setCookie('userPhone', phone, 7);
-                setCookie('userBirthdate', formattedBirthday || '', 7);
-                setCookie('userGender', gender === 'male' ? 'true' : gender === 'female' ? 'false' : 'null', 7);
-                setCookie('userAddress', userData.address, 7);
+                const data = await response.json();
+                console.log('Update response data:', data);
 
-                updateUserInfo(fullName, email, phone, formattedBirthday, gender === 'male' ? true : gender === 'female' ? false : null, '', '', '', userData.address);
+                if (!response.ok) {
+                    throw new Error(data.message || 'Cập nhật thông tin thất bại');
+                }
 
-                disableFields();
-                actionButtons.style.display = 'none';
-                editToggle.classList.remove('hidden');
+                // Cập nhật thông tin trong cookie
+                setCookie('user', JSON.stringify(data.user), 1);
+                setCookie('userName', data.user.fullName, 1);
+                setCookie('userEmail', data.user.email, 1);
+                setCookie('userPhone', data.user.phone || '', 1);
+                setCookie('userBirthdate', data.user.birthday || '', 1);
+                setCookie('userGender', data.user.gender || '', 1);
+                setCookie('userAddress', data.user.address || '', 1);
 
-                alert('Cập nhật thông tin thành công!');
+                alert('Cập nhật thông tin thành công');
+                window.location.reload();
             } catch (error) {
                 console.error('Lỗi khi cập nhật thông tin:', error.message);
                 if (error.message.includes('Token không tồn tại')) {

@@ -1,20 +1,24 @@
 {
   "format": 1,
   "restore": {
-    "D:\\thai\\ThucTap\\ShopxEX1\\ShopxEX1\\ShopxEX1.csproj": {}
+    "D:\\SHOP\\ShopxEX1\\ShopxEX1.csproj": {}
   },
   "projects": {
-    "D:\\thai\\ThucTap\\ShopxEX1\\ShopxEX1\\ShopxEX1.csproj": {
+    "D:\\SHOP\\ShopxEX1\\ShopxEX1.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\thai\\ThucTap\\ShopxEX1\\ShopxEX1\\ShopxEX1.csproj",
+        "projectUniqueName": "D:\\SHOP\\ShopxEX1\\ShopxEX1.csproj",
         "projectName": "ShopxEX1",
-        "projectPath": "D:\\thai\\ThucTap\\ShopxEX1\\ShopxEX1\\ShopxEX1.csproj",
-        "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-        "outputPath": "D:\\thai\\ThucTap\\ShopxEX1\\ShopxEX1\\obj\\",
+        "projectPath": "D:\\SHOP\\ShopxEX1\\ShopxEX1.csproj",
+        "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
+        "outputPath": "D:\\SHOP\\ShopxEX1\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\ACER\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -66,10 +70,6 @@
               "target": "Package",
               "version": "[8.0.15, )"
             },
-            "Microsoft.AspNetCore.JsonPatch": {
-              "target": "Package",
-              "version": "[8.0.0, )"
-            },
             "Microsoft.EntityFrameworkCore.Design": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "suppressParent": "All",
@@ -118,7 +118,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.403/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.303/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

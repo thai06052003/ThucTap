@@ -10,10 +10,10 @@ namespace ShopxEX1.Models
         public string? PasswordHash { get; set; } = string.Empty;
         public string? FullName { get; set; }
         public string? Phone { get; set; }
+        public DateTime? Birthday { get; set; }
+        public bool? Gender { get; set; }
         public string? Address { get; set; }
         public string? Avatar { get; set; }
-        public DateTime? Birthday { get; set; } // NULLable, cột mới
-        public bool? Gender { get; set; } // NULLable, cột mới (bit: true/false hoặc null)
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
         public string? SocialProvider { get; set; }
@@ -24,6 +24,5 @@ namespace ShopxEX1.Models
         public virtual Seller? SellerProfile { get; set; }
         public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
         public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
-
     }
 }

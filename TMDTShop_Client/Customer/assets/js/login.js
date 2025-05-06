@@ -1,22 +1,50 @@
+// Import Firebase config
+import { firebaseConfig } from './config.js';
+
 // Đăng ký sự kiện click cho liên kết "Quên mật khẩu"
 document.getElementById('forgotPasswordForm')?.addEventListener('click', (e) => {
   e.preventDefault();
   showForm('forgotPasswordForm');
 });
 
-// Cấu hình Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyC_KJKEs8dVQYYurfRVTZGlQeOCUTZ_tAI",
-  authDomain: "shopx-25c32.firebaseapp.com",
-  projectId: "shopx-25c32",
-  storageBucket: "shopx-25c32.firebasestorage.app",
-  messagingSenderId: "190835654922",
-  appId: "1:190835654922:web:109981258ea18d3713faf3",
-  measurementId: "G-T705KJKSP7"
-};
-
 const API_BASE = "https://localhost:7088/api/Auth";
 let tempUser = null;
+
+// Khởi tạo Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+const facebookProvider = new FacebookAuthProvider();
+
+// === Cookie Functions ===
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + 
+        "; path=/; SameSite=Lax; Secure; Max-Age=" + (days * 24 * 60 * 60);
+}
+
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
+function deleteCookie(name) {
+    document.cookie = name + '=; Max-Age=0; path=/; SameSite=Lax; Secure';
+}
 
 // === Helper Functions ===
 function showForm(formId) {
@@ -102,8 +130,17 @@ document.querySelector('#loginFormSubmit')?.addEventListener('submit', async (e)
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || `Lỗi đăng nhập`);
 
-    // Lưu token và thông tin người dùng
-    sessionStorage.setItem("token", data.token);
+    // Lưu token và thông tin người dùng vào cookie
+    setCookie('token', data.token, 7);
+    setCookie('isLoggedIn', 'true', 7);
+    if (data.user) {
+        setCookie('userName', data.user.fullName, 7);
+        setCookie('userEmail', data.user.email, 7);
+        setCookie('userPhone', data.user.phone || '', 7);
+        setCookie('userBirthdate', data.user.birthday || '', 7);
+        setCookie('userGender', data.user.gender || '', 7);
+        setCookie('userAddress', data.user.address || '', 7);
+    }
 
     showSuccessMessage();
   } catch (error) {
@@ -177,20 +214,45 @@ document.querySelector('#resetPasswordFormSubmit')?.addEventListener('submit', a
   }
 });
 
+// === Social Login Handlers ===
+document.getElementById('googleLogin')?.addEventListener('click', async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    await handleSocialLogin(result.user);
+  } catch (error) {
+    console.error("Google login error:", error);
+    alert("Đăng nhập bằng Google thất bại: " + error.message);
+  }
+});
+
+document.getElementById('facebookLogin')?.addEventListener('click', async () => {
+  try {
+    const result = await signInWithPopup(auth, facebookProvider);
+    await handleSocialLogin(result.user);
+  } catch (error) {
+    console.error("Facebook login error:", error);
+    alert("Đăng nhập bằng Facebook thất bại: " + error.message);
+  }
+});
+
 // === Handle Social Login Logic ===
 async function handleSocialLogin(user) {
   const provider = user.providerData[0]?.providerId;
-
+  
+  // Nếu là Facebook và không có email, yêu cầu người dùng nhập email
   if (!user.email && provider === 'facebook.com') {
     tempUser = { ...user };
-    document.getElementById('emailPrompt').classList.remove('hidden');
+    document.getElementById('emailPrompt')?.classList.remove('hidden');
     return;
   }
 
   const userData = {
     email: user.email,
-    provider,
-    userId: user.uid
+    provider: provider,
+    userId: user.uid,
+    displayName: user.displayName || '',
+    photoURL: user.photoURL || '',
+    phoneNumber: user.phoneNumber || ''
   };
 
   try {
@@ -201,59 +263,34 @@ async function handleSocialLogin(user) {
     });
 
     const data = await res.json();
-    if (res.ok) {
-      sessionStorage.setItem("token", data.token);
-      sessionStorage.setItem("userName", data.user?.name || "Social User");
-      sessionStorage.setItem("userEmail", data.user?.email || user.email || "");
-      sessionStorage.setItem("userPhone", data.user?.phone || "");
-      sessionStorage.setItem("userBirthdate", data.user?.birthdate || "");
-      showSuccessMessage();
-    } else {
-      alert("Đăng nhập thất bại..: " + (data.message || "Lỗi không xác định"));
+    if (!res.ok) throw new Error(data.message || "Đăng nhập thất bại");
+
+    // Lưu token và thông tin người dùng vào cookie
+    setCookie('token', data.token, 7);
+    setCookie('isLoggedIn', 'true', 7);
+    if (data.user) {
+        setCookie('userName', data.user.fullName, 7);
+        setCookie('userEmail', data.user.email, 7);
+        setCookie('userPhone', data.user.phone || '', 7);
+        setCookie('userBirthdate', data.user.birthday || '', 7);
+        setCookie('userGender', data.user.gender || '', 7);
+        setCookie('userAddress', data.user.address || '', 7);
     }
-  } catch (err) {
-    alert("Đăng nhập thất bại.: " + err.message);
-  } finally {
-    tempUser = null;
+
+    showSuccessMessage();
+  } catch (error) {
+    console.error("Social login error:", error);
+    alert("Đăng nhập thất bại: " + error.message);
   }
 }
 
-// === Social Email Prompt for Facebook (Missing Email) ===
-window.submitManualEmail = async () => {
-  const emailInput = document.getElementById('manualEmailInput').value;
-  if (!emailInput.includes('@')) return alert("Email không hợp lệ!");
+// Xử lý khi người dùng nhập email cho Facebook login
+document.getElementById('emailPromptForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!tempUser) return;
 
-  if (tempUser) {
-    tempUser.email = emailInput;
-    document.getElementById('emailPrompt').classList.add('hidden');
-    await handleSocialLogin(tempUser);
-  } else {
-    alert("Không tìm thấy thông tin người dùng.");
-    document.getElementById('emailPrompt').classList.add('hidden');
-  }
-};
-
-// === Social Login Handlers ===
-window.loginWithFacebook = async () => {
-  try {
-    const provider = new FacebookAuthProvider();
-    provider.addScope('email');
-    const result = await signInWithPopup(auth, provider);
-    await handleSocialLogin(result.user);
-  } catch (error) {
-    console.error('Facebook Login Error:', error);
-    alert(`Facebook Login Lỗi: ${error.message}`);
-  }
-};
-
-window.loginWithGoogle = async () => {
-  try {
-    const provider = new GoogleAuthProvider();
-    provider.addScope('email');
-    const result = await signInWithPopup(auth, provider);
-    await handleSocialLogin(result.user);
-  } catch (error) {
-    console.error('Google Login Error:', error);
-    alert(`Google Login Lỗi: ${error.message}`);
-  }
-};
+  const email = document.getElementById('socialEmail').value;
+  tempUser.email = email;
+  await handleSocialLogin(tempUser);
+  document.getElementById('emailPrompt')?.classList.add('hidden');
+});

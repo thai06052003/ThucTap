@@ -71,8 +71,8 @@ namespace ShopxEX1.Controllers
         [Route("/api/seller/products")]
         public async Task<ActionResult<PagedResult<ProductSummaryDto>>> GetProductsBySeller([FromQuery] ProductFilterDto filter, [FromQuery] int pageNumber = 1, [FromQuery] string pageSizeInput = "10")
         {
-            int sellerId = _getId.GetSellerId();
-            if (sellerId == null) throw new Exception($"Bạn không phải là Seller.");
+            int? sellerId = _getId.GetSellerId();
+            if (!sellerId.HasValue) throw new Exception($"Bạn không phải là Seller.");
             const int MaxPageSize = 100;
             int pageSize;
 
@@ -87,7 +87,7 @@ namespace ShopxEX1.Controllers
 
             try
             {
-                var result = await _productService.GetProductsBySellerAsync(filter, pageNumber, pageSize, sellerId);
+                var result = await _productService.GetProductsBySellerAsync(filter, pageNumber, pageSize, sellerId.Value);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -168,13 +168,13 @@ namespace ShopxEX1.Controllers
         [Authorize(Roles = "Seller")]
         public async Task<ActionResult<ProductDto>> CreateProduct([FromBody] ProductCreateDto createDto)
         {
-
-            int sellerId = _getId.GetSellerId();
+            int? sellerId = _getId.GetSellerId();
+            if (!sellerId.HasValue) throw new Exception($"Bạn không phải là Seller.");
 
             // Gọi service với sellerId
             try
             {
-                var createdProduct = await _productService.CreateProductAsync(sellerId, createDto);
+                var createdProduct = await _productService.CreateProductAsync(sellerId.Value, createDto);
                 return CreatedAtAction(nameof(GetProductById), new { productId = createdProduct.ProductID }, createdProduct);
             }
             // ... (Xử lý lỗi ArgumentException, Exception khác) ...
@@ -199,27 +199,13 @@ namespace ShopxEX1.Controllers
         [Authorize(Roles = "Seller")] // Chỉ Seller mới được cập nhật
         public async Task<IActionResult> UpdateProduct(int productId, [FromBody] ProductUpdateDto updateDto)
         {
-            int sellerId = _getId.GetSellerId();
+            int? sellerId = _getId.GetSellerId();
+            if (!sellerId.HasValue) throw new Exception($"Bạn không phải là Seller.");
 
             try
             {
-                // Service của bạn ném exception thay vì trả về bool
-                // await _productService.UpdateProductAsync(productId, sellerId, updateDto); // Gọi trực tiếp
-                // return NoContent(); // Nếu thành công, trả về 204
-
-                // ---- HOẶC: Xử lý theo phiên bản service trả về bool ----
-                bool success = await _productService.UpdateProductAsync(productId, sellerId, updateDto);
-                if (!success)
-                {
-                    // Không rõ lý do thất bại là do không tìm thấy hay không có quyền
-                    // Cần service trả về thông tin rõ hơn hoặc phải query lại để xác định
-                    // Tạm thời trả về BadRequest hoặc NotFound
-                    _logger.LogWarning("Cập nhật sản phẩm ID {ProductId} thất bại (không tìm thấy hoặc không có quyền).", productId);
-                    return NotFound($"Không thể cập nhật sản phẩm ID {productId}. Sản phẩm không tồn tại hoặc bạn không có quyền.");
-                }
-                return NoContent(); // Trả về 204 No Content khi cập nhật thành công
-                // -------------------------------------------------------
-
+                await _productService.UpdateProductAsync(productId, sellerId.Value, updateDto);
+                return NoContent();
             }
             catch (KeyNotFoundException ex) // Do service ném ra
             {
@@ -253,7 +239,8 @@ namespace ShopxEX1.Controllers
         [Authorize(Roles = "Seller, Admin")] // Chỉ Seller và Admin mới được xóa
         public async Task<IActionResult> DeleteProduct(int productId, [FromQuery] string status = "notActive")
         {
-            int sellerId = _getId.GetSellerId();
+            int? sellerId = _getId.GetSellerId();
+            if (!sellerId.HasValue) throw new Exception($"Bạn không phải là Seller.");
 
             // Kiểm tra giá trị status hợp lệ
             status = status.ToLowerInvariant();
@@ -264,16 +251,8 @@ namespace ShopxEX1.Controllers
 
             try
             {
-                // ---- Xử lý theo phiên bản service trả về bool ----
-                bool success = await _productService.DeleteProductAsync(productId, sellerId, status);
-                if (!success)
-                {
-                    // Tương tự Update, cần xác định rõ lý do thất bại
-                    _logger.LogWarning("Xóa sản phẩm thất bại: {Status}) .", status);
-                    return NotFound($"Không thể xóa sản phẩm ID {productId}. Sản phẩm không tồn tại hoặc bạn không có quyền.");
-                }
-                return NoContent(); // Trả về 204 No Content khi thành công
-
+                await _productService.DeleteProductAsync(productId, sellerId.Value, status);
+                return NoContent();
             }
             catch (KeyNotFoundException ex) // Do service ném ra
             {

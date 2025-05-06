@@ -30,7 +30,8 @@
                                 class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200"
                                 x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95"
                                 x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-150"
-                                x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+                                x-transition:leave-start="opacity-100 scale-100" 
+                                x-transition:leave-end="opacity-0 scale-95">
                                 <!-- Điện thoại & Phụ kiện -->
                                 <div class="relative submenu-group">
                                     <button
@@ -261,31 +262,14 @@
                                 <i class="fas fa-shopping-bag"></i>
                                 <span>Đơn hàng của tôi</span>
                             </a>
-                            <a href="#" class="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 text-gray-700">
-                                <i class="fas fa-heart"></i>
-                                <span>Sản phẩm yêu thích</span>
-                            </a>
-                            <a href="#" class="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 text-gray-700">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span>Sổ địa chỉ</span>
-                            </a>
-                            <a href="#" class="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 text-gray-700">
-                                <i class="fas fa-bell"></i>
-                                <span>Thông báo</span>
-                                <span class="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-1">3</span>
-                            </a>
+
+                            
                             <a href="#" class="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 text-gray-700">
                                 <i class="fas fa-ticket-alt"></i>
                                 <span>Phiếu giảm giá</span>
                             </a>
-                            <a href="#" class="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 text-gray-700">
-                                <i class="fas fa-lock"></i>
-                                <span>Bảo mật tài khoản</span>
-                            </a>
-                            <a href="#" class="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 text-gray-700">
-                                <i class="fas fa-sign-out-alt"></i>
-                                <span>Đăng xuất</span>
-                            </a>
+                            
+                            
                         </nav>
                     </div>
                 </div>
@@ -337,22 +321,16 @@
                                     <label class="block text-gray-700 font-medium mb-2">Giới tính</label>
                                     <div class="flex items-center space-x-4">
                                         <label class="flex items-center">
-                                            <input type="radio" name="gender" value="male" disabled class="mr-2 disabled:opacity-70">
-                                            <span>Nam</span>
+                                            <input type="radio" name="gender" value="male" ...> Nam
                                         </label>
                                         <label class="flex items-center">
-                                            <input type="radio" name="gender" value="female" disabled class="mr-2 disabled:opacity-70">
-                                            <span>Nữ</span>
-                                        </label>
-                                        <label class="flex items-center">
-                                            <input type="radio" name="gender" value="other" disabled class="mr-2 disabled:opacity-70">
-                                            <span>Khác</span>
+                                            <input type="radio" name="gender" value="female" ...> Nữ
                                         </label>
                                     </div>
                                 </div>
                             </div>
                             <hr class="my-6 border-gray-200">
-                            <h3 class="text-lg font-semibold mb-4">Địa chỉ mặc định</h3>
+                            <h3 class="text-lg font-semibold mb-4">Địa chỉ</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <!-- Địa chỉ cụ thể -->
                                 <div>
@@ -554,5 +532,28 @@
     <script src="../assets/js/info.js"></script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9352c8a8fe59bd1b',t:'MTc0NTQ2ODE3MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93745483fa6cbf72',t:'MTc0NTgxOTkzMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+<script>
+let genderValue = null;
+if (genderRadio) {
+    if (genderRadio.value === 'male') genderValue = true;
+    else if (genderRadio.value === 'female') genderValue = false;
+    else genderValue = null;
+}
+
+if (genderMale && genderFemale) {
+    let genderNormalized = gender;
+    if (typeof genderNormalized === 'string') {
+        if (genderNormalized === 'true' || genderNormalized === '1') genderNormalized = true;
+        else if (genderNormalized === 'false' || genderNormalized === '0') genderNormalized = false;
+        else genderNormalized = null;
+    }
+    genderMale.checked = false;
+    genderFemale.checked = false;
+    if (genderNormalized === true || genderNormalized === 1) genderMale.checked = true;
+    else if (genderNormalized === false || genderNormalized === 0) genderFemale.checked = true;
+}
+
+console.log('Gender value from API:', gender);
+</script>
 </body>
 </html>

@@ -11,5 +11,7 @@
         public string Role { get; set; } = string.Empty; // Cần biết Role
         public DateTime? CreatedAt { get; set; }
         public bool? IsActive { get; set; } // Cần biết trạng thái
+        public DateTime? Birthday { get; set; }
+        public bool? Gender { get; set; }
     }
 }

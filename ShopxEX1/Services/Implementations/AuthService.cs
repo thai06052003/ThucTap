@@ -11,6 +11,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace ShopxEX1.Services.Implementations
 {
@@ -63,77 +64,65 @@ namespace ShopxEX1.Services.Implementations
 
         public async Task<AuthResultDto> SocialLoginAsync(SocialLoginRequestDto socialLoginDto)
         {
+            // Kiểm tra email trước
             var user = await _context.Users
-                                     .Include(u => u.SellerProfile) // Vẫn cần nếu SellerId là claim
-                                     .FirstOrDefaultAsync(u => u.SocialProvider == socialLoginDto.Provider &&
-                                                            u.SocialID == socialLoginDto.UserId);
+                                     .Include(u => u.SellerProfile)
+                                     .FirstOrDefaultAsync(u => u.Email == socialLoginDto.Email);
+
             bool isNewUser = false;
 
             if (user == null)
             {
-                user = await _context.Users
-                                     .Include(u => u.SellerProfile)
-                                     .FirstOrDefaultAsync(u => u.Email == socialLoginDto.Email);
-
-                if (user != null) // Tìm thấy bằng email, cần liên kết
+                // Không tìm thấy user với email này -> tạo mới
+                isNewUser = true;
+                user = _mapper.Map<User>(socialLoginDto);
+                user.PasswordHash = $"SOCIAL_LOGIN_{Guid.NewGuid()}"; // Placeholder
+                user.IsActive = true;
+                user.CreatedAt = DateTime.UtcNow;
+                _context.Users.Add(user);
+            }
+            else
+            {
+                // Tìm thấy user với email này -> kiểm tra và cập nhật thông tin social
+                if (string.IsNullOrEmpty(user.SocialProvider) || string.IsNullOrEmpty(user.SocialID))
                 {
-                    if (string.IsNullOrEmpty(user.SocialProvider) || string.IsNullOrEmpty(user.SocialID))
-                    {
-                        // _logger?.LogInformation("Linking social account {Provider}:{SocialUserId} to existing email {Email}", socialLoginDto.Provider, socialLoginDto.UserId, user.Email);
-                        user.SocialProvider = socialLoginDto.Provider;
-                        user.SocialID = socialLoginDto.UserId;
-                        _context.Users.Update(user); // Đánh dấu để cập nhật
-                    }
-                    else if (user.SocialProvider != socialLoginDto.Provider || user.SocialID != socialLoginDto.UserId)
-                    {
-                        // _logger?.LogWarning("Social login conflict for email {Email}. Already linked to {ExistingProvider}.", user.Email, user.SocialProvider);
-                        return new AuthResultDto { Success = false, Message = $"Email {socialLoginDto.Email} đã được liên kết với một tài khoản {user.SocialProvider} khác." };
-                    }
-                    // Nếu khớp hoàn toàn thì không cần làm gì
+                    // User chưa có social account -> liên kết
+                    user.SocialProvider = socialLoginDto.Provider;
+                    user.SocialID = socialLoginDto.UserId;
+                    _context.Users.Update(user);
                 }
-                else // Không tìm thấy -> Tạo user mới
+                else if (user.SocialProvider != socialLoginDto.Provider || user.SocialID != socialLoginDto.UserId)
                 {
-                    // _logger?.LogInformation("Creating new user via social login for email {Email}", socialLoginDto.Email);
-                    isNewUser = true;
-                    user = _mapper.Map<User>(socialLoginDto);
-                    user.PasswordHash = $"SOCIAL_LOGIN_{Guid.NewGuid()}"; // Placeholder
-                    user.IsActive = true;
-                    user.CreatedAt = DateTime.UtcNow;
-                    _context.Users.Add(user);
+                    // User đã có social account khác -> báo lỗi
+                    return new AuthResultDto 
+                    { 
+                        Success = false, 
+                        Message = $"Email {socialLoginDto.Email} đã được liên kết với một tài khoản {user.SocialProvider} khác." 
+                    };
                 }
             }
 
             if (!user.IsActive)
             {
-                // _logger?.LogWarning("Social login attempt for inactive user {UserId} ({Email})", user.UserID, user.Email);
                 return new AuthResultDto { Success = false, Message = "Tài khoản của bạn đang bị khóa." };
             }
 
-            // === Tạo Token và trả về ===
             try
             {
-                // Lưu thay đổi (Cập nhật liên kết hoặc tạo user mới)
-                // Cần SaveChanges *trước* khi tạo token nếu user là mới để có UserID
                 await _context.SaveChangesAsync();
+                var accessTokenResult = GenerateJwtToken(user);
 
-                var accessTokenResult = GenerateJwtToken(user); // Tạo token sau khi có UserID (nếu là user mới)
-
-                // Không còn Refresh Token
-
-                // _logger?.LogInformation("Social login successful for user {UserId} ({Email}). New user: {IsNewUser}", user.UserID, user.Email, isNewUser);
                 return new AuthResultDto
                 {
                     Success = true,
                     Token = accessTokenResult.Token,
                     Expiration = accessTokenResult.Expiration,
-                    // RefreshToken = null, // Loại bỏ
                     User = _mapper.Map<UserDto>(user),
                     Message = isNewUser ? "Đăng ký bằng mạng xã hội thành công." : "Đăng nhập bằng mạng xã hội thành công."
                 };
             }
             catch (Exception ex)
             {
-                // _logger?.LogError(ex, "Error processing social login for email {Email}", socialLoginDto.Email);
                 throw new Exception("Đã xảy ra lỗi trong quá trình đăng nhập bằng mạng xã hội.", ex);
             }
         }
@@ -181,7 +170,7 @@ namespace ShopxEX1.Services.Implementations
             catch (Exception ex)
             {
                 // _logger?.LogError(ex, "Error during user registration for email {Email}", registerDto.Email);
-                return new AuthResultDto { Success = false, Message = "Đã xảy ra lỗi trong quá trình đăng ký." };
+                return new AuthResultDto { Success = false, Message = $"Đã xảy ra lỗi trong quá trình đăng ký: {ex.Message}" };
             }
         }
 
@@ -243,8 +232,8 @@ namespace ShopxEX1.Services.Implementations
         // --- Hàm Tạo Token JWT (Giữ nguyên) ---
         private (string Token, DateTime Expiration) GenerateJwtToken(User user)
         {
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var jwtKey = jwtSettings["Key"];
+            var jwtSettings = _configuration.GetSection("Jwt");
+            var jwtKey = jwtSettings["SecretKey"];
             var issuer = jwtSettings["Issuer"];
             var audience = jwtSettings["Audience"];
             // Tăng thời gian hết hạn của Access Token vì không có Refresh Token
@@ -303,6 +292,104 @@ namespace ShopxEX1.Services.Implementations
         public Task<bool> CheckRefreshTokenValidityAsync(int userId)
         {
             throw new NotImplementedException();
+        }
+
+        public async Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto updateDto)
+        {
+            try
+            {
+                Console.WriteLine($"Bắt đầu cập nhật thông tin cho user {userId}");
+                
+                // Sử dụng AsTracking để đảm bảo Entity Framework theo dõi thay đổi
+                var user = await _context.Users
+                    .AsTracking()
+                    .FirstOrDefaultAsync(u => u.UserID == userId);
+
+                if (user == null)
+                {
+                    Console.WriteLine($"Không tìm thấy user với ID {userId}");
+                    return new AuthResultDto { Success = false, Message = "Không tìm thấy người dùng" };
+                }
+
+                Console.WriteLine($"Thông tin user trước khi cập nhật: {JsonSerializer.Serialize(user)}");
+
+                // Kiểm tra email mới có bị trùng không
+                if (!string.IsNullOrEmpty(updateDto.Email) && updateDto.Email != user.Email)
+                {
+                    Console.WriteLine($"Kiểm tra email mới: {updateDto.Email}");
+                    var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == updateDto.Email);
+                    if (existingUser != null)
+                    {
+                        Console.WriteLine($"Email {updateDto.Email} đã tồn tại");
+                        return new AuthResultDto { Success = false, Message = "Email already exists." };
+                    }
+                    user.Email = updateDto.Email;
+                }
+
+                // Cập nhật thông tin
+                Console.WriteLine($"Cập nhật thông tin: {JsonSerializer.Serialize(updateDto)}");
+                user.FullName = updateDto.FullName;
+                if (!string.IsNullOrEmpty(updateDto.Phone)) user.Phone = updateDto.Phone;
+                if (!string.IsNullOrEmpty(updateDto.Birthday)) 
+                {
+                    if (DateTime.TryParse(updateDto.Birthday, out DateTime birthday))
+                    {
+                        user.Birthday = birthday;
+                        Console.WriteLine($"Đã cập nhật ngày sinh: {birthday}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Không thể parse ngày sinh: {updateDto.Birthday}");
+                        return new AuthResultDto { Success = false, Message = "Định dạng ngày sinh không hợp lệ" };
+                    }
+                }
+                if (updateDto.Gender.HasValue) user.Gender = updateDto.Gender.Value;
+                if (!string.IsNullOrEmpty(updateDto.Address)) user.Address = updateDto.Address;
+
+                Console.WriteLine($"Thông tin user sau khi cập nhật: {JsonSerializer.Serialize(user)}");
+
+                // Đánh dấu entity đã thay đổi
+                _context.Entry(user).State = EntityState.Modified;
+
+                try
+                {
+                    // Lưu thay đổi và kiểm tra kết quả
+                    var result = await _context.SaveChangesAsync();
+                    Console.WriteLine($"Lưu thay đổi thành công, số bản ghi bị ảnh hưởng: {result}");
+
+                    if (result <= 0)
+                    {
+                        Console.WriteLine("Không có thay đổi nào được lưu vào database");
+                        return new AuthResultDto { Success = false, Message = "Không thể lưu thay đổi vào database" };
+                    }
+
+                    // Refresh entity từ database để đảm bảo dữ liệu mới nhất
+                    await _context.Entry(user).ReloadAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Lỗi khi lưu thay đổi: {ex.Message}");
+                    Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                    throw;
+                }
+
+                // Map user to UserDto
+                var userDto = _mapper.Map<UserDto>(user);
+                Console.WriteLine($"Đã map user sang DTO: {JsonSerializer.Serialize(userDto)}");
+
+                return new AuthResultDto
+                {
+                    Success = true,
+                    Message = "Cập nhật thông tin thành công",
+                    User = userDto
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Lỗi UpdateProfile: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                return new AuthResultDto { Success = false, Message = "Lỗi hệ thống khi cập nhật thông tin" };
+            }
         }
     }
 }

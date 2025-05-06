@@ -22,5 +22,6 @@ namespace ShopxEX1.Services
         Task<RefreshTokenResultDto> RefreshTokenAsync(RefreshTokenRequestDto refreshTokenDto);
         // Kiểm tra xem người dùng có Refresh Token còn hiệu lực hay không
         Task<bool> CheckRefreshTokenValidityAsync(int userId);
+        Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto updateDto);
     }
 }

@@ -181,7 +181,7 @@ namespace ShopxEX1.Controllers
                     CreatedAt = DateTime.UtcNow
                 };
 
-                if (productDto.Image != null)
+                if (productDto.ImageFile != null)
                 {
                     var uploadPath = Path.Combine(_environment.WebRootPath, _imageFolder);
                     if (!Directory.Exists(uploadPath))
@@ -189,12 +189,12 @@ namespace ShopxEX1.Controllers
                         Directory.CreateDirectory(uploadPath);
                     }
 
-                    var fileName = $"{Guid.NewGuid()}{Path.GetExtension(productDto.Image.FileName)}";
+                    var fileName = $"{Guid.NewGuid()}{Path.GetExtension(productDto.ImageFile.FileName)}";
                     var filePath = Path.Combine(uploadPath, fileName);
 
                     using (var stream = new FileStream(filePath, FileMode.Create))
                     {
-                        await productDto.Image.CopyToAsync(stream);
+                        await productDto.ImageFile.CopyToAsync(stream);
                     }
 
                     product.ImageURL = $"/{_imageFolder}/{fileName}";

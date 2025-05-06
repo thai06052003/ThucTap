@@ -36,7 +36,7 @@ namespace ShopxEX1.Helpers
             return CurrentUserId;
         }
 
-        public int GetSellerId()
+        public int? GetSellerId()
         {
             int userId = GetCurrentUserId();
             var seller = _context.Sellers
@@ -45,7 +45,7 @@ namespace ShopxEX1.Helpers
             if (seller == null)
             {
                 _logger.LogError($"User {userId} không phải Seller");
-                throw new InvalidOperationException("Bạn không phải là Seller.");
+                return null;
             }
 
             return seller.SellerID;

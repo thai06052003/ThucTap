@@ -96,12 +96,12 @@
             </div>
   
             <div class="grid grid-cols-2 gap-4">
-              <button type="button" onclick="loginWithFacebook()" class="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition">
-                <img data-image-keyword="facebook logo" data-image-color="blue" src="https://cdn-icons-png.flaticon.com/512/124/124010.png" class="h-5">
+              <button type="button" id="facebookLogin" class="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition">
+                <img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" class="h-5" alt="Facebook">
                 Facebook
               </button>
-              <button type="button" onclick="loginWithGoogle()" class="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition">
-                <img data-image-keyword="google logo" data-image-color="red" src="https://cdn-icons-png.flaticon.com/512/281/281764.png" class="h-5">
+              <button type="button" id="googleLogin" class="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition">
+                <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" class="h-5" alt="Google">
                 Google
               </button>
             </div>
@@ -234,13 +234,25 @@
           </form>
         </div>
 
-        <!-- Email Prompt Form -->
-        <div id="emailPrompt" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-          <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h2 class="text-lg font-semibold mb-4">Yêu cầu nhập Email</h2>
-            <p class="mb-4">Chúng tôi không thể truy cập email của bạn. Vui lòng nhập email để tiếp tục.</p>
-            <input type="email" id="manualEmailInput" class="border p-2 w-full mb-4" placeholder="Nhập email của bạn" required>
-            <button onclick="submitManualEmail()" class="bg-blue-500 text-white px-4 py-2 rounded">Gửi</button>
+        <!-- Email Prompt -->
+        <div id="emailPrompt" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+          <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold mb-4">Vui lòng nhập email của bạn</h3>
+            <p class="text-gray-600 mb-4">Chúng tôi cần email của bạn để hoàn tất quá trình đăng nhập.</p>
+            <form id="emailPromptForm">
+              <div class="mb-4">
+                <label for="socialEmail" class="block text-gray-700 font-medium mb-2">Email</label>
+                <input type="email" id="socialEmail" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+              </div>
+              <div class="flex justify-end gap-4">
+                <button type="button" onclick="document.getElementById('emailPrompt').classList.add('hidden')" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                  Hủy
+                </button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  Tiếp tục
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>

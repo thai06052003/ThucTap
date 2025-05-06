@@ -85,20 +85,78 @@ document.addEventListener('DOMContentLoaded', function () {
           });
       });
   }
- // Hiển thị tên tài khoản trong header
- function displayAccountName() {
+
+  // Hiển thị tên tài khoản trong header
+  function displayAccountName() {
     const accountNameElement = document.getElementById('accountName');
     const userNameElement = document.getElementById('userName');
-    const userName = getCookie('userName') || 'Tài khoản'; // Lấy tên từ cookie, mặc định là "Tài khoản"
+    const token = getCookie('token');
+    const isLoggedIn = getCookie('isLoggedIn');
+
+    if (!token || isLoggedIn !== 'true') {
+        if (accountNameElement) accountNameElement.textContent = 'Tài khoản';
+        if (userNameElement) userNameElement.textContent = 'Tài khoản';
+        return;
+    }
+
+    const userName = getCookie('userName') || 'Tài khoản';
 
     if (accountNameElement) {
-        accountNameElement.textContent = userName; // Cập nhật tên trong header
+        accountNameElement.textContent = userName;
     }
     if (userNameElement) {
-        userNameElement.textContent = userName; // Cập nhật tên trong dropdown
+        userNameElement.textContent = userName;
     }
-}
-displayAccountName();
+  }
+
+  // Kiểm tra trạng thái đăng nhập khi trang được tải
+  async function checkLoginStatus() {
+    const token = getCookie('token');
+    const isLoggedIn = getCookie('isLoggedIn');
+
+    if (!token || isLoggedIn !== 'true') {
+        console.log('Chưa đăng nhập');
+        return;
+    }
+
+    try {
+        const response = await fetch('https://localhost:7088/api/Auth/check-auth', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            console.log('Token không hợp lệ, xóa thông tin đăng nhập');
+            deleteCookie('token');
+            deleteCookie('isLoggedIn');
+            deleteCookie('userName');
+            deleteCookie('userEmail');
+            deleteCookie('userPhone');
+            deleteCookie('userBirthdate');
+            deleteCookie('userGender');
+            deleteCookie('userAddress');
+            displayAccountName();
+            return;
+        }
+
+        const data = await response.json();
+        if (data.isAuthenticated && data.user) {
+            setCookie('userName', data.user.fullName, 7);
+            setCookie('userEmail', data.user.email, 7);
+            setCookie('userPhone', data.user.phone || '', 7);
+            setCookie('userBirthdate', data.user.birthday || '', 7);
+            setCookie('userGender', data.user.gender || '', 7);
+            setCookie('userAddress', data.user.address || '', 7);
+            displayAccountName();
+        }
+    } catch (error) {
+        console.error('Lỗi khi kiểm tra trạng thái đăng nhập:', error);
+    }
+  }
+
   // Đăng xuất
   const logoutButton = document.getElementById("logoutButton");
 
@@ -115,9 +173,15 @@ displayAccountName();
                   }
               });
 
-              // Xóa Ascending sẽ sử dụng cookie thay vì sessionStorage
+              // Xóa tất cả cookie
               deleteCookie("token");
-              deleteCookie("user");
+              deleteCookie("isLoggedIn");
+              deleteCookie("userName");
+              deleteCookie("userEmail");
+              deleteCookie("userPhone");
+              deleteCookie("userBirthdate");
+              deleteCookie("userGender");
+              deleteCookie("userAddress");
 
               // Chuyển hướng về trang đăng nhập
               window.location.href = "login.html";
@@ -127,4 +191,8 @@ displayAccountName();
           }
       });
   }
+
+  // Kiểm tra trạng thái đăng nhập khi trang được tải
+  checkLoginStatus();
+  displayAccountName();
 });

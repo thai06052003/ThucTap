@@ -14,6 +14,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
 using System.Security.Claims;
 using System.Text;
+using ShopxEX1.Middleware;
 
 namespace ShopxEX1 // Namespace gốc
 {
@@ -74,7 +75,7 @@ namespace ShopxEX1 // Namespace gốc
 
             // 2. DbContext Configuration
             builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(builder.Configuration.GetConnectionString("ShopX")));
 
             // 3. AutoMapper Configuration
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
@@ -89,13 +90,14 @@ namespace ShopxEX1 // Namespace gốc
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<ICartService, CartService>();
+            builder.Services.AddScoped<ISessionService, SessionService>();
 
             // 6. Controller Configuration
             builder.Services.AddControllers()
                  .AddJsonOptions(options =>
                  {
                      options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles; // Hoặc Preserve
-                     options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+                     options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never;
                  });
 
 
@@ -111,13 +113,34 @@ namespace ShopxEX1 // Namespace gốc
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidateAudience = true,
-                    ValidAudience = builder.Configuration["JwtSettings:Audience"],
+                    ValidAudience = builder.Configuration["Jwt:Audience"],
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]!)),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]!)),
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        // Cho phép lấy token từ query string (nếu cần)
+                        if (context.Request.Query.ContainsKey("access_token"))
+                        {
+                            context.Token = context.Request.Query["access_token"];
+                        }
+                        return Task.CompletedTask;
+                    },
+                    OnAuthenticationFailed = context =>
+                    {
+                        if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                        {
+                            context.Response.Headers.Add("Token-Expired", "true");
+                        }
+                        return Task.CompletedTask;
+                    }
                 };
             });
 
@@ -196,8 +219,10 @@ namespace ShopxEX1 // Namespace gốc
 
             app.UseCors(MyAllowSpecificOrigins);
 
-            app.UseAuthentication();
+            // Thêm middleware JWT trước UseAuthentication
+            app.UseMiddleware<JwtMiddleware>();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllers();
