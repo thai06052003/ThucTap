@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khuyến mãi - ShopX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Giữ nguyên các style từ trang chính */
+        .product-card:hover .product-actions {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .product-actions {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+
+        .cart-dropdown {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease;
+        }
+
+        .cart-dropdown.active {
+            max-height: 500px;
+        }
+
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #banner-image {
+            transition: opacity 1s ease-in-out, background-image 0.5s ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between py-4 gap-6">
+                <!-- Logo và Navigation -->
+                <div class="flex items-center gap-12">
+                    <a href="#" class="text-2xl font-bold text-blue-600">ShopX</a>
+                    <nav class="hidden md:flex items-center gap-6">
+                        <a href="index.html" class="text-gray-700 hover:text-blue-600 transition">Trang chủ</a>
+                        <a href="products.html" class="text-gray-700 hover:text-blue-600 transition">Sản phẩm</a>
+                        <a href="#" class="text-gray-700 hover:text-blue-600 transition">Danh mục</a>
+                        <a href="promotion.html" class="text-gray-700 hover:text-blue-600 transition">Khuyến mãi</a>
+                        <a href="#" class="text-gray-700 hover:text-blue-600 transition">Liên hệ</a>
+                    </nav>
+                </div>
+
+                <!-- Tìm kiếm, Giỏ hàng, Yêu thích, Tài khoản -->
+                <div class="flex items-center gap-4">
+                    <!-- Ô tìm kiếm -->
+                    <div class="relative hidden md:block">
+                        <input type="text" placeholder="Tìm kiếm sản phẩm..."
+                            class="border border-gray-300 rounded-full py-2 px-4 pl-10 w-56 lg:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" />
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    </div>
+
+                    <!-- Yêu thích -->
+                    <div class="relative group">
+                        <button class="text-gray-700 hover:text-blue-600 transition">
+                            <i class="fa-solid fa-bell"></i>
+                        </button>
+                        <span
+                            class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                            3
+                        </span>
+                    </div>
+
+                    <!-- Giỏ hàng -->
+                    <div class="relative group" id="cartButton">
+                        <button class="text-gray-700 hover:text-blue-600 transition">
+                            <i class="fas fa-shopping-cart text-xl"></i>
+                        </button>
+                        <span
+                            class="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                            5
+                        </span>
+
+                        <div
+                            class="cart-dropdown absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200">
+                            <div class="p-4">
+                                <h3 class="font-bold text-lg mb-4">Giỏ hàng (5)</h3>
+                                <div class="space-y-4 max-h-60 overflow-y-auto">
+                                    <!-- Cart items -->
+                                    <div class="flex items-start space-x-3">
+                                        <img data-image-keyword="product" data-image-color="white"
+                                            src="https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
+                                            class="w-16 h-16 object-cover rounded" loading="lazy" />
+                                        <div class="flex-1">
+                                            <h4 class="font-medium">Tai nghe Sony WH-1000XM4</h4>
+                                            <p class="text-sm text-gray-500">1 x 5.990.000đ</p>
+                                        </div>
+                                        <button class="text-gray-400 hover:text-red-500">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-start space-x-3">
+                                        <img data-image-keyword="product" data-image-color="white"
+                                            src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
+                                            class="w-16 h-16 object-cover rounded" />
+                                        <div class="flex-1">
+                                            <h4 class="font-medium">iPhone 14 Pro Max</h4>
+                                            <p class="text-sm text-gray-500">1 x 29.990.000đ</p>
+                                        </div>
+                                        <button class="text-gray-400 hover:text-red-500">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="border-t border-gray-200 mt-4 pt-4">
+                                    <div class="flex justify-between mb-4">
+                                        <span>Tổng cộng:</span>
+                                        <span class="font-bold">35.980.000đ</span>
+                                    </div>
+                                    <a href="#"
+                                        class="block bg-blue-600 hover:bg-blue-700 text-white text-center py-2 rounded-lg transition">
+                                        Thanh toán
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tài khoản -->
+                    <div class="hidden md:block relative" id="userMenu">
+                        <button class="flex items-center gap-2 cursor-pointer focus:outline-none" aria-expanded="false"
+                            aria-controls="userMenuDropdown" aria-label="Menu tài khoản">
+                            <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                <i class="fas fa-user text-gray-600"></i>
+                            </div>
+                            <span class="text-gray-700">Tài khoản</span>
+                        </button>
+                        <div id="userMenuDropdown"
+                            class="header__navbar-user-menu absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200 opacity-0 invisible transition-all duration-200 ease-in-out"
+                            role="menu" aria-hidden="true">
+                            <a href="seller.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                                role="menuitem">Tài khoản
+                                của tôi</a>
+                            <a href="admin.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                                role="menuitem">Truy cập với
+                                quyền ADMIN</a>
+                            <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Đơn
+                                hàng</a>
+                            <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Đăng
+                                xuất</a>
+                        </div>
+                    </div>
+
+                    <!-- Menu mobile -->
+                    <button class="md:hidden text-gray-700">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Promotion Hero -->
+    <section class="relative">
+        <div class="absolute inset-0 bg-gradient-to-r via-transparent to-transparent z-10"></div>
+        <div class="absolute inset-0 bg-cover bg-center opacity-90 transition-opacity duration-1000" id="banner-image"
+            style="background-size: contain;">
+        </div>
+
+        <div class="container mx-auto px-4 py-48 relative z-20">
+            <div class="max-w-3xl text-center mx-auto">
+                
+            </div>
+        </div>
+    </section>
+
+    <!-- Promotion Products -->
+    <section class="py-12 bg-white" id="products">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <h2 class="text-2xl font-bold">Sản phẩm khuyến mãi</h2>
+                <div class="flex gap-4 flex-wrap">
+                    <select class="border border-gray-300 rounded-full px-4 py-2 text-sm" id="sortSelect">
+                        <option>Sắp xếp theo</option>
+                        <option>Giảm giá nhiều nhất</option>
+                        <option>Giá thấp đến cao</option>
+                        <option>Giá cao đến thấp</option>
+                        <option>Phổ biến nhất</option>
+                    </select>
+
+                    <select class="border border-gray-300 rounded-full px-4 py-2 text-sm" id="categorySelect">
+                        <option>Tất cả danh mục</option>
+                        <option>Điện thoại</option>
+                        <option>Laptop</option>
+                        <option>Tai nghe</option>
+                        <option>Đồng hồ</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6" id="productsContainer">
+                <!-- Products will be inserted here by JavaScript -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Countdown Banner -->
+    <section class="py-12 bg-gradient-to-r from-orange-500 to-red-600">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-3xl font-bold text-white mb-4">Ưu đãi kết thúc sau</h2>
+            <div id="countdown" class="flex justify-center gap-6 mb-8">
+                <div class="bg-white/20 p-4 rounded-lg">
+                    <div class="text-4xl font-bold text-white days">00</div>
+                    <div class="text-white text-sm">Ngày</div>
+                </div>
+                <div class="bg-white/20 p-4 rounded-lg">
+                    <div class="text-4xl font-bold text-white hours">00</div>
+                    <div class="text-white text-sm">Giờ</div>
+                </div>
+                <div class="bg-white/20 p-4 rounded-lg">
+                    <div class="text-4xl font-bold text-white minutes">00</div>
+                    <div class="text-white text-sm">Phút</div>
+                </div>
+                <div class="bg-white/20 p-4 rounded-lg">
+                    <div class="text-4xl font-bold text-white seconds">00</div>
+                    <div class="text-white text-sm">Giây</div>
+                </div>
+            </div>
+            <button
+                class="bg-white hover:bg-gray-100 text-red-600 px-8 py-3 rounded-full font-bold transition transform hover:scale-105">
+                Xem tất cả ưu đãi
+            </button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white pt-12 pb-6">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-8">
+                <div class="col-span-2">
+                    <h3 class="text-xl font-bold mb-4">ShopX</h3>
+                    <p class="text-gray-400 mb-4">Nền tảng thương mại điện tử hàng đầu Việt Nam với AI gợi ý sản phẩm
+                        thông minh.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Về ShopX</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">Giới thiệu</a></li>
+                        <li><a href="#" class="hover:text-white transition">Tuyển dụng</a></li>
+                        <li><a href="#" class="hover:text-white transition">Điều khoản</a></li>
+                        <li><a href="#" class="hover:text-white transition">Chính sách bảo mật</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Hỗ trợ</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">Trung tâm trợ giúp</a></li>
+                        <li><a href="#" class="hover:text-white transition">Thanh toán</a></li>
+                        <li><a href="#" class="hover:text-white transition">Vận chuyển</a></li>
+                        <li><a href="#" class="hover:text-white transition">Khiếu nại</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Liên hệ</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li class="flex items-start">
+                            <i class="fas fa-map-marker-alt mt-1 mr-2 text-sm"></i>
+                            <span>Số 1, Đường ABC, Quận XYZ, TP.HCM</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-phone-alt mr-2 text-sm"></i>
+                            <span>1900 1234</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-envelope mr-2 text-sm"></i>
+                            <span><a href="/cdn-cgi/l/email-protection" class="__cf_email__"
+                                    data-cfemail="3f4c4a4f4f504d4b7f4c57504f47114951">[email&#160;protected]</a></span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-700 pt-6">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <p class="text-gray-400 mb-4 md:mb-0">© 2025 ShopX. Bảo lưu mọi quyền.</p>
+                    <div class="flex space-x-6">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196578.png" class="h-8">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196566.png" class="h-8">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196561.png" class="h-8">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196552.png" class="h-8">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <button
+            class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition transform hover:scale-110">
+            <i class="fas fa-robot text-2xl"></i>
+        </button>
+    </div>
+
+    <script>
+        // Danh sách các ảnh banner
+        const bannerImages = [
+            'ChatGPT Image 14_49_15 15 thg 4, 2025.png',
+            'ChatGPT Image 15_01_28 15 thg 4, 2025.png',
+            'https://cf.shopee.vn/file/sg-11134258-7rent-m8fzgr5jebvt46_xxhdpi',
+            'https://cf.shopee.vn/file/sg-11134258-7rep5-m8fzmzczc42v61_xxhdpi',
+            'https://cf.shopee.vn/file/sg-11134258-7reqm-m8fwfbeasjaf71_xxhdpi',
+            'https://cf.shopee.vn/file/sg-11134258-7ren7-m8k4tvphqvtd35_xxhdpi',
+        ];
+
+        let currentImageIndex = 0;
+        const bannerElement = document.getElementById('banner-image');
+        const transitionTime = 3000; // 3 giây
+
+        // Hàm chuyển ảnh
+        function changeBannerImage() {
+            // Thêm hiệu ứng fade out
+            bannerElement.style.opacity = '0';
+
+            setTimeout(() => {
+                currentImageIndex = (currentImageIndex + 1) % bannerImages.length;
+                bannerElement.style.backgroundImage = `url('${bannerImages[currentImageIndex]}')`;
+
+                // Fade in ảnh mới
+                bannerElement.style.opacity = '0.9';
+            }, 1000); // Thời gian fade out
+        }
+
+        // Khởi tạo banner đầu tiên
+        bannerElement.style.backgroundImage = `url('${bannerImages[0]}')`;
+
+        // Tự động chuyển ảnh
+        let slideshowInterval = setInterval(changeBannerImage, transitionTime);
+
+        // Tạm dừng khi hover
+        bannerElement.addEventListener('mouseenter', () => {
+            clearInterval(slideshowInterval);
+        });
+
+        // Tiếp tục khi mouse out
+        bannerElement.addEventListener('mouseleave', () => {
+            slideshowInterval = setInterval(changeBannerImage, transitionTime);
+        });
+        // Toggle cart dropdown
+        document.getElementById('cartButton').addEventListener('click', function () {
+            const cartDropdown = this.querySelector('.cart-dropdown');
+            cartDropdown.classList.toggle('active');
+        });
+
+        // Fade in animation on scroll
+        document.addEventListener('DOMContentLoaded', function () {
+            const fadeElements = document.querySelectorAll('.fade-in');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            fadeElements.forEach(element => {
+                observer.observe(element);
+            });
+        });
+
+        // Toggle user menu
+        document.getElementById('userMenu').addEventListener('click', function (e) {
+            e.preventDefault();
+            const userMenuDropdown = this.querySelector('#userMenuDropdown');
+            const isExpanded = this.querySelector('button').getAttribute('aria-expanded') === 'true';
+
+            // Toggle menu
+            userMenuDropdown.classList.toggle('active');
+            this.querySelector('button').setAttribute('aria-expanded', !isExpanded);
+            userMenuDropdown.setAttribute('aria-hidden', isExpanded);
+
+            // Đóng các dropdown khác (nếu có)
+            document.querySelectorAll('.cart-dropdown.active').forEach(dropdown => {
+                dropdown.classList.remove('active');
+            });
+        });
+
+        // Đóng menu khi click bên ngoài
+        document.addEventListener('click', function (e) {
+            const userMenu = document.getElementById('userMenu');
+            if (!userMenu.contains(e.target)) {
+                const userMenuDropdown = userMenu.querySelector('#userMenuDropdown');
+                userMenuDropdown.classList.remove('active');
+                userMenu.querySelector('button').setAttribute('aria-expanded', 'false');
+                userMenuDropdown.setAttribute('aria-hidden', 'true');
+            }
+        });
+
+        // Hỗ trợ bàn phím
+        document.getElementById('userMenu').querySelector('button').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+
+        document.querySelectorAll('#userMenuDropdown a').forEach(link => {
+            link.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.click();
+                }
+            });
+        });
+
+        // Dữ liệu sản phẩm mẫu
+        const products = Array.from({ length: 20 }, (_, i) => ({
+            id: i + 1,
+            name: `Sản phẩm Khuyến mãi ${i + 1}`,
+            category: ['Điện thoại', 'Laptop', 'Tai nghe', 'Đồng hồ'][Math.floor(Math.random() * 4)],
+            price: (Math.floor(Math.random() * 50 + 1) * 100000).toLocaleString('vi-VN') + 'đ',
+            oldPrice: (Math.floor(Math.random() * 50 + 60) * 100000).toLocaleString('vi-VN') + 'đ',
+            discount: Math.floor(Math.random() * 50 + 10),
+            image: `https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80`,
+            rating: (Math.random() * 5).toFixed(1),
+            reviews: Math.floor(Math.random() * 200)
+        }));
+
+        // Hàm tạo rating stars
+        function createRatingStars(rating) {
+            let stars = '';
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 >= 0.5;
+
+            for (let i = 0; i < 5; i++) {
+                if (i < fullStars) {
+                    stars += '<i class="fas fa-star"></i>';
+                } else if (hasHalfStar && i === fullStars) {
+                    stars += '<i class="fas fa-star-half-alt"></i>';
+                } else {
+                    stars += '<i class="far fa-star"></i>';
+                }
+            }
+            return `<div class="flex text-yellow-400 text-sm">${stars}</div>`;
+        }
+
+        // Hàm render sản phẩm
+        function renderProducts(products) {
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = products.map(product => `
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition product-card">
+                    <div class="relative">
+                        <img src="${product.image}" 
+                            class="w-full h-48 object-cover" 
+                            loading="lazy"
+                            alt="${product.name}">
+                        <div class="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">-${product.discount}%</div>
+                        <div class="product-actions absolute bottom-0 left-0 right-0 bg-white/90 flex justify-center space-x-2 p-2">
+                            <button class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                <i class="far fa-heart text-sm"></i>
+                            </button>
+                            <button class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                <i class="fas fa-search text-sm"></i>
+                            </button>
+                            <button class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                <i class="fas fa-shopping-cart text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <a href="#" class="text-gray-800 hover:text-blue-600 font-medium block mb-1">${product.name}</a>
+                        <div class="flex items-center mb-2">
+                            ${createRatingStars(product.rating)}
+                            <span class="text-gray-500 text-xs ml-1">(${product.reviews})</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-red-500 font-bold">${product.price}</span>
+                            <span class="text-gray-500 text-sm line-through ml-2">${product.oldPrice}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Countdown timer
+        function startCountdown() {
+            const countDownDate = new Date().getTime() + 7 * 24 * 60 * 60 * 1000; // 7 days
+
+            const updateTimer = () => {
+                const now = new Date().getTime();
+                const distance = countDownDate - now;
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.querySelector('.days').textContent = days.toString().padStart(2, '0');
+                document.querySelector('.hours').textContent = hours.toString().padStart(2, '0');
+                document.querySelector('.minutes').textContent = minutes.toString().padStart(2, '0');
+                document.querySelector('.seconds').textContent = seconds.toString().padStart(2, '0');
+
+                if (distance < 0) {
+                    clearInterval(timer);
+                    document.getElementById('countdown').innerHTML = "<div class='text-2xl font-bold text-white'>KẾT THÚC</div>";
+                }
+            };
+
+            updateTimer();
+            const timer = setInterval(updateTimer, 1000);
+        }
+
+        // Filter and sort functionality
+        function filterProducts() {
+            const category = document.getElementById('categorySelect').value;
+            const sortBy = document.getElementById('sortSelect').value;
+
+            let filtered = products;
+
+            if (category !== 'Tất cả danh mục') {
+                filtered = filtered.filter(p => p.category === category);
+            }
+
+            switch (sortBy) {
+                case 'Giảm giá nhiều nhất':
+                    filtered.sort((a, b) => b.discount - a.discount);
+                    break;
+                case 'Giá thấp đến cao':
+                    filtered.sort((a, b) => a.price.localeCompare(b.price));
+                    break;
+                case 'Giá cao đến thấp':
+                    filtered.sort((a, b) => b.price.localeCompare(a.price));
+                    break;
+                case 'Phổ biến nhất':
+                    filtered.sort((a, b) => b.reviews - a.reviews);
+                    break;
+            }
+
+            renderProducts(filtered);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderProducts(products);
+            startCountdown();
+
+            document.getElementById('sortSelect').addEventListener('change', filterProducts);
+            document.getElementById('categorySelect').addEventListener('change', filterProducts);
+        });
+
+        // Giữ nguyên các script từ trang chính
+        // ... (Copy nguyên bản các script từ file gốc) ...
+    </script>
+</body>
+
+</html>

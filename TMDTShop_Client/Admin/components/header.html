@@ -1,0 +1,30 @@
+<header class="bg-white shadow-sm sticky top-0 z-10">
+    <div class="flex items-center justify-between p-4">
+        <div class="flex items-center space-x-4">
+            <h1 class="text-xl font-bold text-gray-800" id="pageTitle">Bảng điều khiển</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="relative">
+                <button class="text-gray-600 hover:text-blue-600">
+                    <i class="fas fa-bell"></i>
+                    <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+                </button>
+            </div>
+            <div class="relative group">
+                <button id="adminToggle" class="flex items-center space-x-2 focus:outline-none">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                        <i class="fas fa-user text-blue-600"></i>
+                    </div>
+                    <span class="hidden md:inline">Quản trị viên</span>
+                </button>
+                <div id="adminSubmenu"
+                    class="submenu absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden">
+                    <a href="user.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Hồ sơ</a>
+                    <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Cài đặt</a>
+                    <div class="border-t border-gray-200"></div>
+                    <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Đăng xuất</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản trị ShopX - Bảng điều khiển</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/Admin/assets/css/index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body class="bg-gray-100">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <!-- Sidebar động sẽ load vào đây -->
+        </div>
+
+        <div class="content-area flex-1 overflow-auto">
+
+            <!-- Header -->
+            <div id="header">
+                <!-- Header động sẽ load vào đây -->
+            </div>
+
+            <!-- Content -->
+            <div id="app">
+                <main class="p-6 mx-auto">
+                    <section class="mt-10 bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-bold mb-6 text-blue-700">Thêm sản phẩm mới</h2>
+                        <form id="addProductForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                            <div>
+                                <label class="block mb-1 font-medium">Tên sản phẩm <span
+                                        class="text-red-500">*</span></label>
+                                <input type="text" name="ProductName" maxlength="100" required
+                                    class="w-full border px-4 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block mb-1 font-medium">Danh mục <span
+                                        class="text-red-500">*</span></label>
+                                <select name="CategoryID" required
+                                    class="w-full border px-4 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">-- Chọn danh mục --</option>
+                                    <option value="1">Điện thoại</option>
+                                    <option value="2">Laptop</option>
+                                    <option value="3">Phụ kiện</option>
+                                    <!-- Dynamically load from DB -->
+                                </select>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block mb-1 font-medium">Mô tả</label>
+                                <textarea name="Description" maxlength="4000"
+                                    class="w-full border px-4 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    rows="4"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block mb-1 font-medium">Giá (VNĐ) <span
+                                        class="text-red-500">*</span></label>
+                                <input type="number" name="Price" step="0.01" min="0.01" required
+                                    class="w-full border px-4 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block mb-1 font-medium">Số lượng tồn <span
+                                        class="text-red-500">*</span></label>
+                                <input type="number" name="StockQuantity" min="0" required
+                                    class="w-full border px-4 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block mb-1 font-medium">Ảnh sản phẩm</label>
+                                <input type="file" id="imageInput" accept="image/*" class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4
+                                      file:rounded file:border-0 file:text-sm file:font-semibold
+                                      file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                                <input type="hidden" name="ImageURL" id="ImageURL">
+                                <div class="mt-3">
+                                    <img id="previewImage"
+                                        class="w-24 h-24 object-cover rounded hidden border border-gray-300" />
+                                </div>
+                            </div>
+
+
+                            <div class="flex items-center space-x-2 mt-7">
+                                <input type="checkbox" name="IsActive" checked
+                                    class="form-checkbox h-5 w-5 text-blue-600">
+                                <label class="font-medium">Kích hoạt sản phẩm</label>
+                            </div>
+
+                            <div class="md:col-span-2 flex justify-end mt-4">
+                                <a href="list.html"
+                                    class="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition font-semibold mr-6">Quay
+                                    lại</a>
+                                <button type="submit"
+                                    class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition font-semibold">
+                                    <i class="fas fa-plus-circle mr-1"></i> Thêm sản phẩm
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div id="footer">
+        <!-- Footer động sẽ load vào đây -->
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="/Admin/assets/js/custom.js"></script>
+    <script src="/Admin/assets/js/index.js"> </script>
+    <script src="/Admin/assets/js/product-form.js" defer></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+                const addProductForm = document.getElementById('addProductForm');
+                const imageInput = document.getElementById('imageInput');
+                const previewImage = document.getElementById('previewImage');
+                const imageURLInput = document.getElementById('ImageURL'); // Input ẩn chứa URL ảnh
+
+                // --- Logic xem trước ảnh cơ bản ---
+                // LƯU Ý: Phần này chỉ hiển thị ảnh xem trước. Việc *tải lên* (upload) ảnh
+                // thực tế cần một cơ chế riêng (ví dụ: upload lên một endpoint riêng hoặc
+                // lưu trữ đám mây) sau đó sẽ cung cấp URL để điền vào trường ẩn 'ImageURL'.
+                // Trong ví dụ này, chúng ta giả định URL được lấy và đặt ở đâu đó,
+                // hoặc chúng ta chỉ gửi form mà chưa có URL ảnh *thực tế*.
+                if (imageInput && previewImage) {
+                    imageInput.addEventListener('change', function (event) {
+                        const file = event.target.files[0];
+                        if (file && file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = function (e) {
+                                previewImage.src = e.target.result;
+                                previewImage.classList.remove('hidden');
+                                // --- QUAN TRỌNG ---
+                                // Trong ứng dụng thực tế, bạn sẽ UPLOAD 'file' tại đây
+                                // lên server hoặc cloud storage. Server sẽ trả về
+                                // URL thực tế của ảnh đã upload.
+                                // Sau đó, bạn sẽ đặt URL đó vào input ẩn:
+                                // imageURLInput.value = 'URL_TỪ_SERVER_SAU_KHI_UPLOAD';
+                                // Hiện tại, chúng ta sẽ để trống hoặc bạn có thể đặt một giá trị giữ chỗ
+                                // nếu backend cho phép URL null/trống ban đầu.
+                                // imageURLInput.value = ''; // Hoặc đặt giá trị giữ chỗ/kết quả từ upload
+                                console.warn("Đã hiển thị xem trước ảnh. Cần logic upload thực tế để lấy ImageURL.");
+                            }
+                            reader.readAsDataURL(file);
+                        } else {
+                            previewImage.src = '';
+                            previewImage.classList.add('hidden');
+                            imageURLInput.value = ''; // Xóa URL nếu không chọn ảnh hợp lệ
+                        }
+                    });
+                }
+
+                // --- Logic gửi Form ---
+                if (addProductForm) {
+                    addProductForm.addEventListener('submit', async function (event) {
+                        event.preventDefault(); // Ngăn chặn hành vi mặc định (tải lại trang)
+
+                        // --- Lấy Token xác thực (Điều chỉnh key 'authToken' nếu cần) ---
+                        const token = localStorage.getItem('authToken');
+                        if (!token) {
+                            alert('Lỗi: Không tìm thấy thông tin xác thực. Vui lòng đăng nhập lại.');
+                            // Tùy chọn: chuyển hướng đến trang đăng nhập
+                            // window.location.href = '/login.html';
+                            return;
+                        }
+
+                        // --- Lấy dữ liệu Form ---
+                        const formData = new FormData(addProductForm);
+                        const productData = {};
+
+                        // Chuyển FormData thành một đối tượng thường, xử lý kiểu dữ liệu
+                        formData.forEach((value, key) => {
+                            // Tìm phần tử input tương ứng để kiểm tra kiểu nếu cần
+                            const inputElement = addProductForm.elements[key];
+
+                            if (key === 'Price') {
+                                productData[key] = parseFloat(value) || 0; // Chuyển thành số thực
+                            } else if (key === 'StockQuantity' || key === 'CategoryID') {
+                                productData[key] = parseInt(value, 10) || 0; // Chuyển thành số nguyên
+                            } else if (key === 'IsActive') {
+                                // Giá trị checkbox là 'on' nếu được check, không có nếu không check
+                                productData[key] = value === 'on'; // Chuyển thành boolean (sẽ là true nếu được check)
+                            } else if (inputElement && inputElement.type === 'file') {
+                                // Bỏ qua input file trong đối tượng này, sử dụng input ẩn ImageURL
+                            }
+                            else {
+                                productData[key] = value; // Giữ nguyên là chuỗi
+                            }
+                        });
+
+                        // Xử lý rõ ràng checkbox nếu nó không phải là 'on' (tức là không được check)
+                        if (!productData.hasOwnProperty('IsActive')) {
+                            productData['IsActive'] = false;
+                        }
+
+                        // Đảm bảo ImageURL từ input ẩn được bao gồm
+                        if (imageURLInput) {
+                            productData['ImageURL'] = imageURLInput.value;
+                        } else {
+                            productData['ImageURL'] = null; // Hoặc xử lý theo nhu cầu nếu input không tồn tại
+                        }
+
+                        console.log("Dữ liệu đang gửi:", productData); // Để debug
+
+                        // --- Gọi API ---
+                        try {
+                            const response = await fetch('/api/products', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json', // Khai báo kiểu nội dung là JSON
+                                    'Authorization': `Bearer ${token}` // Gửi token xác thực
+                                },
+                                body: JSON.stringify(productData) // Chuyển đối tượng JS thành chuỗi JSON
+                            });
+
+                            // --- Xử lý Phản hồi (Response) ---
+                            if (response.ok) { // status >= 200 && status < 300 (bao gồm 200 OK, 201 Created)
+                                const result = await response.json(); // Lấy dữ liệu sản phẩm đã tạo từ phản hồi
+                                console.log('Thành công:', result);
+                                alert('Đã thêm sản phẩm thành công!');
+
+                                // Tùy chọn: Reset form sau khi gửi thành công
+                                addProductForm.reset();
+                                if (previewImage) {
+                                    previewImage.src = '';
+                                    previewImage.classList.add('hidden');
+                                }
+                                if (imageURLInput) {
+                                    imageURLInput.value = '';
+                                }
+
+                                // Tùy chọn: Chuyển hướng đến trang danh sách sản phẩm
+                                // window.location.href = 'list.html';
+
+                            } else {
+                                // --- Xử lý Lỗi ---
+                                let errorMessage = `Lỗi ${response.status}: ${response.statusText}`;
+                                try {
+                                    // Thử phân tích thông báo lỗi cụ thể từ body của phản hồi API
+                                    const errorData = await response.json();
+                                    // Kiểm tra các cấu trúc lỗi phổ biến (lỗi validation ASP.NET Core, thông báo tùy chỉnh)
+                                    if (errorData.title) { // Cấu trúc ProblemDetails
+                                        errorMessage = errorData.title;
+                                        if (errorData.errors) { // Lỗi validation
+                                            const validationErrors = Object.values(errorData.errors).flat().join('\n');
+                                            errorMessage += `\n${validationErrors}`;
+                                        }
+                                    } else if (errorData.message) { // Đối tượng lỗi tùy chỉnh
+                                        errorMessage = errorData.message;
+                                    } else if (typeof errorData === 'string') { // Lỗi dạng text thuần
+                                        errorMessage = errorData;
+                                    }
+                                    // Thêm các kiểm tra khác dựa trên cách API của bạn trả về lỗi
+                                } catch (e) {
+                                    // Nếu phân tích body lỗi thất bại, giữ nguyên status text
+                                    console.error("Không thể phân tích body phản hồi lỗi:", e);
+                                }
+                                console.error('Lỗi API:', errorMessage);
+                                alert(`Thêm sản phẩm thất bại:\n${errorMessage}`);
+                            }
+
+                        } catch (error) {
+                            // --- Xử lý Lỗi Mạng/Fetch ---
+                            console.error('Lỗi Fetch:', error);
+                            alert('Đã xảy ra lỗi mạng hoặc lỗi khi gửi yêu cầu. Vui lòng thử lại.\n' + error.message);
+                        }
+                    });
+                } else {
+                    console.error("Không tìm thấy form với ID 'addProductForm'.");
+                }
+            });
+    </script>
+</body>
+
+</html>
