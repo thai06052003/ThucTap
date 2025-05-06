@@ -1,6 +1,4 @@
-/FE
-/BE/backend/appsettings.json
-/BE/backend/appsettings.Development.json
+
 
 # Ignore config files with sensitive information
 Customer/assets/js/config.js
