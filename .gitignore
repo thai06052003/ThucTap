@@ -5,7 +5,9 @@
 # Ignore config files with sensitive information
 Customer/assets/js/config.js
 Customer/assets/js/config.*.js
-
+#API
+/ShopxEX1/appsettings.json
+/ShopxEX1/bin/
 # Node modules
 node_modules/
 
