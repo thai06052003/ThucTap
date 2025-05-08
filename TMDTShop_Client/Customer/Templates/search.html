@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kết quả tìm kiếm</title>
+    <title>Tìm kiếm - ShopX</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
     <script>
         tailwind.config = {
             theme: {
@@ -21,28 +23,12 @@
         }
     </script>
 </head>
-<body class="bg-gray-100">
-    <!-- Header (tương tự giohang.html, lược giản cho ngắn gọn) -->
-    <header class="bg-white shadow-sm sticky top-0 z-50">
-        <div class="container mx-auto px-4">
-            <div class="flex items-center justify-between py-4 gap-6">
-                <div class="flex items-center gap-12">
-                    <a href="index.html" class="text-2xl font-bold text-blue-600">ShopX</a>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="relative hidden md:block">
-                        <form action="/search" method="get" class="relative">
-                            <input type="text" name="q" placeholder="Tìm kiếm sản phẩm..." class="border border-gray-300 rounded-full py-2 px-4 pl-10 w-56 lg:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" />
-                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
+<body class="bg-gray-50">
+    <!-- Header Container -->
+    <div id="header-container"></div>
 
     <!-- Main Content -->
-    <div class="container mx-auto px-4 py-8">
+    <main class="container mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold text-dark mb-8">Kết quả tìm kiếm cho <!--"<span id="search-query"></span>"--></h1>
         
         <div id="search-results" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -60,7 +46,7 @@
                 <p class="text-lg font-bold text-primary">450.000₫</p>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Footer (tương tự giohang.html, lược giản) -->
     <footer class="bg-gray-800 text-white pt-12 pb-6">
@@ -78,14 +64,8 @@
     </footer>
 
     <!-- Scripts -->
-    <script>
-        // Get search query from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const query = urlParams.get('q') || 'Không có từ khóa';
-        document.getElementById('search-query').textContent = query;
-
-        // Mock search results (replace with API call later)
-        // Example: axios.get(`/api/search?q=${query}`)
-    </script>
+    <script src="../assets/js/components.js"></script>
+    <script src="../assets/js/search.js"></script>
+    <script src="../assets/js/index.js"></script>
 </body>
 </html>
