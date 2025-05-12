@@ -341,4 +341,60 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         });
     }
+
+    // === AVATAR UPLOAD ===
+    const avatarCamera = document.getElementById('avatarCamera');
+    const avatarInput = document.getElementById('avatarInput');
+    const avatarImg = document.getElementById('avatarImg');
+
+    if (avatarCamera && avatarInput && avatarImg) {
+        avatarCamera.addEventListener('click', function () {
+            avatarInput.click();
+        });
+        avatarInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (ev) {
+                    avatarImg.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+                // TODO: Gửi file lên server nếu có API upload avatar
+            }
+        });
+    }
+
+    // === SIDEBAR TAB SWITCH ===
+    const sidebarAccount = document.getElementById('sidebarAccount');
+    const sidebarOrders = document.getElementById('sidebarOrders');
+    const accountInfoSection = document.getElementById('account-info-section');
+    const orderSection = document.getElementById('order-section');
+
+    function setActiveTab(tab) {
+        if (tab === 'account') {
+            sidebarAccount.classList.add('bg-blue-50', 'border-blue-600', 'text-blue-600', 'active');
+            sidebarAccount.classList.remove('text-gray-700');
+            sidebarOrders.classList.remove('bg-blue-50', 'border-blue-600', 'text-blue-600', 'active');
+            sidebarOrders.classList.add('text-gray-700');
+            accountInfoSection.classList.remove('hidden');
+            orderSection.classList.add('hidden');
+        } else {
+            sidebarOrders.classList.add('bg-blue-50', 'border-blue-600', 'text-blue-600', 'active');
+            sidebarOrders.classList.remove('text-gray-700');
+            sidebarAccount.classList.remove('bg-blue-50', 'border-blue-600', 'text-blue-600', 'active');
+            sidebarAccount.classList.add('text-gray-700');
+            orderSection.classList.remove('hidden');
+            accountInfoSection.classList.add('hidden');
+        }
+    }
+    if (sidebarAccount && sidebarOrders && accountInfoSection && orderSection) {
+        sidebarAccount.addEventListener('click', function (e) {
+            e.preventDefault();
+            setActiveTab('account');
+        });
+        sidebarOrders.addEventListener('click', function (e) {
+            e.preventDefault();
+            setActiveTab('orders');
+        });
+    }
 });

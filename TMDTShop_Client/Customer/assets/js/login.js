@@ -24,6 +24,7 @@ function showForm(formId) {
   document.querySelectorAll('[id$="Form"]').forEach(form => form.classList.add('hidden'));
   document.getElementById(formId)?.classList.remove('hidden');
   document.getElementById('successMessage')?.classList.add('hidden');
+  document.getElementById('forgotSuccessMessage')?.classList.add('hidden');
 }
 
 function showSuccessMessage() {
@@ -116,28 +117,10 @@ document.querySelector('#loginFormSubmit')?.addEventListener('submit', async (e)
 });
 
 // === Forgot Password ===
-document.querySelector('#forgotPasswordFormSubmit')?.addEventListener('submit', async (e) => {
+document.querySelector('#forgotPasswordFormSubmit')?.addEventListener('submit', function(e) {
   e.preventDefault();
-  const email = document.getElementById('forgotEmail').value;
-
-  try {
-    const res = await fetch(`${API_BASE}/forgotpassword`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email })
-    });
-
-    const data = await res.json();
-    if (res.ok) {
-      sessionStorage.setItem("resetToken", data.token);
-      alert("Yêu cầu đặt lại mật khẩu đã được gửi! Vui lòng kiểm tra email.");
-      showForm("resetPasswordForm");
-    } else {
-      alert("Lỗi: " + (data.message || "Không thể gửi yêu cầu."));
-    }
-  } catch (err) {
-    alert("Lỗi khi gửi yêu cầu: " + err.message);
-  }
+  document.getElementById('forgotPasswordForm').classList.add('hidden');
+  document.getElementById('forgotSuccessMessage').classList.remove('hidden');
 });
 
 // === Reset Password ===

@@ -21,6 +21,10 @@ class ComponentLoader {
             if (window.Alpine && Alpine.initTree) {
                 Alpine.initTree(document.getElementById(targetId));
             }
+            // Đảm bảo Alpine nhận diện mọi component động (Alpine 3+)
+            if (window.Alpine && Alpine.init) {
+                setTimeout(() => Alpine.init(), 0);
+            }
 
             // Xử lý các sự kiện sau khi load component
             if (componentName === 'header') {

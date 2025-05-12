@@ -1,3 +1,5 @@
+import { api, sessionManager, localCart, ui } from './api.js';
+
 const API_BASE_URL = 'https://localhost:7088/api/Users';
 
 // Hàm tiện ích cho cookie
@@ -31,150 +33,98 @@ function formatCurrency(amount) {
     return amount.toLocaleString('vi-VN') + '₫';
 }
 
-// Mock cart data
-const mockCartData = {
-    items: [
-        {
-            id: 1,
-            name: 'Áo thun nam cao cấp',
-            image: 'https://images.unsplash.com/photo-1524672353063-4f66ee1f385e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3MzY5OTh8MHwxfHNlYXJjaHw0fHx0LXNoaXJ0JTIwbWVuJTIwZmFzaGlvbnxlbnwwfHx8Ymx1ZXwxNzQ0NzcxMzg1fDA&ixlib=rb-4.0.3&q=85',
-            color: 'Xanh dương',
-            size: 'L',
-            price: 350000,
-            quantity: 1
-        },
-        {
-            id: 2,
-            name: 'Quần jeans nữ ống suông',
-            image: 'https://images.unsplash.com/photo-1524672353063-4f66ee1f385e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3MzY5OTh8MHwxfHNlYXJjaHw2fHxqZWFucyUyMHdvbWVuJTIwZmFzaGlvbnxlbnwwfHx8Ymx1ZXwxNzQ0NzcxMzg1fDA&ixlib=rb-4.0.3&q=85',
-            color: 'Xanh đậm',
-            size: 'M',
-            price: 450000,
-            quantity: 2
-        },
-        {
-            id: 3,
-            name: 'Giày thể thao nam',
-            image: 'https://images.unsplash.com/photo-1555253771-dd02be6c028f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3MzY5OTh8MHwxfHNlYXJjaHwyfHxzbmVha2VycyUyMHNwb3J0JTIwc2hvZXN8ZW58MHx8fHdoaXRlfDE3NDQ3NzEzODV8MA&ixlib=rb-4.0.3&q=85',
-            color: 'Trắng',
-            size: '42',
-            price: 650000,
-            quantity: 1
-        }
-    ],
-    subtotal: 350000 + (450000 * 2) + 650000,
-    discount: 50000,
-    shipping: 30000,
-    total: (350000 + (450000 * 2) + 650000) - 50000 + 30000
-};
-
-// Mock order history data
-const mockOrderHistory = [
-    {
-        orderId: '001',
-        date: '20/04/2025',
-        items: [{ name: 'Áo thun nam', price: 350000 }],
-        status: 'Đã giao'
-    },
-    {
-        orderId: '002',
-        date: '21/04/2025',
-        items: [{ name: 'Quần jeans nữ', price: 450000 }],
-        status: 'Đang xử lý'
-    }
-];
-
-// Mock notification data
-const mockNotifications = [
-    {
-        id: 1,
-        message: 'Đơn hàng #001 của bạn đã được giao thành công!',
-        date: '20/04/2025 14:30',
-        read: false
-    },
-    {
-        id: 2,
-        message: 'Khuyến mãi mới: Giảm 20% cho tất cả sản phẩm!',
-        date: '21/04/2025 09:00',
-        read: true
-    },
-    {
-        id: 3,
-        message: 'Đơn hàng #002 đang được xử lý.',
-        date: '21/04/2025 10:15',
-        read: false
-    }
-];
-
-// Load cart data
-async function loadCart() {
+// Kiểm tra token hợp lệ
+async function isTokenValid(token) {
+    if (!token) return false;
     try {
-        const cart = mockCartData;
-        const cartCount = cart.items.length;
-        document.getElementById('cart-count').textContent = cartCount;
-        document.getElementById('mobile-cart-count').textContent = cartCount;
-        document.getElementById('cart-items-count').textContent = cartCount;
-        document.getElementById('summary-items-count').textContent = cartCount;
-        document.getElementById('cart-title').textContent = `Giỏ hàng (${cartCount})`;
-
-        const cartItemsList = document.getElementById('cart-items-list');
-        cartItemsList.innerHTML = '';
-        cart.items.forEach(item => {
-            const itemElement = `
-                <div class="flex items-start border-b pb-6">
-                    <div class="flex items-center mr-4">
-                        <input type="checkbox" class="h-5 w-5 text-primary rounded mr-4" data-id="${item.id}">
-                        <img src="${item.image}" alt="${item.name}" class="w-20 h-20 object-cover rounded" loading="lazy">
-                    </div>
-                    <div class="flex-grow">
-                        <div class="flex justify-between">
-                            <div>
-                                <h3 class="text-lg font-medium text-dark">${item.name}</h3>
-                                <p class="text-gray-500 text-sm">Màu: ${item.color} | Size: ${item.size}</p>
-                            </div>
-                            <div class="text-lg font-bold text-primary">${formatCurrency(item.price)}</div>
-                        </div>
-                        <div class="flex justify-between items-center mt-4">
-                            <div class="flex items-center border rounded-lg">
-                                <button class="px-3 py-1 text-gray-600 hover:bg-gray-100 decrease-quantity" data-id="${item.id}">-</button>
-                                <span class="px-3 py-1">${item.quantity}</span>
-                                <button class="px-3 py-1 text-gray-600 hover:bg-gray-100 increase-quantity" data-id="${item.id}">+</button>
-                            </div>
-                            <button class="text-red-500 hover:text-red-700 remove-item" data-id="${item.id}">
-                                <i class="fas fa-trash-alt"></i> Xóa
-                            </button>
-                        </div>
-                    </div>
-                </div>`;
-            cartItemsList.innerHTML += itemElement;
+        const response = await fetch('https://localhost:7088/api/Auth/check-auth', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
         });
-
-        const cartDropdownItems = document.getElementById('cart-items');
-        cartDropdownItems.innerHTML = '';
-        cart.items.forEach(item => {
-            const dropdownItem = `
-                <div class="flex items-start space-x-3">
-                    <img src="${item.image}" class="w-16 h-16 object-cover rounded" loading="lazy" />
-                    <div class="flex-1">
-                        <h4 class="font-medium">${item.name}</h4>
-                        <p class="text-sm text-gray-500">${item.quantity} x ${formatCurrency(item.price)}</p>
-                    </div>
-                    <button class="text-gray-400 hover:text-red-500 remove-item" data-id="${item.id}">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>`;
-            cartDropdownItems.innerHTML += dropdownItem;
-        });
-
-        document.getElementById('subtotal').textContent = formatCurrency(cart.subtotal);
-        document.getElementById('discount').textContent = formatCurrency(cart.discount);
-        document.getElementById('shipping').textContent = formatCurrency(cart.shipping);
-        document.getElementById('total').textContent = formatCurrency(cart.total);
-        document.getElementById('cart-total').textContent = formatCurrency(cart.total);
+        if (response.status === 401) return false;
+        if (!response.ok) return false;
+        const data = await response.json();
+        return data.isAuthenticated;
     } catch (error) {
-        console.error('Error loading cart:', error);
-        alert('Không thể tải giỏ hàng. Vui lòng thử lại sau.');
+        return false;
     }
+}
+
+// Lấy giỏ hàng
+async function loadCart() {
+    const token = sessionStorage.getItem('token');
+    let cart;
+    if (token) {
+        try {
+            showSpinner();
+            const response = await fetch('https://localhost:7088/api/Cart', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Không thể tải giỏ hàng');
+            cart = await response.json();
+        } catch (e) {
+            showToast('Không thể tải giỏ hàng', 'error');
+            cart = { CartItems: [], TotalPrice: 0 };
+        } finally {
+            hideSpinner();
+        }
+    } else {
+        cart = JSON.parse(localStorage.getItem('cart')) || { CartItems: [], TotalPrice: 0 };
+    }
+    updateCartUI(cart);
+}
+
+// Update cart UI
+function updateCartUI(cart) {
+    const cartCount = cart.CartItems.length;
+    document.getElementById('cart-count').textContent = cartCount;
+    document.getElementById('mobile-cart-count').textContent = cartCount;
+    document.getElementById('cart-items-count').textContent = cartCount;
+    document.getElementById('summary-items-count').textContent = cartCount;
+    document.getElementById('cart-title').textContent = `Giỏ hàng (${cartCount})`;
+
+    // Update cart items list
+    const cartItemsList = document.getElementById('cart-items-list');
+    cartItemsList.innerHTML = '';
+    cart.CartItems.forEach(item => {
+        const itemElement = `
+            <div class="flex items-start border-b pb-6">
+                <div class="flex items-center mr-4">
+                    <input type="checkbox" class="h-5 w-5 text-primary rounded mr-4" data-id="${item.id}">
+                    <img src="${item.image}" alt="${item.name}" class="w-20 h-20 object-cover rounded" loading="lazy">
+                </div>
+                <div class="flex-grow">
+                    <div class="flex justify-between">
+                        <div>
+                            <h3 class="text-lg font-medium text-dark">${item.name}</h3>
+                            <p class="text-gray-500 text-sm">Màu: ${item.color || 'N/A'} | Size: ${item.size || 'N/A'}</p>
+                        </div>
+                        <div class="text-lg font-bold text-primary">${formatCurrency(item.price)}</div>
+                    </div>
+                    <div class="flex justify-between items-center mt-4">
+                        <div class="flex items-center border rounded-lg">
+                            <button class="px-3 py-1 text-gray-600 hover:bg-gray-100 decrease-quantity" data-id="${item.id}">-</button>
+                            <span class="px-3 py-1">${item.quantity}</span>
+                            <button class="px-3 py-1 text-gray-600 hover:bg-gray-100 increase-quantity" data-id="${item.id}">+</button>
+                        </div>
+                        <button class="text-red-500 hover:text-red-700 remove-item" data-id="${item.id}">
+                            <i class="fas fa-trash-alt"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        cartItemsList.innerHTML += itemElement;
+    });
+
+    // Update summary
+    document.getElementById('subtotal').textContent = formatCurrency(cart.TotalPrice);
+    document.getElementById('discount').textContent = formatCurrency(cart.Discount || 0);
+    document.getElementById('shipping').textContent = formatCurrency(cart.Shipping || 0);
+    document.getElementById('total').textContent = formatCurrency(cart.TotalPrice);
+    document.getElementById('cart-total').textContent = formatCurrency(cart.TotalPrice);
 }
 
 // Load notifications
@@ -221,16 +171,45 @@ async function markNotificationAsRead(notificationId) {
 
 // Load order history
 async function loadOrderHistory() {
+    const token = sessionStorage.getItem('token');
+    if (!token || !(await isTokenValid(token))) {
+        document.getElementById('order-history').innerHTML = `
+            <div class="text-center text-gray-500">
+                Vui lòng đăng nhập để xem lịch sử mua hàng
+            </div>`;
+        return;
+    }
+
     try {
-        const orders = mockOrderHistory;
+        const response = await fetch(`${API_BASE_URL}/orders`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Không thể tải lịch sử mua hàng');
+        }
+
+        const orders = await response.json();
         const orderHistory = document.getElementById('order-history');
         orderHistory.innerHTML = '';
+        
+        if (orders.length === 0) {
+            orderHistory.innerHTML = `
+                <div class="text-center text-gray-500">
+                    Bạn chưa có đơn hàng nào
+                </div>`;
+            return;
+        }
+
         orders.forEach(order => {
             const orderElement = `
                 <div class="border-b pb-4">
                     <div class="flex justify-between items-center mb-2">
-                        <p class="font-medium text-lg">Đơn hàng #${order.orderId} - ${order.date}</p>
-                        <p class="text-sm text-gray-500">Trạng thái: <span class="${order.status === 'Đã giao' ? 'text-green-600' : 'text-yellow-600'}">${order.status}</span></p>
+                        <p class="font-medium text-lg">Đơn hàng #${order.id} - ${new Date(order.createdAt).toLocaleDateString('vi-VN')}</p>
+                        <p class="text-sm text-gray-500">Trạng thái: <span class="${order.status === 'Completed' ? 'text-green-600' : 'text-yellow-600'}">${order.status}</span></p>
                     </div>
                     ${order.items.map(item => `
                         <div class="flex justify-between text-sm text-gray-600">
@@ -247,53 +226,103 @@ async function loadOrderHistory() {
     }
 }
 
-// Update quantity
-async function updateQuantity(itemId, change) {
-    try {
-        const response = await axios.patch(`${API_BASE_URL}/cart/update`, { itemId, change });
-        if (response.data.success) {
+// Cập nhật số lượng sản phẩm
+async function updateQuantity(cartItemId, newQuantity) {
+    const token = sessionStorage.getItem('token');
+    if (token) {
+        try {
+            showSpinner();
+            const response = await fetch(`https://localhost:7088/api/Cart/items/${cartItemId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ quantity: newQuantity })
+            });
+            if (!response.ok) throw new Error('Không thể cập nhật số lượng');
+            showToast('Đã cập nhật số lượng');
             loadCart();
+        } catch (e) {
+            showToast('Lỗi cập nhật số lượng', 'error');
+        } finally {
+            hideSpinner();
         }
-    } catch (error) {
-        console.error('Error updating quantity:', error);
-        alert('Không thể cập nhật số lượng. Vui lòng thử lại.');
+    } else {
+        // Guest: cập nhật localStorage
+        let cart = JSON.parse(localStorage.getItem('cart')) || { CartItems: [], TotalPrice: 0 };
+        const item = cart.CartItems.find(i => i.id === cartItemId);
+        if (item) {
+            item.quantity = Math.max(1, newQuantity);
+            cart.TotalPrice = cart.CartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            localStorage.setItem('cart', JSON.stringify(cart));
+        }
+        updateCartUI(cart);
     }
 }
 
-// Remove item
-async function removeItem(itemId) {
-    try {
-        const response = await axios.delete(`${API_BASE_URL}/cart/remove`, { data: { itemId } });
-        if (response.data.success) {
+// Xóa sản phẩm khỏi giỏ hàng
+async function removeItem(cartItemId) {
+    const token = sessionStorage.getItem('token');
+    if (token) {
+        try {
+            showSpinner();
+            const response = await fetch(`https://localhost:7088/api/Cart/items/${cartItemId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Không thể xóa sản phẩm');
+            showToast('Đã xóa sản phẩm');
             loadCart();
+        } catch (e) {
+            showToast('Lỗi xóa sản phẩm', 'error');
+        } finally {
+            hideSpinner();
         }
-    } catch (error) {
-        console.error('Error removing item:', error);
-        alert('Không thể xóa sản phẩm. Vui lòng thử lại.');
+    } else {
+        // Guest: xóa localStorage
+        let cart = JSON.parse(localStorage.getItem('cart')) || { CartItems: [], TotalPrice: 0 };
+        cart.CartItems = cart.CartItems.filter(item => item.id !== cartItemId);
+        cart.TotalPrice = cart.CartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        localStorage.setItem('cart', JSON.stringify(cart));
+        updateCartUI(cart);
     }
 }
 
-// Delete selected items
-async function deleteSelected() {
-    const selectedItems = Array.from(document.querySelectorAll('input[type="checkbox"]:checked:not(#selectAll)'))
-        .map(checkbox => checkbox.getAttribute('data-id'));
-    if (selectedItems.length === 0) {
-        alert('Vui lòng chọn ít nhất một sản phẩm để xóa.');
-        return;
-    }
-    try {
-        const response = await axios.delete(`${API_BASE_URL}/cart/remove`, { data: { itemIds: selectedItems } });
-        if (response.data.success) {
+// Xóa toàn bộ giỏ hàng
+async function clearCart() {
+    const token = sessionStorage.getItem('token');
+    if (token) {
+        try {
+            showSpinner();
+            const response = await fetch('https://localhost:7088/api/Cart/clear', {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Không thể xóa giỏ hàng');
+            showToast('Đã xóa toàn bộ giỏ hàng');
             loadCart();
+        } catch (e) {
+            showToast('Lỗi xóa giỏ hàng', 'error');
+        } finally {
+            hideSpinner();
         }
-    } catch (error) {
-        console.error('Error deleting selected items:', error);
-        alert('Không thể xóa sản phẩm đã chọn. Vui lòng thử lại.');
+    } else {
+        // Guest: xóa localStorage
+        localStorage.removeItem('cart');
+        updateCartUI({ CartItems: [], TotalPrice: 0 });
     }
 }
 
 // Checkout
 async function checkout(selectedOnly = false) {
+    const token = sessionStorage.getItem('token');
+    if (!token || !(await isTokenValid(token))) {
+        alert('Vui lòng đăng nhập để thanh toán');
+        window.location.href = 'login.html';
+        return;
+    }
+
     let itemsToCheckout;
     if (selectedOnly) {
         itemsToCheckout = Array.from(document.querySelectorAll('input[type="checkbox"]:checked:not(#selectAll)'))
@@ -303,11 +332,26 @@ async function checkout(selectedOnly = false) {
             return;
         }
     }
+
     try {
-        const response = await axios.post(`${API_BASE_URL}/checkout`, { selectedItems: selectedOnly ? itemsToCheckout : null });
-        if (response.data.success) {
-            window.location.href = '/checkout-success';
+        const response = await fetch(`${API_BASE_URL}/orders`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                items: selectedOnly ? itemsToCheckout : null 
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Không thể thực hiện thanh toán');
         }
+
+        const order = await response.json();
+        alert('Đặt hàng thành công!');
+        window.location.href = `order-success.html?orderId=${order.id}`;
     } catch (error) {
         console.error('Error during checkout:', error);
         alert('Không thể thực hiện thanh toán. Vui lòng thử lại.');
@@ -349,6 +393,52 @@ async function logout() {
     }
 }
 
+// Spinner
+function showSpinner() {
+  document.getElementById('loading-spinner').classList.remove('hidden');
+}
+function hideSpinner() {
+  document.getElementById('loading-spinner').classList.add('hidden');
+}
+
+// Toast
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = `fixed bottom-6 right-6 px-4 py-2 rounded shadow-lg z-50 ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`;
+  toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), 2500);
+}
+
+// Modal
+function showModal(message, onConfirm) {
+  document.getElementById('modal-message').textContent = message;
+  document.getElementById('modal-confirm').classList.remove('hidden');
+  const okBtn = document.getElementById('modal-ok');
+  const cancelBtn = document.getElementById('modal-cancel');
+  function cleanup() {
+    document.getElementById('modal-confirm').classList.add('hidden');
+    okBtn.removeEventListener('click', okHandler);
+    cancelBtn.removeEventListener('click', cancelHandler);
+  }
+  function okHandler() {
+    cleanup();
+    if (typeof onConfirm === 'function') onConfirm();
+  }
+  function cancelHandler() {
+    cleanup();
+  }
+  okBtn.addEventListener('click', okHandler);
+  cancelBtn.addEventListener('click', cancelHandler);
+}
+
+// Sửa event xóa sản phẩm để xác nhận bằng modal
+function removeItemWithConfirm(itemId) {
+  showModal('Bạn có chắc chắn muốn xóa sản phẩm này?', () => {
+    removeItem(itemId);
+  });
+}
+
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
     loadCart();
@@ -366,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateQuantity(itemId, -1);
         } else if (e.target.classList.contains('remove-item') || e.target.closest('.remove-item')) {
             const itemId = e.target.getAttribute('data-id') || e.target.closest('.remove-item').getAttribute('data-id');
-            removeItem(itemId);
+            removeItemWithConfirm(itemId);
         }
     });
 

@@ -21,8 +21,9 @@
                 <!-- User Info -->
                 <div class="bg-white rounded-lg shadow p-6 text-center">
                     <div class="w-24 h-24 rounded-full bg-blue-100 mx-auto mb-4 relative">
-                        <img src="/api/placeholder/150/150" alt="Avatar" class="w-full h-full rounded-full object-cover" />
-                        <div class="absolute bottom-0 right-0 bg-blue-600 rounded-full p-2 cursor-pointer">
+                        <img id="avatarImg" src="/api/placeholder/150/150" alt="Avatar" class="w-full h-full rounded-full object-cover" />
+                        <input type="file" id="avatarInput" accept="image/*" class="hidden" />
+                        <div id="avatarCamera" class="absolute bottom-0 right-0 bg-blue-600 rounded-full p-2 cursor-pointer">
                             <i class="fas fa-camera text-white text-xs"></i>
                         </div>
                     </div>
@@ -32,22 +33,20 @@
                 <!-- Navigation -->
                 <div class="bg-white rounded-lg shadow overflow-hidden">
                     <nav>
-                        <a href="#" class="flex items-center gap-3 px-6 py-3 bg-blue-50 border-l-4 border-blue-600 text-blue-600">
+                        <a href="#" id="sidebarAccount" class="flex items-center gap-3 px-6 py-3 bg-blue-50 border-l-4 border-blue-600 text-blue-600 sidebar-tab active">
                             <i class="fas fa-user-circle"></i>
                             <span>Thông tin tài khoản</span>
                         </a>
-                        <a href="#" class="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 text-gray-700">
+                        <a href="#" id="sidebarOrders" class="flex items-center gap-3 px-6 py-3 hover:bg-gray-50 text-gray-700 sidebar-tab">
                             <i class="fas fa-shopping-bag"></i>
                             <span>Đơn hàng của tôi</span>
                         </a>
-
-                        
                     </nav>
                 </div>
             </div>
             <!-- Content -->
             <div class="flex-1">
-                <div class="bg-white rounded-lg shadow p-6">
+                <div id="account-info-section" class="bg-white rounded-lg shadow p-6">
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-xl font-bold">Thông tin tài khoản</h2>
                         <button id="editToggle" class="text-blue-600 flex items-center gap-2">
@@ -124,8 +123,7 @@
                         </div>
                     </form>
                 </div>
-                <!-- Order History -->
-                <div class="bg-white rounded-lg shadow p-6 mt-8">
+                <div id="order-section" class="bg-white rounded-lg shadow p-6 mt-8 hidden">
                     <h2 class="text-xl font-bold mb-6">Đơn hàng gần đây</h2>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">

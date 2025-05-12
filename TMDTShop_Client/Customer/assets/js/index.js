@@ -161,3 +161,25 @@ document.addEventListener('DOMContentLoaded', function () {
   checkLoginStatus();
   displayAccountName();
 });
+
+window.attachLogoutEvent = function attachLogoutEvent() {
+    const logoutButton = document.getElementById("logoutButton");
+    if (logoutButton) {
+        logoutButton.onclick = async function () {
+            const token = sessionStorage.getItem("token");
+            try {
+                await fetch("https://localhost:7088/api/Auth/logout", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + token
+                    }
+                });
+                sessionStorage.clear();
+                window.location.href = "login.html";
+            } catch (err) {
+                alert("Đăng xuất thất bại. Vui lòng thử lại.");
+            }
+        };
+    }
+};

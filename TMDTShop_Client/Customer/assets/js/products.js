@@ -1,8 +1,8 @@
 // --- Các hàm tiện ích và DOM elements ---
 const API_SERVER_ROOT = 'https://localhost:7088'; // Chỉ chứa phần gốc của server
 const API_PRODUCTS_ENDPOINT = `${API_SERVER_ROOT}/api/Product`; // Endpoint lấy sản phẩm
-const productListContainer = document.getElementById('product-list');
-const productListStatus = document.getElementById('product-list-status');
+const productListContainer = document.getElementById('products-list');
+const productListStatus = document.getElementById('loading-spinner');
 
 function formatCurrency(amount) {
     if (typeof amount !== 'number' || isNaN(amount)) { // Thêm kiểm tra isNaN
@@ -87,67 +87,89 @@ function createProductCardHTML(product) {
     `;
 }
 
-async function fetchAndDisplayProducts() {
-    if (!productListContainer || !productListStatus) {
-        console.error("Không tìm thấy container hoặc status element.");
+// Hàm tạo URL với query parameters
+function buildQueryUrl(baseUrl, params) {
+    const queryString = Object.entries(params)
+        .filter(([_, value]) => value !== undefined && value !== null)
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+        .join('&');
+    return queryString ? `${baseUrl}?${queryString}` : baseUrl;
+}
+
+async function fetchAndDisplayProducts(categoryId = null, pageNumber = 1, pageSize = 10) {
+    if (!productListContainer) {
+        console.error("Không tìm thấy container sản phẩm.");
         return;
     }
 
-    productListStatus.textContent = 'Đang tải sản phẩm...';
-    productListStatus.style.display = 'block'; // Đảm bảo status hiển thị
-    productListContainer.innerHTML = ''; // Xóa các card cũ (nếu có) trước khi thêm status
+    // Hiện spinner loading
+    productListStatus.classList.remove('hidden');
+    productListContainer.innerHTML = '';
 
     try {
-        console.log(`Đang gọi API: ${API_PRODUCTS_ENDPOINT}`); // Log URL để kiểm tra
-        const response = await fetch(API_PRODUCTS_ENDPOINT); // *** Sửa URL fetch ***
+        // Xây dựng URL với các tham số
+        let url = categoryId 
+            ? `${API_SERVER_ROOT}/category/${categoryId}`
+            : API_PRODUCTS_ENDPOINT;
 
-         console.log('Trạng thái Response:', response.status, response.statusText); // Log trạng thái
+        const params = {
+            pageNumber: pageNumber,
+            pageSize: pageSize
+        };
+
+        url = buildQueryUrl(url, params);
+
+        console.log('Đang gọi API:', url);
+        const response = await fetch(url);
 
         if (!response.ok) {
-            // Log thêm thông tin lỗi nếu có thể
-            let errorBody = 'Không thể đọc nội dung lỗi.';
-            try {
-                 errorBody = await response.text(); // Thử đọc body lỗi dạng text
-                 console.error('Nội dung lỗi từ server:', errorBody);
-            } catch (e) {}
-            throw new Error(`Lỗi HTTP: ${response.status} ${response.statusText}. ${errorBody}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const products = await response.json();
-        console.log('Dữ liệu sản phẩm nhận được:', products);
+        const result = await response.json();
+        console.log('Dữ liệu nhận được:', result);
 
-        productListStatus.style.display = 'none'; // Ẩn status đi khi có dữ liệu
+        // Ẩn spinner
+        productListStatus.classList.add('hidden');
 
-        if (!Array.isArray(products)) {
-             console.error("Dữ liệu trả về không phải là một mảng:", products);
-             throw new Error("Định dạng dữ liệu API không đúng.");
-        }
-
-
-        if (products.length === 0) {
-            productListContainer.innerHTML = '<p id="product-list-status" class="col-span-full">Không tìm thấy sản phẩm nào.</p>';
+        if (!result.items || result.items.length === 0) {
+            productListContainer.innerHTML = '<p class="col-span-full text-center text-gray-500">Không tìm thấy sản phẩm nào.</p>';
             return;
         }
 
-        // Thêm từng card vào container
-        products.forEach(product => {
-            if (product && typeof product === 'object' && product.productID) { // Kiểm tra cơ bản product hợp lệ
-                 const productCardHTML = createProductCardHTML(product);
-                 productListContainer.insertAdjacentHTML('beforeend', productCardHTML);
-            } else {
-                 console.warn("Bỏ qua sản phẩm không hợp lệ:", product);
-            }
+        // Render sản phẩm
+        result.items.forEach(product => {
+            const productCardHTML = createProductCardHTML(product);
+            productListContainer.insertAdjacentHTML('beforeend', productCardHTML);
         });
 
         // Kích hoạt hiệu ứng fade-in
         fadeInElements();
 
     } catch (error) {
-        console.error('Lỗi nghiêm trọng khi tải hoặc xử lý sản phẩm:', error);
-        // Hiển thị lỗi trong container chính thay vì status element đã bị ẩn
-        productListContainer.innerHTML = `<p id="product-list-status" class="col-span-full text-red-600 font-semibold">Đã xảy ra lỗi khi tải sản phẩm. Chi tiết: ${error.message}. Vui lòng kiểm tra Console (F12).</p>`;
-        productListStatus.style.display = 'none'; // Đảm bảo status ẩn đi
+        console.error('Lỗi khi tải sản phẩm:', error);
+        productListStatus.classList.add('hidden');
+        productListContainer.innerHTML = `
+            <div class="col-span-full text-center text-red-500">
+                <p>Có lỗi xảy ra khi tải sản phẩm.</p>
+                <p class="text-sm">${error.message}</p>
+            </div>
+        `;
     }
+}
+
+// Hàm xử lý khi click vào danh mục
+function showProducts(categoryId) {
+    // Nếu lỡ truyền event object, bỏ qua
+    if (typeof categoryId !== 'string' && typeof categoryId !== 'number') return;
+    // Hiện section sản phẩm
+    document.getElementById('category-products').classList.remove('hidden');
+    // Cập nhật tiêu đề
+    const categoryTitle = document.getElementById('category-title');
+    const categoryName = document.getElementById(`category-${categoryId}`)?.querySelector('h3')?.textContent || 'Sản phẩm';
+    categoryTitle.textContent = categoryName;
+    // Load sản phẩm theo danh mục
+    fetchAndDisplayProducts(categoryId);
 }
 
 function fadeInElements() {
@@ -190,10 +212,13 @@ if (document.readyState === 'loading') {
 }
 
 // Toggle cart dropdown
-document.getElementById('cartButton').addEventListener('click', function () {
-    const cartDropdown = this.querySelector('.cart-dropdown');
-    cartDropdown.classList.toggle('active');
-});
+const cartBtn = document.getElementById('cartButton');
+if (cartBtn) {
+    cartBtn.addEventListener('click', function () {
+        const cartDropdown = this.querySelector('.cart-dropdown');
+        if (cartDropdown) cartDropdown.classList.toggle('active');
+    });
+}
 
 // Fade in animation on scroll
 document.addEventListener('DOMContentLoaded', function () {
@@ -209,40 +234,52 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // Toggle user menu
-document.getElementById('userMenu').addEventListener('click', function (e) {
-    e.preventDefault();
-    const userMenuDropdown = this.querySelector('#userMenuDropdown');
-    const isExpanded = this.querySelector('button').getAttribute('aria-expanded') === 'true';
-    userMenuDropdown.classList.toggle('active');
-    this.querySelector('button').setAttribute('aria-expanded', !isExpanded);
-    userMenuDropdown.setAttribute('aria-hidden', isExpanded);
-    document.querySelectorAll('.cart-dropdown.active').forEach(dropdown => dropdown.classList.remove('active'));
-});
+const userMenu = document.getElementById('userMenu');
+if (userMenu) {
+    userMenu.addEventListener('click', function (e) {
+        e.preventDefault();
+        const userMenuDropdown = this.querySelector('#userMenuDropdown');
+        if (!userMenuDropdown) return;
+        const isExpanded = this.querySelector('button').getAttribute('aria-expanded') === 'true';
+        userMenuDropdown.classList.toggle('active');
+        this.querySelector('button').setAttribute('aria-expanded', !isExpanded);
+        userMenuDropdown.setAttribute('aria-hidden', isExpanded);
+        document.querySelectorAll('.cart-dropdown.active').forEach(dropdown => dropdown.classList.remove('active'));
+    });
+}
 
 // Close menu when clicking outside
-document.addEventListener('click', function (e) {
-    const userMenu = document.getElementById('userMenu');
-    if (!userMenu.contains(e.target)) {
-        const userMenuDropdown = userMenu.querySelector('#userMenuDropdown');
-        userMenuDropdown.classList.remove('active');
-        userMenu.querySelector('button').setAttribute('aria-expanded', 'false');
-        userMenuDropdown.setAttribute('aria-hidden', 'true');
-    }
-});
-
-// Keyboard support
-document.getElementById('userMenu').querySelector('button').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        this.click();
-    }
-});
-
-document.querySelectorAll('#userMenuDropdown a').forEach(link => {
-    link.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            this.click();
+if (userMenu) {
+    document.addEventListener('click', function (e) {
+        if (!userMenu.contains(e.target)) {
+            const userMenuDropdown = userMenu.querySelector('#userMenuDropdown');
+            if (userMenuDropdown) {
+                userMenuDropdown.classList.remove('active');
+                userMenu.querySelector('button').setAttribute('aria-expanded', 'false');
+                userMenuDropdown.setAttribute('aria-hidden', 'true');
+            }
         }
     });
-});
+}
+
+// Keyboard support
+if (userMenu) {
+    const userMenuBtn = userMenu.querySelector('button');
+    if (userMenuBtn) {
+        userMenuBtn.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+    }
+    const userMenuDropdownLinks = userMenu.querySelectorAll('#userMenuDropdown a');
+    userMenuDropdownLinks.forEach(link => {
+        link.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+    });
+}
