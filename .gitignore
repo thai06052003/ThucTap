@@ -1,7 +1,7 @@
 /firebasekey.json
 /cac buoc trien khai api.txt
-/.vs
-/.github
+.vs/
+.github/
 
 # API
 /ShopxEX1/appsettings.json
@@ -13,7 +13,7 @@
 /ShopxEX1/ShopxEX1.csproj.user
 /ShopxEX1/ShopxEX1.http
 /ShopxEX1/ShopxEX1.sln
-/ShopxEX1.sln
+ShopxEX1.sln
 /ShopxEX1/Properties/
 
 
