@@ -1,5 +1,5 @@
-/* Base URL API */
-const API_BASE_URL = 'https://localhost:7088/api'; // API của bạn
+/* URL API */
+const API_BASE_URL = 'https://localhost:7088/api'
 
 /* Kiểm tra trạng thái đăng nhập */
 function checkAuthToken() {
@@ -176,5 +176,12 @@ function updateBadges() {
   } else {
   }
 }
-checkAuthToken()
 
+// Logout
+function logout(event) {
+  event.preventDefault();
+  sessionStorage.removeItem('token');
+  window.location.href = '/Customer/templates/login.html';
+}
+
+checkAuthToken()

@@ -18,15 +18,15 @@ function checkAuthToken() {
         const bufferTime = 60; // Dự phòng 60 giây
 
         if (payload.exp && now > payload.exp - bufferTime) {
-            throw new Error('Token expired');
+            throw new Error('Token đã hết hạn');
         }
 
         if (payload.nbf && now < payload.nbf) {
-            throw new Error('Token not yet valid');
+            throw new Error('Token không có hiệu lực');
         }
 
     } catch (error) {
-        console.error('Token validation failed:', error);
+        console.error('Token lỗi:', error);
         sessionStorage.removeItem("token");
         sessionStorage.removeItem("tokenExpiry");
         window.location.href = "/Customer/templates/login.html";
@@ -145,54 +145,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // Kiểm tra trạng thái đăng nhập khi trang được tải
-  async function checkLoginStatus() {
-    const token = getCookie('token');
-    const isLoggedIn = getCookie('isLoggedIn');
-
-    if (!token || isLoggedIn !== 'true') {
-        console.log('Chưa đăng nhập');
-        return;
-    }
-
-    try {
-        const response = await fetch('https://localhost:7088/api/Auth/check-auth', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            console.log('Token không hợp lệ, xóa thông tin đăng nhập');
-            deleteCookie('token');
-            deleteCookie('isLoggedIn');
-            deleteCookie('userName');
-            deleteCookie('userEmail');
-            deleteCookie('userPhone');
-            deleteCookie('userBirthdate');
-            deleteCookie('userGender');
-            deleteCookie('userAddress');
-            displayAccountName();
-            return;
-        }
-
-        const data = await response.json();
-        if (data.isAuthenticated && data.user) {
-            setCookie('userName', data.user.fullName, 7);
-            setCookie('userEmail', data.user.email, 7);
-            setCookie('userPhone', data.user.phone || '', 7);
-            setCookie('userBirthdate', data.user.birthday || '', 7);
-            setCookie('userGender', data.user.gender || '', 7);
-            setCookie('userAddress', data.user.address || '', 7);
-            displayAccountName();
-        }
-    } catch (error) {
-        console.error('Lỗi khi kiểm tra trạng thái đăng nhập:', error);
-    }
-  }
-
   // Đăng xuất
   const logoutButton = document.getElementById("logoutButton");
 
@@ -208,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function () {
                       "Authorization": "Bearer " + token
                   }
               });
-
+            sessionStorage.removeItem("token")
               // Xóa tất cả cookie
               deleteCookie("token");
               deleteCookie("isLoggedIn");
@@ -229,7 +181,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Kiểm tra trạng thái đăng nhập khi trang được tải
-  checkLoginStatus();
   displayAccountName();
 });
 
