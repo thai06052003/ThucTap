@@ -1,437 +1,368 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tài khoản - ShopX</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/Customer/assets/css/login.css">
+    <link rel="stylesheet" href="../assets/css/login.css">
 </head>
-
 <body class="bg-gray-50">
     <!-- Header -->
     <header class="bg-white shadow-sm sticky top-0 z-50">
-        <div class="container mx-auto px-4">
-            <div class="flex items-center justify-between py-4 gap-6">
-                <div class="flex items-center gap-12">
-                    <a href="#" class="text-2xl font-bold text-blue-600">ShopX</a>
-                    <nav class="hidden md:flex items-center gap-6">
-                        <a href="index.html" class="text-gray-700 hover:text-blue-600 transition">Trang chủ</a>
+      <div class="container mx-auto px-4">
+        <div class="flex items-center justify-between py-4 gap-6">
+          <div class="flex items-center gap-12">
+            <a href="#" class="text-2xl font-bold text-blue-600">ShopX</a>
+            <nav class="hidden md:flex items-center gap-6">
+              <a href="index.html" class="text-gray-700 hover:text-blue-600 transition">Trang chủ</a>
+              
+            </nav>
+          </div>
+  
+          <div class="flex items-center gap-4">
+            <div class="relative group">
+              <button class="text-gray-700 hover:text-blue-600 transition pb-2">
+                <a href="contact.html" class="text-gray-700 hover:text-blue-600 transition">Liên hệ</a>
+              </button>
 
-                    </nav>
-                </div>
-
-                <div class="flex items-center gap-4">
-                    <div class="relative group">
-                        <button class="text-gray-700 hover:text-blue-600 transition pb-2">
-                            <a href="contact.html" class="text-gray-700 hover:text-blue-600 transition">Liên hệ</a>
-                        </button>
-
-                    </div>
-
-                    <button class="md:hidden text-gray-700">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
-                </div>
             </div>
+  
+            <button class="md:hidden text-gray-700">
+              <i class="fas fa-bars text-xl"></i>
+            </button>
+          </div>
         </div>
+      </div>
     </header>
-
+  
     <!-- Auth Pages Container -->
-    <div class="relative px-4 py-20">
-        <!-- Blurred Background Image -->
-        <div class="absolute inset-0 z-0"
-            style="background-image: url(../assets/img/3.jpg); background-position: 50% 50%; background-repeat: no-repeat; background-size: cover; filter: blur(1px);">
+  <div class="relative px-4 py-20">
+    <!-- Blurred Background Image -->
+    <div class="absolute inset-0 z-0" style="background-image: url(../assets/img/3.jpg); background-position: 50% 50%; background-repeat: no-repeat; background-size: cover; filter: blur(1px);"></div>
+    <!-- Dark Overlay -->
+    <div class="absolute inset-0 z-1 bg-black bg-opacity-10"></div>
+    <!-- Form Container -->
+    <div class="relative z-20 max-w-md mx-auto">
+      <!-- Success Message -->
+      <div id="successMessage" class="hidden bg-white rounded-xl shadow-md p-8 text-center">
+        <h2 class="text-2xl font-bold text-green-600">Đăng nhập thành công! Đang chuyển hướng...</h2>
+      </div>
+
+        <!-- Login Form -->
+        <div id="loginForm" class="bg-white rounded-xl shadow-md overflow-hidden border-glow p-8 animate-fadeSlideIn">
+          <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">ĐĂNG NHẬP</h2>
+          
+          <form id="loginFormSubmit">
+            <div class="mb-4">
+              <label for="loginEmail" class="block text-gray-700 font-medium mb-2">Email</label>
+              <input type="email" id="loginEmail" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+            </div>
+  
+            <div class="mb-6">
+              <label for="loginPassword" class="block text-gray-700 font-medium mb-2">Mật khẩu</label>
+              <div class="relative">
+                <input type="password" id="loginPassword" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+                <button type="button" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500" onclick="togglePassword('loginPassword')">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+            </div>
+  
+            <div class="flex items-center justify-between mb-6">
+              <div class="flex items-center">
+                <input type="checkbox" id="rememberMe" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                <label for="rememberMe" class="ml-2 block text-sm text-gray-700">Ghi nhớ đăng nhập</label>
+              </div>
+              <a href="#forgotPasswordForm" class="text-sm text-blue-600 hover:text-blue-800" onclick="showForm('forgotPasswordForm')">Quên mật khẩu?</a>
+            </div>
+  
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition mb-4">
+              Đăng nhập
+            </button>
+  
+            <div class="text-center text-sm text-gray-600">
+              Chưa có tài khoản? <a href="#registerForm" class="text-blue-600 hover:text-blue-800 font-medium" onclick="showForm('registerForm')">Đăng ký ngay</a>
+            </div>
+  
+            <div class="relative my-6">
+              <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-300"></div>
+              </div>
+              <div class="relative flex justify-center text-sm">
+                <span class="px-2 bg-white text-gray-500">Hoặc đăng nhập bằng</span>
+              </div>
+            </div>
+  
+            <div class="grid grid-cols-2 gap-4">
+              <button type="button" id="facebookLogin" class="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition">
+                <img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" class="h-5" alt="Facebook">
+                Facebook
+              </button>
+              <button type="button" id="googleLogin" class="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition">
+                <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" class="h-5" alt="Google">
+                Google
+              </button>
+            </div>
+          </form>
         </div>
-        <!-- Dark Overlay -->
-        <div class="absolute inset-0 z-1 bg-black bg-opacity-10"></div>
-        <!-- Form Container -->
-        <div class="relative z-20 max-w-md mx-auto">
-            <!-- Success Message -->
-            <div id="successMessage" class="hidden bg-white rounded-xl shadow-md p-8 text-center">
-                <h2 class="text-2xl font-bold text-green-600">Đăng nhập thành công! Đang chuyển hướng...</h2>
+  
+        <!-- Register Form -->
+        <div id="registerForm" class="bg-white rounded-xl shadow-md overflow-hidden p-8 hidden animate-fadeSlideIn">
+          <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Đăng ký tài khoản</h2>
+          
+          <form id="registerFormSubmit">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label for="firstName" class="block text-gray-700 font-medium mb-2">Họ</label>
+                <input type="text" id="firstName" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+              </div>
+              <div>
+                <label for="lastName" class="block text-gray-700 font-medium mb-2">Tên</label>
+                <input type="text" id="lastName" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+              </div>
             </div>
-
-            <!-- Login Form -->
-            <div id="loginForm"
-                class="bg-white rounded-xl shadow-md overflow-hidden border-glow p-8 animate-fadeSlideIn">
-                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">ĐĂNG NHẬP</h2>
-
-                <form id="loginFormSubmit">
-                    <div class="mb-4">
-                        <label for="loginEmail" class="block text-gray-700 font-medium mb-2">Email</label>
-                        <input type="email" id="loginEmail"
-                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                            required>
-                    </div>
-
-                    <div class="mb-6">
-                        <label for="loginPassword" class="block text-gray-700 font-medium mb-2">Mật khẩu</label>
-                        <div class="relative">
-                            <input type="password" id="loginPassword"
-                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                required>
-                            <button type="button"
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                                onclick="togglePassword('loginPassword')">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center">
-                            <input type="checkbox" id="rememberMe"
-                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                            <label for="rememberMe" class="ml-2 block text-sm text-gray-700">Ghi nhớ đăng nhập</label>
-                        </div>
-                        <a href="#forgotPasswordForm" class="text-sm text-blue-600 hover:text-blue-800"
-                            onclick="showForm('forgotPasswordForm')">Quên mật khẩu?</a>
-                    </div>
-
-                    <button type="submit"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition mb-4">
-                        Đăng nhập
-                    </button>
-
-                    <div class="text-center text-sm text-gray-600">
-                        Chưa có tài khoản? <a href="#registerForm" class="text-blue-600 hover:text-blue-800 font-medium"
-                            onclick="showForm('registerForm')">Đăng ký ngay</a>
-                    </div>
-
-                    <div class="relative my-6">
-                        <div class="absolute inset-0 flex items-center">
-                            <div class="w-full border-t border-gray-300"></div>
-                        </div>
-                        <div class="relative flex justify-center text-sm">
-                            <span class="px-2 bg-white text-gray-500">Hoặc đăng nhập bằng</span>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <button type="button" id="facebookLogin"
-                            class="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition">
-                            <img src="https://cdn-icons-png.flaticon.com/512/124/124010.png" class="h-5" alt="Facebook">
-                            Facebook
-                        </button>
-                        <button type="button" id="googleLogin"
-                            class="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition">
-                            <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" class="h-5" alt="Google">
-                            Google
-                        </button>
-                    </div>
-                </form>
+  
+            <div class="mb-4">
+              <label for="registerEmail" class="block text-gray-700 font-medium mb-2">Email</label>
+              <input type="email" id="registerEmail" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
             </div>
-
-            <!-- Register Form -->
-            <div id="registerForm" class="bg-white rounded-xl shadow-md overflow-hidden p-8 hidden animate-fadeSlideIn">
-                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Đăng ký tài khoản</h2>
-
-                <form id="registerFormSubmit">
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="firstName" class="block text-gray-700 font-medium mb-2">Họ</label>
-                            <input type="text" id="firstName"
-                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                required>
-                        </div>
-                        <div>
-                            <label for="lastName" class="block text-gray-700 font-medium mb-2">Tên</label>
-                            <input type="text" id="lastName"
-                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                required>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="registerEmail" class="block text-gray-700 font-medium mb-2">Email</label>
-                        <input type="email" id="registerEmail"
-                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                            required>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="phone" class="block text-gray-700 font-medium mb-2">Số điện thoại</label>
-                        <input type="tel" id="phone"
-                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                            required>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="address" class="block text-gray-700 font-medium mb-2">Địa chỉ</label>
-                        <input type="text" id="address"
-                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                            required>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="registerPassword" class="block text-gray-700 font-medium mb-2">Mật khẩu</label>
-                        <div class="relative">
-                            <input type="password" id="registerPassword"
-                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                required>
-                            <button type="button"
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                                onclick="togglePassword('registerPassword')">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Mật khẩu tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và
-                            số</p>
-                    </div>
-
-                    <div class="mb-6">
-                        <label for="confirmPassword" class="block text-gray-700 font-medium mb-2">Nhập lại mật
-                            khẩu</label>
-                        <div class="relative">
-                            <input type="password" id="confirmPassword"
-                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                required>
-                            <button type="button"
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                                onclick="togglePassword('confirmPassword')">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="mb-6">
-                        <div class="flex items-start">
-                            <div class="flex items-center h-5">
-                                <input type="checkbox" id="terms"
-                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" required>
-                            </div>
-                            <div class="ml-3 text-sm">
-                                <label for="terms" class="text-gray-700">Tôi đồng ý với <a href="#"
-                                        class="text-blue-600 hover:text-blue-800">Điều khoản sử dụng</a> và <a href="#"
-                                        class="text-blue-600 hover:text-blue-800">Chính sách bảo mật</a> của
-                                    ShopX</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button type="submit"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition mb-4">
-                        Đăng ký
-                    </button>
-
-                    <div class="text-center text-sm text-gray-600">
-                        Đã có tài khoản? <a href="#loginForm" class="text-blue-600 hover:text-blue-800 font-medium"
-                            onclick="showForm('loginForm')">Đăng nhập ngay</a>
-                    </div>
-                </form>
+  
+            <div class="mb-4">
+              <label for="phone" class="block text-gray-700 font-medium mb-2">Số điện thoại</label>
+              <input type="tel" id="phone" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
             </div>
-
-            <!-- Forgot Password Form -->
-            <div id="forgotPasswordForm"
-                class="bg-white rounded-xl shadow-md overflow-hidden p-8 hidden animate-fadeSlideIn">
-                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Quên mật khẩu</h2>
-
-                <form id="forgotPasswordFormSubmit">
-                    <div class="mb-6">
-                        <p class="text-gray-600 mb-4">Nhập email đã đăng ký tài khoản. Chúng tôi sẽ gửi hướng dẫn đặt
-                            lại mật khẩu qua email này.</p>
-                        <label for="forgotEmail" class="block text-gray-700 font-medium mb-2">Email</label>
-                        <input type="email" id="forgotEmail"
-                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                            required>
-                    </div>
-
-                    <button type="submit"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition mb-4">
-                        Gửi yêu cầu
-                    </button>
-
-                    <div class="text-center text-sm text-gray-600">
-                        <a href="#loginForm" class="text-blue-600 hover:text-blue-800 font-medium"
-                            onclick="showForm('loginForm')">Quay lại đăng nhập</a>
-                    </div>
-                </form>
+  
+            <div class="mb-4">
+              <label for="address" class="block text-gray-700 font-medium mb-2">Địa chỉ</label>
+              <input type="text" id="address" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
             </div>
-
-            <!-- Reset Password Form -->
-            <div id="resetPasswordForm"
-                class="bg-white rounded-xl shadow-md overflow-hidden p-8 hidden animate-fadeSlideIn">
-                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Đặt lại mật khẩu</h2>
-
-                <form id="resetPasswordFormSubmit">
-                    <div class="mb-4">
-                        <label for="newPassword" class="block text-gray-700 font-medium mb-2">Mật khẩu mới</label>
-                        <div class="relative">
-                            <input type="password" id="newPassword"
-                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                required>
-                            <button type="button"
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                                onclick="togglePassword('newPassword')">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">Mật khẩu tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và
-                            số</p>
-                    </div>
-
-                    <div class="mb-6">
-                        <label for="confirmNewPassword" class="block text-gray-700 font-medium mb-2">Nhập lại mật khẩu
-                            mới</label>
-                        <div class="relative">
-                            <input type="password" id="confirmNewPassword"
-                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                required>
-                            <button type="button"
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                                onclick="togglePassword('confirmNewPassword')">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <button type="submit"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition">
-                        Đặt lại mật khẩu
-                    </button>
-                </form>
+  
+            <div class="mb-4">
+              <label for="registerPassword" class="block text-gray-700 font-medium mb-2">Mật khẩu</label>
+              <div class="relative">
+                <input type="password" id="registerPassword" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+                <button type="button" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500" onclick="togglePassword('registerPassword')">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Mật khẩu tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và số</p>
             </div>
-
-            <!-- Email Prompt -->
-            <div id="emailPrompt" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-                <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-                    <h3 class="text-xl font-bold mb-4">Vui lòng nhập email của bạn</h3>
-                    <p class="text-gray-600 mb-4">Chúng tôi cần email của bạn để hoàn tất quá trình đăng nhập.</p>
-                    <form id="emailPromptForm">
-                        <div class="mb-4">
-                            <label for="socialEmail" class="block text-gray-700 font-medium mb-2">Email</label>
-                            <input type="email" id="socialEmail"
-                                class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                required>
-                        </div>
-                        <div class="flex justify-end gap-4">
-                            <button type="button"
-                                onclick="document.getElementById('emailPrompt').classList.add('hidden')"
-                                class="px-4 py-2 text-gray-600 hover:text-gray-800">
-                                Hủy
-                            </button>
-                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                Tiếp tục
-                            </button>
-                        </div>
-                    </form>
+  
+            <div class="mb-6">
+              <label for="confirmPassword" class="block text-gray-700 font-medium mb-2">Nhập lại mật khẩu</label>
+              <div class="relative">
+                <input type="password" id="confirmPassword" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+                <button type="button" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500" onclick="togglePassword('confirmPassword')">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+            </div>
+  
+            <div class="mb-6">
+              <div class="flex items-start">
+                <div class="flex items-center h-5">
+                  <input type="checkbox" id="terms" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" required>
                 </div>
+                <div class="ml-3 text-sm">
+                  <label for="terms" class="text-gray-700">Tôi đồng ý với <a href="#" class="text-blue-600 hover:text-blue-800">Điều khoản sử dụng</a> và <a href="#" class="text-blue-600 hover:text-blue-800">Chính sách bảo mật</a> của ShopX</label>
+                </div>
+              </div>
             </div>
+  
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition mb-4">
+              Đăng ký
+            </button>
+  
+            <div class="text-center text-sm text-gray-600">
+              Đã có tài khoản? <a href="#loginForm" class="text-blue-600 hover:text-blue-800 font-medium" onclick="showForm('loginForm')">Đăng nhập ngay</a>
+            </div>
+          </form>
         </div>
-    </div>
+  
+        <!-- Forgot Password Form -->
+        <div id="forgotPasswordForm" class="bg-white rounded-xl shadow-md overflow-hidden p-8 hidden animate-fadeSlideIn">
+          <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Quên mật khẩu</h2>
+          
+          <form id="forgotPasswordFormSubmit">
+            <div class="mb-6">
+              <p class="text-gray-600 mb-4">Nhập email đã đăng ký tài khoản. Chúng tôi sẽ gửi hướng dẫn đặt lại mật khẩu qua email này.</p>
+              <label for="forgotEmail" class="block text-gray-700 font-medium mb-2">Email</label>
+              <input type="email" id="forgotEmail" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+            </div>
+  
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition mb-4">
+              Gửi yêu cầu
+            </button>
 
+            <div class="text-center text-sm text-gray-600">
+              <a href="login.html" onclick="window.location.href='login.html'" class="text-blue-600 hover:text-blue-800 font-medium">Quay lại đăng nhập</a>
+            </div>
+          </form>
+        </div>
+        <!-- Thông báo gửi yêu cầu thành công -->
+        <div id="forgotSuccessMessage" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4 text-center">
+          Gửi yêu cầu thành công! Vui lòng kiểm tra email.<br>
+          <a href="javascript:window.location.reload()" class="mt-4 text-blue-600 hover:underline inline-block">Quay lại đăng nhập</a>
+        </div>
+  
+        <!-- Reset Password Form -->
+        <div id="resetPasswordForm" class="bg-white rounded-xl shadow-md overflow-hidden p-8 hidden animate-fadeSlideIn">
+          <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Đặt lại mật khẩu</h2>
+          
+          <form id="resetPasswordFormSubmit">
+            <div class="mb-4">
+              <label for="newPassword" class="block text-gray-700 font-medium mb-2">Mật khẩu mới</label>
+              <div class="relative">
+                <input type="password" id="newPassword" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+                <button type="button" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500" onclick="togglePassword('newPassword')">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Mật khẩu tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường và số</p>
+            </div>
+  
+            <div class="mb-6">
+              <label for="confirmNewPassword" class="block text-gray-700 font-medium mb-2">Nhập lại mật khẩu mới</label>
+              <div class="relative">
+                <input type="password" id="confirmNewPassword" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+                <button type="button" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500" onclick="togglePassword('confirmNewPassword')">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+            </div>
+  
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition">
+              Đặt lại mật khẩu
+            </button>
+          </form>
+        </div>
+
+        <!-- Email Prompt -->
+        <div id="emailPrompt" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+          <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold mb-4">Vui lòng nhập email của bạn</h3>
+            <p class="text-gray-600 mb-4">Chúng tôi cần email của bạn để hoàn tất quá trình đăng nhập.</p>
+            <form id="emailPromptForm">
+              <div class="mb-4">
+                <label for="socialEmail" class="block text-gray-700 font-medium mb-2">Email</label>
+                <input type="email" id="socialEmail" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" required>
+              </div>
+              <div class="flex justify-end gap-4">
+                <button type="button" onclick="document.getElementById('emailPrompt').classList.add('hidden')" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                  Hủy
+                </button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  Tiếp tục
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  
     <!-- Footer -->
     <footer class="bg-gray-800 text-white pt-12 pb-6">
-        <div class="container mx-auto px-4">
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-8">
-                <div class="col-span-2">
-                    <h3 class="text-xl font-bold mb-4">ShopX</h3>
-                    <p class="text-gray-400 mb-4">Nền tảng thương mại điện tử hàng đầu Việt Nam.</p>
-                    <div class="flex space-x-4">
-                        <a href="#" class="text-gray-400 hover:text-white transition">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a href="#" class="text-gray-400 hover:text-white transition">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                        <a href="#" class="text-gray-400 hover:text-white transition">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a href="#" class="text-gray-400 hover:text-white transition">
-                            <i class="fab fa-youtube"></i>
-                        </a>
-                    </div>
-                </div>
-
-                <div>
-                    <h4 class="font-bold mb-4">Về ShopX</h4>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-white transition">Giới thiệu</a></li>
-                        <li><a href="#" class="hover:text-white transition">Tuyển dụng</a></li>
-                        <li><a href="#" class="hover:text-white transition">Điều khoản</a></li>
-                        <li><a href="#" class="hover:text-white transition">Chính sách bảo mật</a></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h4 class="font-bold mb-4">Hỗ trợ</h4>
-                    <ul class="space-y-2 text-gray-400">
-                        <li><a href="#" class="hover:text-white transition">Trung tâm trợ giúp</a></li>
-                        <li><a href="#" class="hover:text-white transition">Thanh toán</a></li>
-                        <li><a href="#" class="hover:text-white transition">Vận chuyển</a></li>
-                        <li><a href="#" class="hover:text-white transition">Khiếu nại</a></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h4 class="font-bold mb-4">Liên hệ</h4>
-                    <ul class="space-y-2 text-gray-400">
-                        <li class="flex items-start">
-                            <i class="fas fa-map-marker-alt mt-1 mr-2 text-sm"></i>
-                            <span>Số 1, Đường ABC, Quận XYZ, TP.HCM</span>
-                        </li>
-                        <li class="flex items-center">
-                            <i class="fas fa-phone-alt mr-2 text-sm"></i>
-                            <span>1900 1234</span>
-                        </li>
-                        <li class="flex items-center">
-                            <i class="fas fa-envelope mr-2 text-sm"></i>
-                            <span>support@shopx.com</span>
-                        </li>
-                    </ul>
-                </div>
+      <div class="container mx-auto px-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-8">
+          <div class="col-span-2">
+            <h3 class="text-xl font-bold mb-4">ShopX</h3>
+            <p class="text-gray-400 mb-4">Nền tảng thương mại điện tử hàng đầu Việt Nam.</p>
+            <div class="flex space-x-4">
+              <a href="#" class="text-gray-400 hover:text-white transition">
+                <i class="fab fa-facebook-f"></i>
+              </a>
+              <a href="#" class="text-gray-400 hover:text-white transition">
+                <i class="fab fa-instagram"></i>
+              </a>
+              <a href="#" class="text-gray-400 hover:text-white transition">
+                <i class="fab fa-twitter"></i>
+              </a>
+              <a href="#" class="text-gray-400 hover:text-white transition">
+                <i class="fab fa-youtube"></i>
+              </a>
             </div>
-
-            <div class="border-t border-gray-700 pt-6">
-                <div class="flex flex-col md:flex-row justify-between items-center">
-                    <p class="text-gray-400 mb-4 md:mb-0">© 2025 ShopX. Bảo lưu mọi quyền.</p>
-                    <div class="flex space-x-6">
-                        <img data-image-keyword="payment" data-image-color="white"
-                            src="https://cdn-icons-png.flaticon.com/512/196/196578.png" class="h-8">
-                        <img data-image-keyword="payment" data-image-color="white"
-                            src="https://cdn-icons-png.flaticon.com/512/196/196566.png" class="h-8">
-                        <img data-image-keyword="payment" data-image-color="white"
-                            src="https://cdn-icons-png.flaticon.com/512/196/196561.png" class="h-8">
-                        <img data-image-keyword="payment" data-image-color="white"
-                            src="https://cdn-icons-png.flaticon.com/512/196/196552.png" class="h-8">
-                    </div>
-                </div>
-            </div>
+          </div>
+  
+          <div>
+            <h4 class="font-bold mb-4">Về ShopX</h4>
+            <ul class="space-y-2 text-gray-400">
+              <li><a href="#" class="hover:text-white transition">Giới thiệu</a></li>
+              <li><a href="#" class="hover:text-white transition">Tuyển dụng</a></li>
+              <li><a href="#" class="hover:text-white transition">Điều khoản</a></li>
+              <li><a href="#" class="hover:text-white transition">Chính sách bảo mật</a></li>
+            </ul>
+          </div>
+  
+          <div>
+            <h4 class="font-bold mb-4">Hỗ trợ</h4>
+            <ul class="space-y-2 text-gray-400">
+              <li><a href="#" class="hover:text-white transition">Trung tâm trợ giúp</a></li>
+              <li><a href="#" class="hover:text-white transition">Thanh toán</a></li>
+              <li><a href="#" class="hover:text-white transition">Vận chuyển</a></li>
+              <li><a href="#" class="hover:text-white transition">Khiếu nại</a></li>
+            </ul>
+          </div>
+  
+          <div>
+            <h4 class="font-bold mb-4">Liên hệ</h4>
+            <ul class="space-y-2 text-gray-400">
+              <li class="flex items-start">
+                <i class="fas fa-map-marker-alt mt-1 mr-2 text-sm"></i>
+                <span>Số 1, Đường ABC, Quận XYZ, TP.HCM</span>
+              </li>
+              <li class="flex items-center">
+                <i class="fas fa-phone-alt mr-2 text-sm"></i>
+                <span>1900 1234</span>
+              </li>
+              <li class="flex items-center">
+                <i class="fas fa-envelope mr-2 text-sm"></i>
+                <span>support@shopx.com</span>
+              </li>
+            </ul>
+          </div>
         </div>
+  
+        <div class="border-t border-gray-700 pt-6">
+          <div class="flex flex-col md:flex-row justify-between items-center">
+            <p class="text-gray-400 mb-4 md:mb-0">© 2025 ShopX. Bảo lưu mọi quyền.</p>
+            <div class="flex space-x-6">
+              <img data-image-keyword="payment" data-image-color="white" src="https://cdn-icons-png.flaticon.com/512/196/196578.png" class="h-8">
+              <img data-image-keyword="payment" data-image-color="white" src="https://cdn-icons-png.flaticon.com/512/196/196566.png" class="h-8">
+              <img data-image-keyword="payment" data-image-color="white" src="https://cdn-icons-png.flaticon.com/512/196/196561.png" class="h-8">
+              <img data-image-keyword="payment" data-image-color="white" src="https://cdn-icons-png.flaticon.com/512/196/196552.png" class="h-8">
+            </div>
+          </div>
+        </div>
+      </div>
     </footer>
     <script>
-        function showForm(formId) {
-            const formIds = ['loginForm', 'registerForm', 'forgotPasswordForm', 'resetPasswordForm'];
-
-            // Ẩn tất cả các form
-            formIds.forEach(id => {
-                const form = document.getElementById(id);
-                if (form) form.classList.add('hidden');
-            });
-
-            // Hiện form được yêu cầu
-            const activeForm = document.getElementById(formId);
-            if (activeForm) activeForm.classList.remove('hidden');
+      function showForm(formId) {
+        const formIds = ['loginForm', 'registerForm', 'forgotPasswordForm', 'resetPasswordForm'];
+        
+        // Ẩn tất cả các form
+        formIds.forEach(id => {
+          const form = document.getElementById(id);
+          if (form) form.classList.add('hidden');
+        });
+    
+        // Hiện form được yêu cầu
+        const activeForm = document.getElementById(formId);
+        if (activeForm) activeForm.classList.remove('hidden');
+      }
+    
+      function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        if (input.type === 'password') {
+          input.type = 'text';
+        } else {
+          input.type = 'password';
         }
-
-        function togglePassword(inputId) {
-            const input = document.getElementById(inputId);
-            if (input.type === 'password') {
-                input.type = 'text';
-            } else {
-                input.type = 'password';
-            }
-        }
+      }
     </script>
-
-    <script type="module" src="/Customer/assets/js/login.js"></script>
-    <script>
-        const noww = Date.now();
-            console.log(noww)
-    </script>
+    
+    <script type="module" src="../assets/js/login.js"></script>
 </body>
-
 </html>

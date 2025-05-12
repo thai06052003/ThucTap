@@ -13,5 +13,6 @@
         public bool? IsActive { get; set; } // Cần biết trạng thái
         public DateTime? Birthday { get; set; }
         public bool? Gender { get; set; }
+        public string? Avatar { get; set; }
     }
 }

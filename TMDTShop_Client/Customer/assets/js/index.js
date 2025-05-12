@@ -1,21 +1,37 @@
-/* Kiểm tra trạng thái đăng nhập */
-function checkAuthToken() {
+/* Kiểm tra token phía client và hiển thị tên tài khoản */
+async function checkAuthToken() {
+    const accountNameElement = document.getElementById('accountName');
+    const userNameElement = document.getElementById('userName');
     const token = sessionStorage.getItem("token");
 
+    console.log('Token in index.js:', token);
+
     if (!token) {
-        window.location.href = "/Customer/templates/login.html";
+        console.log('No token found, redirecting to login');
+        if (accountNameElement) accountNameElement.textContent = 'Tài khoản';
+        if (userNameElement) userNameElement.textContent = 'Tài khoản';
+        window.location.href = "login.html";
         return;
     }
 
     try {
-        // Tách phần payload từ JWT
         const payloadBase64 = token.split('.')[1];
-        const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
-        const payload = JSON.parse(payloadJson);
+        if (!payloadBase64) {
+            throw new Error('Invalid token format: Missing payload');
+        }
 
-        // Kiểm tra các trường thời gian quan trọng
-        const now = Date.now() / 1000; // Chuyển sang giây
-        const bufferTime = 60; // Dự phòng 60 giây
+        let payloadBase64Standard = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+        const padding = payloadBase64Standard.length % 4;
+        if (padding) {
+            payloadBase64Standard += '='.repeat(4 - padding);
+        }
+
+        const payloadJson = atob(payloadBase64Standard);
+        const payload = JSON.parse(payloadJson);
+        console.log('Payload in index.js:', payload);
+
+        const now = Date.now() / 1000;
+        const bufferTime = 60;
 
         if (payload.exp && now > payload.exp - bufferTime) {
             throw new Error('Token đã hết hạn');
@@ -25,6 +41,18 @@ function checkAuthToken() {
             throw new Error('Token không có hiệu lực');
         }
 
+        // Lấy thông tin từ userData trong sessionStorage
+        const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+        const userName = userData.fullName || 'Tài khoản';
+
+        if (accountNameElement) accountNameElement.textContent = userName;
+        if (userNameElement) userNameElement.textContent = userName;
+
+        // Hiển thị vai trò nếu có
+        const userRole = getRoleFromToken();
+        if (userRole) {
+            console.log('Vai trò người dùng:', userRole);
+        }
     } catch (error) {
         console.error('Token lỗi:', error);
         sessionStorage.removeItem("token");
@@ -186,54 +214,118 @@ document.addEventListener('DOMContentLoaded', function () {
 
 /* Lấy role người dùng từ token */
 function getRoleFromToken() {
-    // 1. Lấy token từ Session Storage
     const token = sessionStorage.getItem('token');
 
     if (!token) {
         console.error('Không tìm thấy token trong Session Storage.');
-        return null; // Hoặc trả về giá trị mặc định/xử lý lỗi khác
+        return null;
     }
 
     try {
-        // 2. Tách lấy phần payload (phần thứ 2)
-        // Phần payload là chuỗi Base64Url
         const payloadBase64Url = token.split('.')[1];
         if (!payloadBase64Url) {
             console.error('Định dạng token không hợp lệ: Thiếu payload.');
             return null;
         }
 
-
-        // 3. Chuyển đổi Base64Url thành Base64 chuẩn (thay thế '-' bằng '+' và '_' bằng '/')
         let payloadBase64 = payloadBase64Url.replace(/-/g, '+').replace(/_/g, '/');
-
-        // Thêm padding '=' nếu cần thiết (Base64 yêu cầu độ dài là bội số của 4)
-        // Hàm atob cần điều này
         const padding = payloadBase64.length % 4;
         if (padding) {
             payloadBase64 += '='.repeat(4 - padding);
         }
 
-        // Giải mã Base64 thành chuỗi JSON
-        const decodedPayloadString = atob(payloadBase64); // atob là hàm có sẵn của trình duyệt
+        const payloadObject = JSON.parse(atob(payloadBase64));
 
-        // 4. Phân tích chuỗi JSON thành đối tượng JavaScript
-        const payloadObject = JSON.parse(decodedPayloadString);
-
-        // 5. Lấy giá trị của thuộc tính 'role'
         const userRole = payloadObject.role;
-
         if (userRole === undefined) {
             console.warn('Thuộc tính "role" không tồn tại trong payload của token.');
-            return null; // Hoặc giá trị mặc định
+            return null;
         }
 
         return userRole;
-
     } catch (error) {
         console.error('Lỗi khi giải mã hoặc phân tích token:', error);
-        return null; // Xử lý lỗi
+        return null;
     }
 }
 
-checkAuthToken()
+window.displayAccountName = checkAuthToken;
+
+document.addEventListener('DOMContentLoaded', function () {
+    const submenuGroups = document.querySelectorAll('.submenu-group');
+
+    submenuGroups.forEach(group => {
+        const submenu = group.querySelector('.submenu');
+        group.addEventListener('mouseenter', () => submenu.style.display = 'block');
+        group.addEventListener('mouseleave', () => submenu.style.display = 'none');
+    });
+
+    document.getElementById('cartButton')?.addEventListener('click', function () {
+        this.querySelector('.cart-dropdown')?.classList.toggle('active');
+    });
+
+    const fadeElements = document.querySelectorAll('.fade-in');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.1 });
+    fadeElements.forEach(element => observer.observe(element));
+
+    const userMenu = document.getElementById('userMenu');
+    const button = userMenu?.querySelector('button');
+    const userMenuDropdown = userMenu?.querySelector('#userMenuDropdown');
+
+    if (button && userMenuDropdown) {
+        button.addEventListener('click', function (e) {
+            e.preventDefault();
+            const isExpanded = button.getAttribute('aria-expanded') === 'true';
+            userMenuDropdown.classList.toggle('active');
+            button.setAttribute('aria-expanded', !isExpanded);
+            userMenuDropdown.setAttribute('aria-hidden', isExpanded);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!userMenu.contains(e.target)) {
+                userMenuDropdown.classList.remove('active');
+                button.setAttribute('aria-expanded', 'false');
+                userMenuDropdown.setAttribute('aria-hidden', 'true');
+            }
+        });
+
+        button.addEventListener('keydown', function (e) {
+            if (['Enter', ' '].includes(e.key)) {
+                e.preventDefault();
+                button.click();
+            }
+        });
+
+        document.querySelectorAll('#userMenuDropdown a').forEach(link => {
+            link.addEventListener('keydown', function (e) {
+                if (['Enter', ' '].includes(e.key)) {
+                    e.preventDefault();
+                    link.click();
+                }
+            });
+        });
+    }
+
+    checkAuthToken();
+});
+
+window.attachLogoutEvent = function attachLogoutEvent() {
+    const logoutButton = document.getElementById("logoutButton");
+    if (logoutButton) {
+        logoutButton.onclick = function () {
+            try {
+                sessionStorage.clear();
+                window.location.href = "login.html";
+            } catch (err) {
+                console.error('Logout failed:', err);
+                alert("Đăng xuất thất bại. Vui lòng thử lại.");
+            }
+        };
+    }
+};
