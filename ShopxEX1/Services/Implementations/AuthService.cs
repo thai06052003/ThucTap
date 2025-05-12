@@ -233,7 +233,7 @@ namespace ShopxEX1.Services.Implementations
         private (string Token, DateTime Expiration) GenerateJwtToken(User user)
         {
             var jwtSettings = _configuration.GetSection("Jwt");
-            var jwtKey = jwtSettings["SecretKey"];
+            var jwtKey = jwtSettings["Key"];
             var issuer = jwtSettings["Issuer"];
             var audience = jwtSettings["Audience"];
             // Tăng thời gian hết hạn của Access Token vì không có Refresh Token

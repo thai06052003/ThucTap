@@ -74,7 +74,7 @@ namespace ShopxEX1 // Namespace gốc
 
             // 2. DbContext Configuration
             builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(builder.Configuration.GetConnectionString("ShopX")));
 
             // 3. AutoMapper Configuration
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
@@ -89,6 +89,7 @@ namespace ShopxEX1 // Namespace gốc
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<ICartService, CartService>();
+            builder.Services.AddScoped<ISessionService, SessionService>();
 
             // 6. Controller Configuration
             builder.Services.AddControllers()
@@ -111,11 +112,11 @@ namespace ShopxEX1 // Namespace gốc
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidateAudience = true,
-                    ValidAudience = builder.Configuration["JwtSettings:Audience"],
+                    ValidAudience = builder.Configuration["Jwt:Audience"],
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]!)),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
                 };

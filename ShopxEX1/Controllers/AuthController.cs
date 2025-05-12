@@ -18,14 +18,10 @@ namespace ShopxEX1.Controllers
         private readonly ISessionService _sessionService;
         // private readonly ILogger<AuthController> _logger; // Inject nếu cần log chi tiết
 
-        public AuthController(
-            IAuthService authService,
-            ISessionService sessionService
-            /*, ILogger<AuthController> logger*/)
+        public AuthController(IAuthService authService, ISessionService sessionService)
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
-            // _logger = logger;
         }
         // --- Helper function để lấy User ID từ Claims (Được Middleware xác thực điền vào HttpContext.User) ---
         private int GetCurrentUserIdFromClaims()
@@ -194,24 +190,6 @@ namespace ShopxEX1.Controllers
                 return StatusCode(500, "Không thể xử lý yêu cầu đặt lại mật khẩu vào lúc này.");
             }
         }
-        // Đặt lại mật khẩu bằng token nhận được
-        [HttpGet("check-auth")]
-        [Authorize]
-        public async Task<IActionResult> CheckAuth()
-        {
-            var user = await _sessionService.GetCurrentUserAsync();
-            if (user == null)
-            {
-                return Unauthorized(new { message = "Phiên đăng nhập đã hết hạn" });
-            }
-
-            return Ok(new
-            {
-                isAuthenticated = true,
-                user = user
-            });
-        }
-
         [HttpPut("update-profile")]
         [Authorize]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto updateDto)
