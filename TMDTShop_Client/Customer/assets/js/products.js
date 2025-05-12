@@ -1,6 +1,6 @@
 // --- Các hàm tiện ích và DOM elements ---
 const API_SERVER_ROOT = 'https://localhost:7088'; // Chỉ chứa phần gốc của server
-const API_PRODUCTS_ENDPOINT = `${API_SERVER_ROOT}/api/Product`; // Endpoint lấy sản phẩm
+const API_PRODUCTS_ENDPOINT = `${API_SERVER_ROOT}/api/GetProducts`; // Endpoint lấy sản phẩm
 const productListContainer = document.getElementById('products-list');
 const productListStatus = document.getElementById('loading-spinner');
 

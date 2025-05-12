@@ -14,7 +14,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
 using System.Security.Claims;
 using System.Text;
-using ShopxEX1.Middleware;
 
 namespace ShopxEX1 // Namespace gốc
 {
@@ -97,7 +96,7 @@ namespace ShopxEX1 // Namespace gốc
                  .AddJsonOptions(options =>
                  {
                      options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles; // Hoặc Preserve
-                     options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never;
+                     options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
                  });
 
 
@@ -120,27 +119,6 @@ namespace ShopxEX1 // Namespace gốc
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]!)),
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
-                };
-
-                options.Events = new JwtBearerEvents
-                {
-                    OnMessageReceived = context =>
-                    {
-                        // Cho phép lấy token từ query string (nếu cần)
-                        if (context.Request.Query.ContainsKey("access_token"))
-                        {
-                            context.Token = context.Request.Query["access_token"];
-                        }
-                        return Task.CompletedTask;
-                    },
-                    OnAuthenticationFailed = context =>
-                    {
-                        if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
-                        {
-                            context.Response.Headers.Add("Token-Expired", "true");
-                        }
-                        return Task.CompletedTask;
-                    }
                 };
             });
 
@@ -219,10 +197,8 @@ namespace ShopxEX1 // Namespace gốc
 
             app.UseCors(MyAllowSpecificOrigins);
 
-            // Thêm middleware JWT trước UseAuthentication
-            app.UseMiddleware<JwtMiddleware>();
-
             app.UseAuthentication();
+
             app.UseAuthorization();
 
             app.MapControllers();

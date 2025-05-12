@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ShopxEX1")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ea90ecfa9d8b36bcb97634489fa4194cbbc85cbe")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+334e84cfb89817b643793c8acde1bbe5fa8241b3")]
 [assembly: System.Reflection.AssemblyProductAttribute("ShopxEX1")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ShopxEX1")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

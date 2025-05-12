@@ -20,7 +20,17 @@ namespace ShopxEX1.Mappings
             CreateMap<User, UserSummaryDto>(); // Cần tạo DTO này
             CreateMap<RegisterDto, User>() /* ... cấu hình ignore đầy đủ như trước ... */;
             CreateMap<UserCreateDto, User>() /* ... cấu hình ignore đầy đủ như trước ... */; // Cần tạo DTO này
-            CreateMap<UserProfileUpdateDto, User>() /* ... cấu hình ignore đầy đủ như trước ... */;
+            CreateMap<UpdateProfileDto, User>()
+                .ForMember(dest => dest.UserID, opt => opt.Ignore())
+                .ForMember(dest => dest.Role, opt => opt.Ignore())
+                .ForMember(dest => dest.IsActive, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
+                .ForMember(dest => dest.SocialProvider, opt => opt.Ignore())
+                .ForMember(dest => dest.SocialID, opt => opt.Ignore())
+                .ForMember(dest => dest.SellerProfile, opt => opt.Ignore())
+                .ForMember(dest => dest.Carts, opt => opt.Ignore())
+                .ForMember(dest => dest.Orders, opt => opt.Ignore()); /* ... cấu hình ignore đầy đủ như trước ... */;
             CreateMap<AdminUserUpdateDto, User>() /* ... cấu hình ignore đầy đủ và map thêm Role, IsActive ... */; // Cần tạo DTO này
                                                                                                                    // Ánh xạ từ thông tin Social Login sang User mới
             CreateMap<SocialLoginRequestDto, User>()

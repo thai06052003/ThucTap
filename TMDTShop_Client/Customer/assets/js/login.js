@@ -101,11 +101,23 @@ document.querySelector('#loginFormSubmit')?.addEventListener('submit', async (e)
     });
 
     const data = await response.json();
+    console.log('Login response data:', data);
     if (!response.ok) throw new Error(data.message || `Lỗi đăng nhập`);
 
-    // Chỉ lưu token vào sessionStorage
-    sessionStorage.clear(); // Xóa các key cũ nếu có
+    // Lưu token và thông tin người dùng dưới dạng JSON
+    sessionStorage.clear();
     sessionStorage.setItem('token', data.token);
+    sessionStorage.setItem('userData', JSON.stringify({
+      fullName: data.user?.fullName || data.fullName || email,
+      email: data.user?.email || email,
+      phone: data.user?.phone || '',
+      birthday: data.user?.birthday || '',
+      gender: data.user?.gender,
+      address: data.user?.address || '',
+      avatar: data.user?.avatar || ''
+    }));
+    console.log('Token saved:', sessionStorage.getItem('token'));
+    console.log('UserData saved:', sessionStorage.getItem('userData'));
 
     showSuccessMessage();
   } catch (error) {
@@ -180,7 +192,6 @@ document.getElementById('facebookLogin')?.addEventListener('click', async () => 
 async function handleSocialLogin(user) {
   const provider = user.providerData[0]?.providerId;
   
-  // Nếu là Facebook và không có email, yêu cầu người dùng nhập email
   if (!user.email && provider === 'facebook.com') {
     tempUser = { ...user };
     document.getElementById('emailPrompt')?.classList.remove('hidden');
@@ -204,11 +215,23 @@ async function handleSocialLogin(user) {
     });
 
     const data = await res.json();
+    console.log('Social login response data:', data);
     if (!res.ok) throw new Error(data.message || "Đăng nhập thất bại");
 
-    // Chỉ lưu token vào sessionStorage
+    // Lưu token và thông tin người dùng dưới dạng JSON
     sessionStorage.clear();
     sessionStorage.setItem('token', data.token);
+    sessionStorage.setItem('userData', JSON.stringify({
+      fullName: data.user?.fullName || data.fullName || user.displayName || user.email,
+      email: data.user?.email || user.email,
+      phone: data.user?.phone || user.phoneNumber || '',
+      birthday: data.user?.birthday || '',
+      gender: data.user?.gender,
+      address: data.user?.address || '',
+      avatar: data.user?.avatar || ''
+    }));
+    console.log('Token saved:', sessionStorage.getItem('token'));
+    console.log('UserData saved:', sessionStorage.getItem('userData'));
 
     showSuccessMessage();
   } catch (error) {
