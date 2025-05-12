@@ -9,40 +9,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/Admin/assets/css/index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <style>
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #1E40AF;
-            border-radius: 3px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .custom-scrollbar {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.3) #1E40AF;
-        }
-    </style>
 </head>
 
 <body class="bg-gray-100">
-    <div class="flex h-screen overflow-hidden">
+    <div class="flex">
         <!-- Sidebar -->
         <div id="sidebar">
             <!-- Sidebar động sẽ load vào đây -->
         </div>
 
-        <div class="content-area flex-1 overflow-auto">
+        <div class="content-area flex-1">
 
             <!-- Header -->
             <div id="header">
@@ -145,13 +121,15 @@
                     </div>
                 </main>
             </div>
+            
+            <!-- Footer -->
+            <div id="footer">
+                <!-- Footer động sẽ load vào đây -->
+            </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <div id="footer">
-        <!-- Footer động sẽ load vào đây -->
-    </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module" src="/Admin/assets/js/custom.js"></script>

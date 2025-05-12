@@ -26,9 +26,9 @@
     <div class="flex-grow overflow-y-auto custom-scrollbar pb-4">
         <nav class="space-y-1 px-4">
             <a href="/Admin/" data-target="dashboard data-link"
-                class="sidebar-item flex items-center space-x-3 p-3 rounded-lg bg-blue-700 text-white">
-                <i class="fas fa-tachometer-alt"></i>
-                <span class="sidebar-item-text">Bảng điều khiển</span>
+                class="sidebar-item flex items-center space-x-3 p-3 rounded-lg bg-blue-700 text-white" data-link="">
+                <i class="far fa-chart-bar"></i>
+                <span class="sidebar-item-text">Thống kê doanh thu</span>
             </a>
             <!-- Sản phẩm -->
             <div class="sidebar-group">
@@ -41,11 +41,10 @@
                     <i class="fas fa-chevron-down text-sm sidebar-item-text transition-transform"></i>
                 </div>
                 <div class="sidebar-group-content pl-4">
-                    <a href="/Admin/templates/product/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700" data-link>
-                        <i class="far fa-circle mr-2"></i> Quản lý sản phẩm
-                    </a>
-                    <a href="/Admin/templates/product/create.html" class="block p-3 pl-3 rounded hover:bg-blue-700" data-link>
-                        <i class="far fa-circle mr-2"></i> Thêm sản phẩm
+                    <a href="/Admin/templates/product/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700"
+                        data-link>
+                        <i class="far fa-circle mr-2"></i>
+                        Quản lý sản phẩm
                     </a>
                 </div>
             </div>
@@ -55,16 +54,18 @@
                 <div
                     class="flex items-center justify-between p-3 rounded-lg hover:bg-blue-700 cursor-pointer sidebar-group-toggle">
                     <div class="flex items-center space-x-3">
-                        <i class="fas fa-box"></i>
+                        <i class="fas fa-list"></i>
                         <span class="sidebar-item-text">Danh mục</span>
                     </div>
                     <i class="fas fa-chevron-down text-sm sidebar-item-text transition-transform"></i>
                 </div>
                 <div class="sidebar-group-content pl-4">
-                    <a href="/Admin/templates/category/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700" data-link>
+                    <a href="/Admin/templates/category/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700"
+                        data-link>
                         <i class="far fa-circle mr-2"></i> Danh mục
                     </a>
-                    <a href="/Admin//templates/category/create.html" class="block p-3 pl-3 rounded hover:bg-blue-700" data-link>
+                    <a href="/Admin/templates/category/create.html" class="block p-3 pl-3 rounded hover:bg-blue-700"
+                        data-link>
                         <i class="far fa-circle mr-2"></i> Thêm danh mục
                     </a>
                 </div>
@@ -88,7 +89,8 @@
                     <i class="fas fa-chevron-down text-sm sidebar-item-text transition-transform"></i>
                 </div>
                 <div class="sidebar-group-content pl-4">
-                    <a href="/Admin/templates/order/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700" data-link>
+                    <a href="/Admin/templates/order/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700"
+                        data-link>
                         <i class="far fa-circle mr-2"></i>Danh sách đơn hàng
                     </a>
                     <a href="/Admin#" class="block p-3 pl-3 rounded hover:bg-blue-700" data-link>
@@ -111,12 +113,13 @@
                     <i class="fas fa-chevron-down text-sm sidebar-item-text transition-transform"></i>
                 </div>
                 <div class="sidebar-group-content pl-4">
-                    <a href="/Admin/templates/discount/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700" data-link>
+                    <a href="/Admin/templates/discount/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700"
+                        data-link>
                         <i class="far fa-circle mr-2"></i> Quản lý Mã giảm giá
                     </a>
 
-                    <a href="/Admin//templates/discount/create.html" class="block p-3 pl-3 rounded hover:bg-blue-700"><i class="far fa-circle mr-2"
-                            data-link>
+                    <a href="/Admin/templates/discount/create.html" class="block p-3 pl-3 rounded hover:bg-blue-700 data-link"><i
+                            class="far fa-circle mr-2">
                         </i> Tạo mới mã giảm giá
                     </a>
                 </div>
@@ -124,3 +127,22 @@
         </nav>
     </div>
 </div>
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const currentPath = window.location.pathname;
+        const links = document.querySelectorAll("[data-link]");
+
+        links.forEach(link => {
+            const linkPath = new URL(link.href, window.location.origin).pathname;
+
+            if (currentPath === linkPath) {
+                const iconElement = link.querySelector("i");
+                if (iconElement) {
+                    iconElement.classList.replace("fa-circle", "fa-dot-circle");
+                }
+            }
+        });
+    });
+</script>

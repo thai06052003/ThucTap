@@ -205,3 +205,16 @@
   padding-left: 35px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
+/* Product */
+.product-name-ellipsis {
+  white-space: nowrap;
+  /* Ngăn không cho xuống dòng */
+  overflow: hidden;
+  /* Ẩn phần văn bản thừa */
+  text-overflow: ellipsis;
+  /* Hiển thị dấu "..." */
+  max-width: 200px;
+  /* Đặt chiều rộng tối đa. Điều chỉnh giá trị này! */
+  /* Hoặc bạn có thể để nó chiếm hết chiều rộng của td và td sẽ co giãn theo table */
+}

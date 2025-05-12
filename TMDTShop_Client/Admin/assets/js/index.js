@@ -1,11 +1,51 @@
+/* Base URL API */
+const API_BASE_URL = 'https://localhost:7088/api'; // API của bạn
+
+/* Kiểm tra trạng thái đăng nhập */
+function checkAuthToken() {
+  const token = sessionStorage.getItem("token");
+
+  if (!token) {
+    window.location.href = "/Customer/templates/login.html";
+    return;
+  }
+
+  try {
+    // Tách phần payload từ JWT
+    const payloadBase64 = token.split('.')[1];
+    const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+    const payload = JSON.parse(payloadJson);
+
+    // Kiểm tra các trường thời gian quan trọng
+    const now = Date.now() / 1000; // Chuyển sang giây
+    const bufferTime = 60; // Dự phòng 60 giây
+
+    if (payload.exp && now > payload.exp - bufferTime) {
+      throw new Error('Token expired');
+    }
+
+    if (payload.nbf && now < payload.nbf) {
+      throw new Error('Token not yet valid');
+    }
+
+  } catch (error) {
+    console.error('Token validation failed:', error);
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("tokenExpiry");
+    window.location.href = "/Customer/templates/login.html";
+    return;
+  }
+}
+
+// Gọi hàm kiểm tra khi trang được tải
+//document.addEventListener("DOMContentLoaded", checkAuthToken);
+
 function formatDate(date) {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
 }
-
-
 
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -136,182 +176,5 @@ function updateBadges() {
   } else {
   }
 }
-console.log(document.querySelector('#previewImage'))
+checkAuthToken()
 
-// Chekc trạng thái đơn hàng
-function changeStatus(orderId) {
-  fetch('/api/orders/update-status', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ orderId: orderId })
-  })
-  .then(response => response.json())
-  .then(data => {
-    alert('Trạng thái đã được cập nhật!');
-    // Có thể reload hoặc thay đổi nội dung trên nút nếu cần
-  })
-  .catch(error => {
-    console.error('Lỗi cập nhật:', error);
-    alert('Có lỗi xảy ra khi cập nhật trạng thái');
-  });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  // Xử lý badge để hiển thị "99+" nếu số lớn hơn 99
-  function updateBadges() {
-    const badges = document.querySelectorAll('.badge-expanded, .badge-collapsed');
-    badges.forEach(badge => {
-      const count = parseInt(badge.getAttribute('data-count')) || 0;
-      badge.textContent = count > 99 ? '99+' : count;
-    });
-  }
-
-  // Gọi hàm cập nhật badge khi trang được tải
-  updateBadges();
-
-  const sidebarToggle = document.getElementById('sidebarToggle');
-  if (sidebarToggle) {
-    sidebarToggle.addEventListener('click', function(e) {
-      e.preventDefault();
-      const sidebar = document.querySelector('.sidebar');
-      const contentArea = document.querySelector('.content-area');
-      console.log('Sidebar toggle clicked');
-      if (sidebar && contentArea) {
-        sidebar.classList.toggle('sidebar-collapsed');
-        contentArea.classList.toggle('content-expanded');
-        if (sidebar.classList.contains('sidebar-collapsed')) {
-          document.querySelectorAll('.sidebar-group').forEach(group => {
-            group.classList.remove('active');
-            const content = group.querySelector('.sidebar-group-content');
-            if (content) {
-              content.style.maxHeight = '0px';
-            }
-            const icon = group.querySelector('.fa-chevron-down');
-            if (icon) {
-              icon.style.transform = 'rotate(0deg)';
-            }
-          });
-        }
-        console.log('Sidebar class:', sidebar.classList);
-        console.log('Content area class:', contentArea.classList);
-      } else {
-        console.error('Sidebar or content-area not found');
-      }
-    });
-  } else {
-    console.error('Sidebar toggle button not found');
-  }
-
-  document.querySelectorAll('.sidebar-group-toggle').forEach(toggle => {
-    if (!toggle.dataset.listenerAttached) {
-      toggle.addEventListener('click', function(e) {
-        e.preventDefault();
-        const group = this.closest('.sidebar-group');
-        group.classList.toggle('active');
-        const icon = this.querySelector('.fa-chevron-down');
-        if (icon) {
-          icon.style.transform = group.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
-        const content = group.querySelector('.sidebar-group-content');
-        if (group.classList.contains('active')) {
-          content.style.maxHeight = content.scrollHeight + 'px';
-        } else {
-          content.style.maxHeight = '0px';
-        }
-      });
-      toggle.dataset.listenerAttached = 'true';
-    }
-  });
-
-  document.querySelectorAll('[data-target]').forEach(link => {
-    if (!link.dataset.listenerAttached) {
-      link.addEventListener('click', function(e) {
-        if (!this.closest('.sidebar-group-content')) {
-          e.preventDefault();
-        }
-        const target = this.getAttribute('data-target');
-        if (!target) return;
-        document.querySelectorAll('[data-content]').forEach(content => {
-          content.classList.remove('active');
-        });
-        const targetContent = document.querySelector(`[data-content="${target}"]`);
-        if (targetContent) {
-          targetContent.classList.add('active');
-        }
-        const titleText = this.querySelector('.sidebar-item-text');
-        document.getElementById('pageTitle').textContent = titleText ? titleText.textContent : this.textContent;
-      });
-      link.dataset.listenerAttached = 'true';
-    }
-  });
-
-  const adminToggle = document.getElementById('adminToggle');
-  if (adminToggle && !adminToggle.dataset.listenerAttached) {
-    adminToggle.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const submenu = document.getElementById('adminSubmenu');
-      if (submenu) {
-        submenu.classList.toggle('hidden');
-      }
-    });
-    adminToggle.dataset.listenerAttached = 'true';
-  }
-
-  document.addEventListener('click', function(e) {
-    const adminToggle = document.getElementById('adminToggle');
-    const adminSubmenu = document.getElementById('adminSubmenu');
-    if (adminToggle && adminSubmenu && !adminToggle.contains(e.target) && !adminSubmenu.contains(e.target)) {
-      adminSubmenu.classList.add('hidden');
-    }
-  });
-
-  document.querySelectorAll('a[href="#"]').forEach(link => {
-    if (!link.dataset.listenerAttached) {
-      link.addEventListener('click', function(e) {
-        e.preventDefault();
-      });
-      link.dataset.listenerAttached = 'true';
-    }
-  });
-
-  if (window.location.hash) {
-    history.replaceState(null, document.title, window.location.pathname + window.location.search);
-  }
-
-  const sidebarFooter = document.querySelector('.sidebar-footer');
-  if (sidebarFooter) {
-    sidebarFooter.classList.add('hidden');
-    sidebarFooter.remove();
-  }
-
-  // Pagination
-  let currentPage = 1;
-  const totalPages = 10; // chỉnh theo số lượng thực tế
-
-  document.getElementById("totalPages").textContent = totalPages;
-
-  function updatePagination() {
-    document.getElementById("currentPage").textContent = currentPage;
-    document.getElementById("prevPage").disabled = currentPage <= 1;
-    document.getElementById("nextPage").disabled = currentPage >= totalPages;
-    // TODO: Load data của trang tương ứng từ backend hoặc array
-  }
-
-  document.getElementById("prevPage").addEventListener("click", () => {
-    if (currentPage > 1) {
-      currentPage--;
-      updatePagination();
-    }
-  });
-
-  document.getElementById("nextPage").addEventListener("click", () => {
-    if (currentPage < totalPages) {
-      currentPage++;
-      updatePagination();
-    }
-  });
-
-  updatePagination();
-});
