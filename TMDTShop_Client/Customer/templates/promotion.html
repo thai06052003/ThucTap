@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khuyến mãi - ShopX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+
+<body class="bg-gray-50">
+    <!-- Header Container -->
+    <div id="header-container"></div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Promotion Hero -->
+        <section class="relative">
+            <div class="absolute inset-0 bg-gradient-to-r via-transparent to-transparent z-10"></div>
+            <div class="absolute inset-0 bg-cover bg-center opacity-90 transition-opacity duration-1000" id="banner-image"
+                style="background-size: contain;">
+            </div>
+
+            <div class="container mx-auto px-4 py-48 relative z-20">
+                <div class="max-w-3xl text-center mx-auto">
+                    
+                </div>
+            </div>
+        </section>
+
+        <!-- Promotion Products -->
+        <section class="py-12 bg-white" id="products">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                    <h2 class="text-2xl font-bold">Sản phẩm khuyến mãi</h2>
+                    <div class="flex gap-4 flex-wrap">
+                        <select class="border border-gray-300 rounded-full px-4 py-2 text-sm" id="sortSelect">
+                            <option>Sắp xếp theo</option>
+                            <option>Giảm giá nhiều nhất</option>
+                            <option>Giá thấp đến cao</option>
+                            <option>Giá cao đến thấp</option>
+                            <option>Phổ biến nhất</option>
+                        </select>
+
+                        <select class="border border-gray-300 rounded-full px-4 py-2 text-sm" id="categorySelect">
+                            <option>Tất cả danh mục</option>
+                            <option>Điện thoại</option>
+                            <option>Laptop</option>
+                            <option>Tai nghe</option>
+                            <option>Đồng hồ</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6" id="productsContainer">
+                    <!-- Products will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Countdown Banner -->
+        <section class="py-12 bg-gradient-to-r from-orange-500 to-red-600">
+            <div class="container mx-auto px-4 text-center">
+                <h2 class="text-3xl font-bold text-white mb-4">Ưu đãi kết thúc sau</h2>
+                <div id="countdown" class="flex justify-center gap-6 mb-8">
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <div class="text-4xl font-bold text-white days">00</div>
+                        <div class="text-white text-sm">Ngày</div>
+                    </div>
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <div class="text-4xl font-bold text-white hours">00</div>
+                        <div class="text-white text-sm">Giờ</div>
+                    </div>
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <div class="text-4xl font-bold text-white minutes">00</div>
+                        <div class="text-white text-sm">Phút</div>
+                    </div>
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <div class="text-4xl font-bold text-white seconds">00</div>
+                        <div class="text-white text-sm">Giây</div>
+                    </div>
+                </div>
+                <button
+                    class="bg-white hover:bg-gray-100 text-red-600 px-8 py-3 rounded-full font-bold transition transform hover:scale-105">
+                    Xem tất cả ưu đãi
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white pt-12 pb-6">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-8">
+                <div class="col-span-2">
+                    <h3 class="text-xl font-bold mb-4">ShopX</h3>
+                    <p class="text-gray-400 mb-4">Nền tảng thương mại điện tử hàng đầu Việt Nam với AI gợi ý sản phẩm
+                        thông minh.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Về ShopX</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">Giới thiệu</a></li>
+                        <li><a href="#" class="hover:text-white transition">Tuyển dụng</a></li>
+                        <li><a href="#" class="hover:text-white transition">Điều khoản</a></li>
+                        <li><a href="#" class="hover:text-white transition">Chính sách bảo mật</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Hỗ trợ</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">Trung tâm trợ giúp</a></li>
+                        <li><a href="#" class="hover:text-white transition">Thanh toán</a></li>
+                        <li><a href="#" class="hover:text-white transition">Vận chuyển</a></li>
+                        <li><a href="#" class="hover:text-white transition">Khiếu nại</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Liên hệ</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li class="flex items-start">
+                            <i class="fas fa-map-marker-alt mt-1 mr-2 text-sm"></i>
+                            <span>Số 1, Đường ABC, Quận XYZ, TP.HCM</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-phone-alt mr-2 text-sm"></i>
+                            <span>1900 1234</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-envelope mr-2 text-sm"></i>
+                            <span><a href="/cdn-cgi/l/email-protection" class="__cf_email__"
+                                    data-cfemail="3f4c4a4f4f504d4b7f4c57504f47114951">[email&#160;protected]</a></span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-700 pt-6">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <p class="text-gray-400 mb-4 md:mb-0">© 2025 ShopX. Bảo lưu mọi quyền.</p>
+                    <div class="flex space-x-6">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196578.png" class="h-8">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196566.png" class="h-8">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196561.png" class="h-8">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196552.png" class="h-8">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <button
+            class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition transform hover:scale-110">
+            <i class="fas fa-robot text-2xl"></i>
+        </button>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="../assets/js/components.js"></script>
+    <script src="../assets/js/promotion.js"></script>
+    <script src="../assets/js/index.js"></script>
+</body>
+</html>

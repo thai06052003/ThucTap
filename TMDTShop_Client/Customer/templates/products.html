@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sản phẩm - ShopX</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="bg-gray-50">
+    <!-- Header Container -->
+    <div id="header-container"></div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Giữ nguyên nội dung chính của trang -->
+        <!-- Hero Banner -->
+        <section class="relative bg-gray-800">
+            <!-- background-image-keyword: shopping banner; background-image-color: black -->
+            <div class="absolute inset-0 bg-gradient-to-r from-black via-transparent to-transparent z-10"></div>
+            <div class="absolute inset-0 bg-cover bg-center opacity-70"
+                style="background-image: url('https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=1920&amp;q=80')">
+            </div>
+
+            <div class="container mx-auto px-4 py-24 relative z-20">
+                <div class="max-w-xl">
+                    <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Siêu sale tháng 11</h1>
+                    <p class="text-gray-300 mb-6">Giảm giá lên đến 50% cho tất cả sản phẩm điện tử. Ưu đãi chỉ có trong tháng này!
+                    </p>
+                    <a href="#"
+                        class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition transform hover:scale-105">
+                        Mua ngay <i class="fas fa-arrow-right ml-2"></i>
+                    </a>
+                </div>
+            </div>
+        </section>
+        <!-- Danh mục sản phẩm -->
+        <section class="py-12 bg-white">
+            <div class="container mx-auto px-4">
+                <h2 class="text-2xl font-bold mb-8 text-center">Danh mục sản phẩm</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <!-- Điện thoại -->
+                    <a href="#" id="category-phone" onclick="showProducts('phone')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-mobile-alt text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Điện thoại</h3>
+                    </a>
+
+                    <!-- Laptop -->
+                    <a href="#" id="category-laptop" onclick="showProducts('laptop')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-laptop text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Laptop</h3>
+                    </a>
+
+                    <!-- Tai nghe -->
+                    <a href="#" id="category-headphone" onclick="showProducts('headphone')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-headphones text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Tai nghe</h3>
+                    </a>
+
+                    <!-- Tablet -->
+                    <a href="#" id="category-tablet" onclick="showProducts('tablet')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-tablet-alt text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Tablet</h3>
+                    </a>
+
+                    <!-- Đồng hồ -->
+                    <a href="#" id="category-watch" onclick="showProducts('watch')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-clock text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Đồng hồ</h3>
+                    </a>
+
+                    <!-- Gaming -->
+                    <a href="#" id="category-gaming" onclick="showProducts('gaming')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-gamepad text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Gaming</h3>
+                    </a>
+
+                    <!-- Thời trang -->
+                    <a href="#" id="category-fashion" onclick="showProducts('fashion')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-tshirt text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Thời trang</h3>
+                    </a>
+
+                    <!-- Mỹ phẩm -->
+                    <a href="#" id="category-cosmetics" onclick="showProducts('cosmetics')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-spa text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Mỹ phẩm</h3>
+                    </a>
+
+                    <!-- Phụ kiện -->
+                    <a href="#" id="category-accessories" onclick="showProducts('accessories')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-gem text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Phụ kiện</h3>
+                    </a>
+
+                    <!-- Thiết bị điện tử -->
+                    <a href="#" id="category-electronics" onclick="showProducts('electronics')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-tv text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Thiết bị điện tử</h3>
+                    </a>
+
+                    <!-- Thiết bị gia dụng -->
+                    <a href="#" id="category-appliances" onclick="showProducts('appliances')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-blender text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Thiết bị gia dụng</h3>
+                    </a>
+
+                    <!-- Xem thêm -->
+                    <a href="#" id="category-more" onclick="showProducts('more')"
+                        class="bg-gray-50 hover:bg-blue-50 rounded-lg p-4 text-center transition transform hover:scale-105 border border-gray-100">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-ellipsis-h text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-medium">Xem thêm</h3>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section id="category-products" class="py-12 bg-gray-50 hidden">
+            <div class="container mx-auto px-4">
+                <h2 id="category-title" class="text-2xl font-bold mb-8"></h2>
+                <div id="products-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    <!-- Spinner -->
+                    <div id="loading-spinner" class="col-span-full text-center hidden">
+                        <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- Featured Products -->
+        <section class="py-12 bg-gray-50">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-2xl font-bold">Sản phẩm nổi bật</h2>
+                    <a href="#" class="text-blue-600 hover:text-blue-800 flex items-center">
+                        Xem tất cả <i class="fas fa-chevron-right ml-1 text-sm"></i>
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    <!-- Product 1 -->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition product-card">
+                        <div class="relative">
+                            <img data-image-keyword="product" data-image-color="white"
+                                src="https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=500&amp;q=80"
+                                class="w-full h-48 object-cover">
+                            <div class="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">-20%</div>
+                            <div class="product-actions absolute bottom-0 left-0 right-0 bg-white/90 flex justify-center space-x-2 p-2">
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="far fa-heart text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-search text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-shopping-cart text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <a href="#" class="text-gray-800 hover:text-blue-600 font-medium block mb-1">iPhone 14 Pro Max</a>
+                            <div class="flex items-center mb-2">
+                                <div class="flex text-yellow-400 text-sm">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star-half-alt"></i>
+                                </div>
+                                <span class="text-gray-500 text-xs ml-1">(128)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-red-500 font-bold">29.990.000đ</span>
+                                <span class="text-gray-500 text-sm line-through ml-2">32.990.000đ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product 2 -->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition product-card">
+                        <div class="relative">
+                            <img data-image-keyword="product" data-image-color="white"
+                                src="https://images.unsplash.com/photo-1605306792171-9394b91eb0d6?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=500&amp;q=80"
+                                class="w-full h-48 object-cover" loading="lazy">
+                            <div class="product-actions absolute bottom-0 left-0 right-0 bg-white/90 flex justify-center space-x-2 p-2">
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="far fa-heart text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-search text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-shopping-cart text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <a href="#" class="text-gray-800 hover:text-blue-600 font-medium block mb-1">Tai nghe Sony WH-1000XM4</a>
+                            <div class="flex items-center mb-2">
+                                <div class="flex text-yellow-400 text-sm">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                </div>
+                                <span class="text-gray-500 text-xs ml-1">(87)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-red-500 font-bold">5.990.000đ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product 3 -->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition product-card">
+                        <div class="relative">
+                            <img data-image-keyword="product" data-image-color="white"
+                                src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=500&amp;q=80"
+                                class="w-full h-48 object-cover">
+                            <div class="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">-15%</div>
+                            <div class="product-actions absolute bottom-0 left-0 right-0 bg-white/90 flex justify-center space-x-2 p-2">
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="far fa-heart text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-search text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-shopping-cart text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <a href="#" class="text-gray-800 hover:text-blue-600 font-medium block mb-1">MacBook Pro M2 2023</a>
+                            <div class="flex items-center mb-2">
+                                <div class="flex text-yellow-400 text-sm">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                                <span class="text-gray-500 text-xs ml-1">(215)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-red-500 font-bold">39.990.000đ</span>
+                                <span class="text-gray-500 text-sm line-through ml-2">46.990.000đ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product 4 -->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition product-card">
+                        <div class="relative">
+                            <img data-image-keyword="product" data-image-color="white"
+                                src="https://images.unsplash.com/photo-1520390138845-fd2d229dd553?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=500&amp;q=80"
+                                class="w-full h-48 object-cover">
+                            <div class="product-actions absolute bottom-0 left-0 right-0 bg-white/90 flex justify-center space-x-2 p-2">
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="far fa-heart text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-search text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-shopping-cart text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <a href="#" class="text-gray-800 hover:text-blue-600 font-medium block mb-1">Samsung Galaxy Watch 5</a>
+                            <div class="flex items-center mb-2">
+                                <div class="flex text-yellow-400 text-sm">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star-half-alt"></i>
+                                </div>
+                                <span class="text-gray-500 text-xs ml-1">(156)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-red-500 font-bold">7.490.000đ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product 5 -->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition product-card">
+                        <div class="relative">
+                            <img data-image-keyword="product" data-image-color="white"
+                                src="https://images.unsplash.com/photo-1593642632823-8f785ba67e45?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=500&amp;q=80"
+                                class="w-full h-48 object-cover">
+                            <div class="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">-10%</div>
+                            <div class="product-actions absolute bottom-0 left-0 right-0 bg-white/90 flex justify-center space-x-2 p-2">
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="far fa-heart text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-search text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-shopping-cart text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <a href="#" class="text-gray-800 hover:text-blue-600 font-medium block mb-1">iPad Pro M1 11 inch</a>
+                            <div class="flex items-center mb-2">
+                                <div class="flex text-yellow-400 text-sm">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                                <span class="text-gray-500 text-xs ml-1">(189)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-red-500 font-bold">19.990.000đ</span>
+                                <span class="text-gray-500 text-sm line-through ml-2">21.990.000đ</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Banner -->
+        <section class="py-12 bg-white">
+            <div class="container mx-auto px-4">
+                <div
+                    class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl p-8 md:p-12 flex flex-col md:flex-row items-center">
+                    <div class="md:w-1/2 mb-6 md:mb-0">
+                        <h2 class="text-2xl md:text-3xl font-bold text-white mb-4">Nhận ngay ưu đãi 10%</h2>
+                        <p class="text-blue-100 mb-6">Đăng ký nhận bản tin của chúng tôi để nhận ngay mã giảm giá 10% cho đơn hàng đầu
+                            tiên.</p>
+                        <div class="flex">
+                            <input type="email" placeholder="Nhập email của bạn"
+                                class="bg-white/20 text-white placeholder-blue-200 border border-blue-400 rounded-l-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-300 w-full">
+                            <button
+                                class="bg-yellow-400 hover:bg-yellow-500 text-blue-800 font-bold px-6 rounded-r-lg transition">Gửi</button>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2 flex justify-center">
+                        <img data-image-keyword="discount" data-image-color="yellow"
+                            src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=500&amp;q=80"
+                            class="w-64 h-64 object-contain">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- New Arrivals -->
+        <section class="py-12 bg-gray-50">
+            <div class="container mx-auto px-4">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-2xl font-bold">Sản phẩm mới</h2>
+                    <a href="#" class="text-blue-600 hover:text-blue-800 flex items-center">
+                        Xem tất cả <i class="fas fa-chevron-right ml-1 text-sm"></i>
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    <!-- Product 1 -->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition product-card">
+                        <div class="relative">
+                            <img data-image-keyword="product" data-image-color="white"
+                                src="https://truesmart.com.vn/wp-content/uploads/tai-nghe-apple-airpods-pro-chinh-hang-p7268.jpg"
+                                class="w-full h-48 object-cover">
+                            <div class="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">Mới</div>
+                            <div class="product-actions absolute bottom-0 left-0 right-0 bg-white/90 flex justify-center space-x-2 p-2">
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="far fa-heart text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-search text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-shopping-cart text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <a href="#" class="text-gray-800 hover:text-blue-600 font-medium block mb-1">AirPods Pro 2</a>
+                            <div class="flex items-center mb-2">
+                                <div class="flex text-yellow-400 text-sm">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                </div>
+                                <span class="text-gray-500 text-xs ml-1">(42)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-red-500 font-bold">8 tỷ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product 2 -->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition product-card">
+                        <div class="relative">
+                            <img data-image-keyword="product" data-image-color="white"
+                                src="https://truesmart.com.vn/wp-content/uploads/tai-nghe-airpod-3-chinh-hang-new-p9960.jpg"
+                                class="w-full h-48 object-cover">
+                            <div class="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">Mới</div>
+                            <div class="product-actions absolute bottom-0 left-0 right-0 bg-white/90 flex justify-center space-x-2 p-2">
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="far fa-heart text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-search text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-shopping-cart text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <a href="#" class="text-gray-800 hover:text-blue-600 font-medium block mb-1">AirPods Pro 3</a>
+                            <div class="flex items-center mb-2">
+                                <div class="flex text-yellow-400 text-sm">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                </div>
+                                <span class="text-gray-500 text-xs ml-1">(42)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-red-500 font-bold">9 tỷ</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!--Product 3-->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition product-card">
+                        <div class="relative">
+                            <img data-image-keyword="product" data-image-color="white"
+                                src="https://cdn.hoanghamobile.com/i/previewV2/Uploads/2024/10/30/airpods-4-chong-on-2.png"
+                                class="w-full h-48 object-cover">
+                            <div class="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">Mới</div>
+                            <div class="product-actions absolute bottom-0 left-0 right-0 bg-white/90 flex justify-center space-x-2 p-2">
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="far fa-heart text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-search text-sm"></i>
+                                </button>
+                                <button
+                                    class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                                    <i class="fas fa-shopping-cart text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <a href="#" class="text-gray-800 hover:text-blue-600 font-medium block mb-1">AirPods Pro 3</a>
+                            <div class="flex items-center mb-2">
+                                <div class="flex text-yellow-400 text-sm">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                </div>
+                                <span class="text-gray-500 text-xs ml-1">(42)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-red-500 font-bold">10 tỷ</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white pt-12 pb-6">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-8">
+                <div class="col-span-2">
+                    <h3 class="text-xl font-bold mb-4">ShopX</h3>
+                    <p class="text-gray-400 mb-4">Nền tảng thương mại điện tử hàng đầu Việt Nam với AI gợi ý sản phẩm thông minh.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Về ShopX</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">Giới thiệu</a></li>
+                        <li><a href="#" class="hover:text-white transition">Tuyển dụng</a></li>
+                        <li><a href="#" class="hover:text-white transition">Điều khoản</a></li>
+                        <li><a href="#" class="hover:text-white transition">Chính sách bảo mật</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Hỗ trợ</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">Trung tâm trợ giúp</a></li>
+                        <li><a href="#" class="hover:text-white transition">Thanh toán</a></li>
+                        <li><a href="#" class="hover:text-white transition">Vận chuyển</a></li>
+                        <li><a href="#" class="hover:text-white transition">Khiếu nại</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-4">Liên hệ</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li class="flex items-start">
+                            <i class="fas fa-map-marker-alt mt-1 mr-2 text-sm"></i>
+                            <span>Số 1, Đường ABC, Quận XYZ, TP.HCM</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-phone-alt mr-2 text-sm"></i>
+                            <span>1900 1234</span>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fas fa-envelope mr-2 text-sm"></i>
+                            <span><a href="/cdn-cgi/l/email-protection" class="__cf_email__"
+                                data-cfemail="3f4c4a4f4f504d4b7f4c57504f47114951">[email&#160;protected]</a></span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-700 pt-6">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <p class="text-gray-400 mb-4 md:mb-0">© 2025 ShopX. Bảo lưu mọi quyền.</p>
+                    <div class="flex space-x-6">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196578.png" class="h-8">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196566.png" class="h-8">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196561.png" class="h-8">
+                        <img data-image-keyword="payment" data-image-color="white"
+                            src="https://cdn-icons-png.flaticon.com/512/196/196552.png" class="h-8">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+    <!-- Chatbot -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <button
+            class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition transform hover:scale-110">
+            <i class="fas fa-robot text-2xl"></i>
+        </button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../assets/js/components.js"></script>
+    <script src="../assets/js/products.js"></script>
+    <script src="../assets/js/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - ShopX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/Admin/assets/css/index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        .sidebar {
+            /* transition: width 0.3s ease; */
+            /* Bỏ transition nếu không còn JS toggle */
+            overflow-y: auto;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 20;
+            width: 256px;
+            /* Kích thước cố định nếu không có JS toggle */
+        }
+
+        .chart-container {
+            height: 300px;
+        }
+
+        [data-content] {
+            display: none;
+            /* Nội dung sẽ không tự chuyển nếu không có JS */
+        }
+
+        [data-content].active {
+            /* Class active cần được đặt thủ công hoặc bằng cách khác */
+            display: block;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .nav-item {
+            position: relative;
+        }
+
+        .nav-item:hover .submenu {
+            display: block;
+        }
+
+        body {
+            overflow-x: hidden;
+        }
+
+        .chartjs-tooltip {
+            @apply bg-white border border-gray-200 rounded-lg shadow-sm p-3;
+        }
+
+        .chartjs-tooltip-key {
+            @apply inline-block w-3 h-3 mr-2 align-middle;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="flex">
+        <div id="sidebar">
+            <!-- Tự động load -->
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="content-area flex-1">
+            <div id="header">
+                <!-- Tự động load -->
+            </div>
+
+            <!-- Main Content -->
+            <div id="app">
+                <main class="p-6 mx-auto">
+                    <!-- Dashboard Content (Vẫn hiển thị mặc định nếu có class 'active') -->
+                    <div data-content="dashboard" class="active">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-gray-500">Tổng doanh thu</p>
+                                        <h3 class="text-2xl font-bold">1.245.000.000đ</h3>
+                                        <p class="text-green-500 text-sm mt-1"><i class="fas fa-arrow-up mr-1"></i>
+                                            12.5%
+                                        </p>
+                                    </div>
+                                    <div class="bg-green-100 p-3 rounded-full"><i
+                                            class="fas fa-wallet text-green-600 text-xl"></i></div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-gray-500">Tổng đơn hàng</p>
+                                        <h3 class="text-2xl font-bold">1,245</h3>
+                                        <p class="text-green-500 text-sm mt-1"><i class="fas fa-arrow-up mr-1"></i> 8.2%
+                                        </p>
+                                    </div>
+                                    <div class="bg-blue-100 p-3 rounded-full"><i
+                                            class="fas fa-shopping-cart text-blue-600 text-xl"></i></div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-gray-500">Khách hàng mới</p>
+                                        <h3 class="text-2xl font-bold">324</h3>
+                                        <p class="text-green-500 text-sm mt-1"><i class="fas fa-arrow-up mr-1"></i> 5.7%
+                                        </p>
+                                    </div>
+                                    <div class="bg-purple-100 p-3 rounded-full"><i
+                                            class="fas fa-users text-purple-600 text-xl"></i></div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-gray-500">Sản phẩm bán ra</p>
+                                        <h3 class="text-2xl font-bold">2,456</h3>
+                                        <p class="text-red-500 text-sm mt-1"><i class="fas fa-arrow-down mr-1"></i> 3.2%
+                                        </p>
+                                    </div>
+                                    <div class="bg-orange-100 p-3 rounded-full"><i
+                                            class="fas fa-box-open text-orange-600 text-xl"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="font-bold">Doanh thu theo tháng</h3>
+                                    <select id="yearSelect" class="border border-gray-300 rounded px-3 py-1 text-sm">
+                                        <option value="2025">Năm 2025</option>
+                                        <option value="2024">Năm 2024</option>
+                                    </select>
+                                </div>
+                                <div class="chart-container"><canvas id="revenueChart"></canvas></div>
+                            </div>
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <h3 class="font-bold mb-4">Sản phẩm bán chạy</h3>
+                                <div class="space-y-4">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Các placeholder khác sẽ không tự động hiển thị/ẩn -->
+                    <div data-content="products" id="products-section">
+                        <p class="text-center p-10 text-gray-500">Nội dung Quản lý Sản phẩm. Cần điều hướng đến file
+                            list.html.</p>
+                    </div>
+                    <div data-content="categories" id="categories-section">
+                        <p class="text-center p-10 text-gray-500">Nội dung Danh mục</p>
+                    </div>
+                    <div data-content="inventory" id="inventory-section">
+                        <p class="text-center p-10 text-gray-500">Nội dung Tồn kho</p>
+                    </div>
+                    <div data-content="orders" id="orders-section">
+                        <p class="text-center p-10 text-gray-500">Nội dung Đơn hàng</p>
+                    </div>
+                    <!-- ... các data-content khác ... -->
+
+                </main>
+            </div>
+            <div id="footer">
+                <!-- Tự động load -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="/Admin/assets/js/custom.js"></script>
+    <script src="/Admin/assets/js/index.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- Bắt đầu phần JavaScript được giữ lại ---
+            const logoutButton = document.getElementById('logoutButton');
+            const logoutLinkInDropdown = document.getElementById('logoutLinkInDropdown');
+            const userNameDisplay = document.getElementById('userNameDisplay');
+
+            const userInfo = JSON.parse(sessionStorage.getItem('userInfo'));
+            if (userInfo && userInfo.fullName) {
+                if (userNameDisplay) userNameDisplay.textContent = userInfo.fullName;
+            } else {
+                const token = sessionStorage.getItem('token');
+                if (!token) {
+                    // Điều hướng nếu không có token và không có thông tin người dùng
+                    // window.location.href = '/Admin/templates/auth/login.html';
+                }
+            }
+
+            function handleLogout() {
+                sessionStorage.removeItem('token');
+                sessionStorage.removeItem('userInfo');
+                sessionStorage.removeItem('userRole');
+                window.location.href = '/Admin/templates/auth/login.html';
+            }
+
+            if (logoutButton) logoutButton.addEventListener('click', handleLogout);
+            if (logoutLinkInDropdown) logoutLinkInDropdown.addEventListener('click', handleLogout);
+
+            // Dữ liệu và hàm cho biểu đồ (giữ lại)
+            const revenueData = {
+                2025: [50, 60, 55, 70, 65, 80, 90, 85, 100, 95, 110, 120],
+                2024: [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 100]
+            };
+            let revenueChartInstance;
+
+            function initOrUpdateChart(year) {
+                const ctx = document.getElementById('revenueChart')?.getContext('2d');
+                if (!ctx) return;
+
+                if (revenueChartInstance) {
+                    revenueChartInstance.destroy();
+                }
+
+                revenueChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'],
+                        datasets: [{
+                            label: `Doanh thu ${year} (triệu VND)`,
+                            data: revenueData[year] || [],
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, title: { display: true, text: 'Doanh thu (triệu VND)' } },
+                            x: { title: { display: true, text: 'Tháng' } }
+                        },
+                        plugins: { legend: { display: true, position: 'top' } }
+                    }
+                });
+            }
+
+            const yearSelect = document.getElementById('yearSelect');
+            if (yearSelect) {
+                initOrUpdateChart(yearSelect.value);
+                yearSelect.addEventListener('change', function () {
+                    initOrUpdateChart(this.value);
+                });
+            } else {
+                initOrUpdateChart('2025'); // Khởi tạo với năm mặc định nếu select không có
+            }
+
+        });
+    </script>
+</body>
+
+</html>
