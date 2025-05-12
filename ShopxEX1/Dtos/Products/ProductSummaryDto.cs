@@ -11,6 +11,7 @@
         public int SellercategoryID { get; set; }
         public bool IsActive { get; set; }
         public string? CategoryName { get; set; }
+        public string? ShopName { get; set; }
         public int StockQuantity { get; set; }
     }
 }

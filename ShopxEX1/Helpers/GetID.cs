@@ -17,6 +17,11 @@ namespace ShopxEX1.Helpers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
         // Lấy UserID lưu trong claim
+        public bool IsAdmin()
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            return user?.IsInRole("Admin") ?? false;
+        }
         private int CurrentUserId
         {
             get

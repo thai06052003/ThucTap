@@ -81,7 +81,7 @@ namespace ShopxEX1.Controllers
         /// <param name="categoryId">ID danh mục muốn lấy</param>
         /// <returns>Chi tiết danh mục</returns>
         [HttpGet("{categoryId}")]
-        [Authorize("Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<CategoryDto>> GetCategoryById(int categoryId)
         {
             try
@@ -106,7 +106,7 @@ namespace ShopxEX1.Controllers
         /// <param name="createDto">Thông tin danh mục cần tạo</param>
         /// <returns>Danh mục vừa được tạo</returns>
         [HttpPost]
-        [Authorize("Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<CategoryDto>> CreateCategory([FromBody] CategoryCreateDto createDto)
         {
             try
@@ -131,7 +131,7 @@ namespace ShopxEX1.Controllers
         /// <param name="updateDto">Thông tin cập nhật danh mục</param>
         /// <returns>Không có nội dung thành công</returns>
         [HttpPut("{categoryId}")]
-        [Authorize("Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<bool>> UpdateCategory(int categoryId, [FromBody] CategoryUpdateDto updateDto)
         {
             try
@@ -160,7 +160,7 @@ namespace ShopxEX1.Controllers
         /// <param name="categoryId">ID danh mục muốn xóa</param>
         /// <returns>true/false or error</returns>
         [HttpDelete]
-        [Authorize("Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<bool>> DeleteCategory(int categoryId)
         {
             try

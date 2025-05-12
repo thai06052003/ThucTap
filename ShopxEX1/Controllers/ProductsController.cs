@@ -239,14 +239,14 @@ namespace ShopxEX1.Controllers
         [Authorize(Roles = "Seller, Admin")] // Chỉ Seller và Admin mới được xóa
         public async Task<IActionResult> DeleteProduct(int productId, [FromQuery] string status = "notActive")
         {
-            int? sellerId = _getId.GetSellerId();
-            if (!sellerId.HasValue) throw new Exception($"Bạn không phải là Seller.");
+            int? sellerId = _getId.GetSellerId() ?? 0;
+            if (sellerId != 0 && status == "delete") throw new Exception("Bạn không có quyền xóa sản phẩm");
 
             // Kiểm tra giá trị status hợp lệ
             status = status.ToLowerInvariant();
-            if (status != "delete" && status != "notactive")
+            if (status != "delete" && status != "notactive" && status != "active")
             {
-                return BadRequest("Giá trị tham số 'status' không hợp lệ. Chỉ chấp nhận 'delete' hoặc 'notActive'.");
+                return BadRequest("Giá trị tham số 'status' không hợp lệ.");
             }
 
             try

@@ -154,6 +154,23 @@ namespace ShopxEX1.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi hệ thống khi đăng xuất.");
             }
         }
+        // Đặt lại mật khẩu bằng token nhận được
+        [HttpGet("check-auth")]
+        [Authorize]
+        public async Task<IActionResult> CheckAuth()
+        {
+            var user = await _sessionService.GetCurrentUserAsync();
+            if (user == null)
+            {
+                return Unauthorized(new { message = "Phiên đăng nhập đã hết hạn" });
+            }
+
+            return Ok(new
+            {
+                isAuthenticated = true,
+                user = user
+            });
+        }
         // Thay đổi mật khẩu cho người dùng đang đăng nhập.
         [HttpPost("change-password")]
         [Authorize]

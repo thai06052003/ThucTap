@@ -4,7 +4,7 @@
     {
         public int ProductID { get; set; }
         public int CategoryID { get; set; }
-        public int SellerCategoryID { get; set; }
+        public int SellerCategoryID { get; set; } = 1;
         public int SellerID { get; set; }
         public string ProductName { get; set; } = string.Empty;
         public string? ImageURL { get; set; }

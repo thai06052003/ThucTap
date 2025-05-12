@@ -95,7 +95,8 @@ namespace ShopxEX1.Mappings
                  .ForMember(dest => dest.SellerStoreName, opt => opt.MapFrom(src => src.Seller != null ? src.Seller.ShopName : null));
 
             CreateMap<Product, ProductSummaryDto>()
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.CategoryName : null));
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.CategoryName : null))
+                .ForMember(dest => dest.ShopName, opt => opt.MapFrom(src => src.Seller != null ? src.Seller.ShopName : null));
 
             CreateMap<ProductCreateDto, Product>()
                  /* ... cấu hình ignore đầy đủ như trước, bao gồm TẤT CẢ nav props ... */
