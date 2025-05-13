@@ -1,445 +1,443 @@
-/* URL API */
-const API_BASE_URL = 'https://localhost:7088/api'
+// START OF FILE index.js // BẮT ĐẦU FILE index.js
 
-// --- Phần logic hiển thị của bạn ---
-const adminView = `<a href="/Admin/index.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Truy cập với quyền ADMIN</a>`;
-const sellerView = `<a href="/Admin/templates/seller.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Truy cập với quyền Seller</a>`;
+/* ==============================
+   CẤU HÌNH TOÀN CỤC & HẰNG SỐ
+   ============================== */
+const API_BASE_URL = 'https://localhost:7088/api';
 
-// Lấy vai trò từ token
-const role = getRoleFromToken();
-console.log(role)
+/* ==============================
+   ĐỊNH NGHĨA COMPONENT ALPINE.JS
+   ============================== */
+document.addEventListener('alpine:init', () => {
+    console.log("Sự kiện Alpine 'alpine:init' đã kích hoạt. Đang đăng ký các component Alpine.");
+    Alpine.data('headerData', () => ({
+        mobileMenuOpen: false,
+        // Các state khác cho dropdown con (nếu muốn quản lý tập trung thay vì x-data lồng nhau)
 
-// Tìm phần tử container trong HTML bằng ID
-const linkContainer = document.getElementById('role-specific-link-container');
-
-// Kiểm tra xem phần tử container có tồn tại không
-if (linkContainer) {
-    // Kiểm tra vai trò và chèn HTML tương ứng
-    if (role === "Admin") {
-        linkContainer.innerHTML = adminView; // Chèn view Admin vào container
-    } else if (role === "Seller") {
-        linkContainer.innerHTML = sellerView; // Chèn view Seller vào container
-    } else {
-        // Tùy chọn: Xử lý trường hợp không phải Admin/Seller hoặc không có vai trò
-        // Ví dụ: để trống hoặc hiển thị một thông báo khác
-        linkContainer.innerHTML = ''; // Để trống container
-        console.log("Vai trò không phải Admin hoặc Seller, hoặc không tìm thấy vai trò.");
-    }
-} else {
-    console.error("Không tìm thấy phần tử với ID 'role-specific-link-container'.");
-}
-
-// kiểm tra trạng thái đăng nhập
-function checkAuthToken() {
-    const accountNameElement = document.getElementById('accountName');
-    const userNameElement = document.getElementById('userName');
-    const token = sessionStorage.getItem("token");
-
-    console.log('Token in index.js:', token);
-
-    if (!token) {
-        console.log('No token found, redirecting to login');
-        if (accountNameElement) accountNameElement.textContent = 'Tài khoản';
-        if (userNameElement) userNameElement.textContent = 'Tài khoản';
-        window.location.href = "login.html";
-        return;
-    }
-
-    try {
-        const payloadBase64 = token.split('.')[1];
-        if (!payloadBase64) {
-            throw new Error('Invalid token format: Missing payload');
-        }
-
-        let payloadBase64Standard = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
-        const padding = payloadBase64Standard.length % 4;
-        if (padding) {
-            payloadBase64Standard += '='.repeat(4 - padding);
-        }
-
-        const payloadJson = atob(payloadBase64Standard);
-        const payload = JSON.parse(payloadJson);
-        console.log('Payload in index.js:', payload);
-
-        const now = Date.now() / 1000;
-        const bufferTime = 60;
-
-        if (payload.exp && now > payload.exp - bufferTime) {
-            throw new Error('Token đã hết hạn');
-        }
-
-        if (payload.nbf && now < payload.nbf) {
-            throw new Error('Token không có hiệu lực');
-        }
-
-        // Lấy thông tin từ userData trong sessionStorage
-        const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
-        const userName = userData.fullName || 'Tài khoản';
-
-        if (accountNameElement) accountNameElement.textContent = userName;
-        if (userNameElement) userNameElement.textContent = userName;
-
-        // Hiển thị vai trò nếu có
-        const userRole = getRoleFromToken();
-        if (userRole) {
-            console.log('Vai trò người dùng:', userRole);
-        }
-    } catch (error) {
-        console.error('Token lỗi:', error);
-        sessionStorage.removeItem("token");
-        sessionStorage.removeItem("tokenExpiry");
-        window.location.href = "/Customer/templates/login.html";
-        return;
-    }
-}
-
-// Tạo mới + cập nhật session
-function setSession(key, value) {
-    // Kiểm tra xem sessionStorage có chứa key hay không
-    if (sessionStorage.getItem(key) === null) {
-        // Nếu chưa tồn tại, tạo mới và gán giá trị
-        sessionStorage.setItem(key, value);
-        console.log(`Đã tạo session mới với key: ${key}`);
-    } else {
-        // Nếu đã tồn tại, cập nhật giá trị
-        sessionStorage.setItem(key, value);
-        console.log(`Đã cập nhật session với key: ${key}`);
-    }
-}
-
-// Xóa session
-function removeSession(key) {
-    sessionStorage.removeItem(key)
-}
-
-// Xử lý ảnh 
-function getImageUrl(apiImageUrl) {
-    const placeholderImage = '../assets/images/placeholder.png';
-    if (!apiImageUrl || apiImageUrl.toLowerCase() === 'string' || apiImageUrl.trim() === '') {
-        return placeholderImage;
-    }
-    if (/^(https?:)?\/\//i.test(apiImageUrl)) {
-        return apiImageUrl;
-    }
-    return placeholderImage;
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-  const submenuGroups = document.querySelectorAll('.submenu-group');
-
-  submenuGroups.forEach(group => {
-    const submenu = group.querySelector('.submenu');
-    group.addEventListener('mouseenter', () => submenu.style.display = 'block');
-    group.addEventListener('mouseleave', () => submenu.style.display = 'none');
-  });
-
-  document.getElementById('cartButton')?.addEventListener('click', function () {
-    this.querySelector('.cart-dropdown')?.classList.toggle('active');
-  });
-
-  const fadeElements = document.querySelectorAll('.fade-in');
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-      }
-    });
-  }, { threshold: 0.1 });
-  fadeElements.forEach(element => observer.observe(element));
-
-  // Hàm tiện ích cho cookie
-  function setCookie(name, value, days) {
-      let expires = "";
-      if (days) {
-          const date = new Date();
-          date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-          expires = "; expires=" + date.toUTCString();
-      }
-      document.cookie = name + "=" + (value || "") + expires + "; path=/";
-  }
-
-  function getCookie(name) {
-      const nameEQ = name + "=";
-      const ca = document.cookie.split(';');
-      for (let i = 0; i < ca.length; i++) {
-          let c = ca[i];
-          while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-          if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-      }
-      return null;
-  }
-
-  function deleteCookie(name) {
-      document.cookie = name + '=; Max-Age=-99999999; path=/';
-  }
-
-  // Xử lý menu tài khoản
-  const userMenu = document.getElementById('userMenu');
-  const button = userMenu?.querySelector('button');
-  const userMenuDropdown = userMenu?.querySelector('#userMenuDropdown');
-
-  if (button && userMenuDropdown) {
-      button.addEventListener('click', function (e) {
-          e.preventDefault();
-          const isExpanded = button.getAttribute('aria-expanded') === 'true';
-          userMenuDropdown.classList.toggle('active');
-          button.setAttribute('aria-expanded', !isExpanded);
-          userMenuDropdown.setAttribute('aria-hidden', isExpanded);
-      });
-
-      document.addEventListener('click', function (e) {
-          if (!userMenu.contains(e.target)) {
-              userMenuDropdown.classList.remove('active');
-              button.setAttribute('aria-expanded', 'false');
-              userMenuDropdown.setAttribute('aria-hidden', 'true');
-          }
-      });
-
-      button.addEventListener('keydown', function (e) {
-          if (['Enter', ' '].includes(e.key)) {
-              e.preventDefault();
-              button.click();
-          }
-      });
-
-      document.querySelectorAll('#userMenuDropdown a').forEach(link => {
-          link.addEventListener('keydown', function (e) {
-              if (['Enter', ' '].includes(e.key)) {
-                  e.preventDefault();
-                  this.click();
-              }
-          });
-      });
-  }
-
-  // Hiển thị tên tài khoản trong header
-  function displayAccountName() {
-    const accountNameElement = document.getElementById('accountName');
-    const userNameElement = document.getElementById('userName');
-    const token = getCookie('token');
-    const isLoggedIn = getCookie('isLoggedIn');
-
-    if (!token || isLoggedIn !== 'true') {
-        if (accountNameElement) accountNameElement.textContent = 'Tài khoản';
-        if (userNameElement) userNameElement.textContent = 'Tài khoản';
-        return;
-    }
-
-    const userName = getCookie('userName') || 'Tài khoản';
-
-    if (accountNameElement) {
-        accountNameElement.textContent = userName;
-    }
-    if (userNameElement) {
-        userNameElement.textContent = userName;
-    }
-  }
-
-  // Đăng xuất
-  const logoutButton = document.getElementById("logoutButton");
-
-  if (logoutButton) {
-      logoutButton.addEventListener("click", async function () {
-          const token = getCookie("token");
-
-          try {
-              await fetch("https://localhost:7088/api/Auth/logout", {
-                  method: "POST",
-                  headers: {
-                      "Content-Type": "application/json",
-                      "Authorization": "Bearer " + token
-                  }
-              });
-            sessionStorage.removeItem("token")
-              // Xóa tất cả cookie
-              deleteCookie("token");
-              deleteCookie("isLoggedIn");
-              deleteCookie("userName");
-              deleteCookie("userEmail");
-              deleteCookie("userPhone");
-              deleteCookie("userBirthdate");
-              deleteCookie("userGender");
-              deleteCookie("userAddress");
-
-              // Chuyển hướng về trang đăng nhập
-              window.location.href = "login.html";
-          } catch (err) {
-              console.error("Lỗi khi logout:", err);
-              alert("Đăng xuất thất bại. Vui lòng thử lại.");
-          }
-      });
-  }
-
-  // Kiểm tra trạng thái đăng nhập khi trang được tải
-  displayAccountName();
-});
-
-/* Lấy role người dùng từ token */
-function getRoleFromToken() {
-    const token = sessionStorage.getItem('token');
-
-    if (!token) {
-        console.error('Không tìm thấy token trong Session Storage.');
-        return null;
-    }
-
-    try {
-        const payloadBase64Url = token.split('.')[1];
-        if (!payloadBase64Url) {
-            console.error('Định dạng token không hợp lệ: Thiếu payload.');
-            return null;
-        }
-
-        let payloadBase64 = payloadBase64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const padding = payloadBase64.length % 4;
-        if (padding) {
-            payloadBase64 += '='.repeat(4 - padding);
-        }
-
-        const payloadObject = JSON.parse(atob(payloadBase64));
-
-        const userRole = payloadObject.role;
-        if (userRole === undefined) {
-            console.warn('Thuộc tính "role" không tồn tại trong payload của token.');
-            return null;
-        }
-
-        return userRole;
-    } catch (error) {
-        console.error('Lỗi khi giải mã hoặc phân tích token:', error);
-        return null;
-    }
-}
-
-window.displayAccountName = checkAuthToken;
-
-document.addEventListener('DOMContentLoaded', function () {
-    const submenuGroups = document.querySelectorAll('.submenu-group');
-
-    submenuGroups.forEach(group => {
-        const submenu = group.querySelector('.submenu');
-        group.addEventListener('mouseenter', () => submenu.style.display = 'block');
-        group.addEventListener('mouseleave', () => submenu.style.display = 'none');
-    });
-
-    document.getElementById('cartButton')?.addEventListener('click', function () {
-        this.querySelector('.cart-dropdown')?.classList.toggle('active');
-    });
-
-    const fadeElements = document.querySelectorAll('.fade-in');
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
+        logoutUser() {
+            if (typeof window.handleLogout === 'function') {
+                window.handleLogout();
+            } else {
+                console.error('hàm handleLogout không được định nghĩa toàn cục.');
+                sessionStorage.clear(); // Xóa dự phòng
+                window.location.href = "/Customer/templates/login.html";
             }
-        });
-    }, { threshold: 0.1 });
-    fadeElements.forEach(element => observer.observe(element));
-
-    const userMenu = document.getElementById('userMenu');
-    const button = userMenu?.querySelector('button');
-    const userMenuDropdown = userMenu?.querySelector('#userMenuDropdown');
-
-    if (button && userMenuDropdown) {
-        button.addEventListener('click', function (e) {
-            e.preventDefault();
-            const isExpanded = button.getAttribute('aria-expanded') === 'true';
-            userMenuDropdown.classList.toggle('active');
-            button.setAttribute('aria-expanded', !isExpanded);
-            userMenuDropdown.setAttribute('aria-hidden', isExpanded);
-        });
-
-        document.addEventListener('click', function (e) {
-            if (!userMenu.contains(e.target)) {
-                userMenuDropdown.classList.remove('active');
-                button.setAttribute('aria-expanded', 'false');
-                userMenuDropdown.setAttribute('aria-hidden', 'true');
+        },
+        // init() được Alpine gọi khi component được khởi tạo
+        init() {
+            console.log('component.init() của headerData Alpine ĐƯỢC GỌI.');
+            // Gọi các hàm để load dữ liệu và thiết lập cho header
+            if (typeof window.initializeHeaderFunctionality === 'function') {
+                window.initializeHeaderFunctionality();
             }
-        });
-
-        button.addEventListener('keydown', function (e) {
-            if (['Enter', ' '].includes(e.key)) {
-                e.preventDefault();
-                button.click();
+            if (typeof window.loadHeaderCategories === 'function') {
+                window.loadHeaderCategories();
             }
-        });
-
-        document.querySelectorAll('#userMenuDropdown a').forEach(link => {
-            link.addEventListener('keydown', function (e) {
-                if (['Enter', ' '].includes(e.key)) {
-                    e.preventDefault();
-                    link.click();
+            if (typeof window.updateCartDropdown === 'function') {
+                window.updateCartDropdown();
+            }
+            // Lắng nghe sự kiện cartUpdated để cập nhật dropdown giỏ hàng
+            document.addEventListener('cartUpdated', () => {
+                console.log('sự kiện cartUpdated đã nhận được trong headerData, đang cập nhật dropdown giỏ hàng.');
+                if (typeof window.updateCartDropdown === 'function') {
+                    window.updateCartDropdown();
                 }
             });
-        });
-    }
-
-    /* Lấy role người dùng từ token */
-    function getRoleFromToken() {
-        // 1. Lấy token từ Session Storage
-        const token = sessionStorage.getItem('token');
-
-        if (!token) {
-            console.error('Không tìm thấy token trong Session Storage.');
-            return null; // Hoặc trả về giá trị mặc định/xử lý lỗi khác
         }
+    }));
 
-        try {
-            // 2. Tách lấy phần payload (phần thứ 2)
-            // Phần payload là chuỗi Base64Url
-            const payloadBase64Url = token.split('.')[1];
-            if (!payloadBase64Url) {
-                console.error('Định dạng token không hợp lệ: Thiếu payload.');
-                return null;
-            }
-
-
-            // 3. Chuyển đổi Base64Url thành Base64 chuẩn (thay thế '-' bằng '+' và '_' bằng '/')
-            let payloadBase64 = payloadBase64Url.replace(/-/g, '+').replace(/_/g, '/');
-
-            // Thêm padding '=' nếu cần thiết (Base64 yêu cầu độ dài là bội số của 4)
-            // Hàm atob cần điều này
-            const padding = payloadBase64.length % 4;
-            if (padding) {
-                payloadBase64 += '='.repeat(4 - padding);
-            }
-
-            // Giải mã Base64 thành chuỗi JSON
-            const decodedPayloadString = atob(payloadBase64); // atob là hàm có sẵn của trình duyệt
-
-            // 4. Phân tích chuỗi JSON thành đối tượng JavaScript
-            const payloadObject = JSON.parse(decodedPayloadString);
-
-            // 5. Lấy giá trị của thuộc tính 'role'
-            const userRole = payloadObject.role;
-
-            if (userRole === undefined) {
-                console.warn('Thuộc tính "role" không tồn tại trong payload của token.');
-                return null; // Hoặc giá trị mặc định
-            }
-
-            return userRole;
-
-        } catch (error) {
-            console.error('Lỗi khi giải mã hoặc phân tích token:', error);
-            return null; // Xử lý lỗi
-        }
-    }
-
-    checkAuthToken();
+    // Bạn có thể định nghĩa thêm các Alpine.data khác ở đây nếu cần
 });
 
-window.attachLogoutEvent = function attachLogoutEvent() {
-    const logoutButton = document.getElementById("logoutButton");
-    if (logoutButton) {
-        logoutButton.onclick = function () {
-            try {
-                sessionStorage.clear();
-                window.location.href = "login.html";
-            } catch (err) {
-                console.error('Logout failed:', err);
-                alert("Đăng xuất thất bại. Vui lòng thử lại.");
-            }
-        };
+
+/* ==============================
+   CÁC HÀM HỖ TRỢ TOÀN CỤC
+   ============================== */
+
+/**
+ * Định dạng một số thành tiền tệ Việt Nam (VND).
+ * @param {number} amount - Số tiền cần định dạng.
+ * @returns {string} Chuỗi tiền tệ đã định dạng hoặc '0đ'.
+ */
+function formatCurrency(amount) {
+    if (typeof amount !== 'number' || isNaN(amount)) return '0đ';
+    return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+}
+window.formatCurrency = formatCurrency; // Đưa ra toàn cục nếu các script không phải module khác cần dùng
+
+/**
+ * Lấy URL hình ảnh hợp lệ hoặc ảnh giữ chỗ.
+ * @param {string} apiImageUrl - URL hình ảnh từ API.
+ * @returns {string} URL hình ảnh hợp lệ hoặc ảnh giữ chỗ.
+ */
+function getImageUrl(apiImageUrl) {
+    const placeholderImage = '../assets/images/placeholder.png'; // Điều chỉnh đường dẫn nếu cần
+    if (!apiImageUrl || typeof apiImageUrl !== 'string' || apiImageUrl.toLowerCase() === 'string' || apiImageUrl.trim() === '') {
+        return placeholderImage;
     }
-};
+    if (/^(https?:)?\/\//i.test(apiImageUrl)) { // Kiểm tra xem có phải là URL tuyệt đối không
+        return apiImageUrl;
+    }
+    // Nếu apiImageUrl là đường dẫn tương đối từ server, bạn có thể cần nối với base URL của server
+    // Hiện tại, nếu không phải absolute URL và không phải placeholder keywords, trả về placeholder
+    return placeholderImage;
+}
+window.getImageUrl = getImageUrl;
+
+/**
+ * Đặt một giá trị vào sessionStorage.
+ * @param {string} key - Khóa.
+ * @param {string} value - Giá trị.
+ */
+function setSession(key, value) {
+    try {
+        sessionStorage.setItem(key, value);
+    } catch (e) {
+        console.error("Lỗi khi đặt sessionStorage:", e);
+    }
+}
+window.setSession = setSession;
+
+/**
+ * Lấy một giá trị từ sessionStorage.
+ * @param {string} key - Khóa.
+ * @returns {string|null} Giá trị hoặc null nếu không tìm thấy.
+ */
+function getSession(key) {
+    try {
+        return sessionStorage.getItem(key);
+    } catch (e) {
+        console.error("Lỗi khi lấy sessionStorage:", e);
+        return null;
+    }
+}
+window.getSession = getSession;
+
+
+/* ==============================
+   CÁC HÀM XÁC THỰC & NGƯỜI DÙNG
+   ============================== */
+
+/**
+ * Lấy vai trò của người dùng từ JWT token trong sessionStorage.
+ * @returns {string|null} Vai trò người dùng hoặc null nếu không tìm thấy/lỗi.
+ */
+function getRoleFromToken() {
+    const token = getSession('token');
+    if (!token) return null;
+    try {
+        const payloadBase64Url = token.split('.')[1];
+        if (!payloadBase64Url) return null;
+        let payloadBase64 = payloadBase64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const padding = payloadBase64.length % 4;
+        if (padding) payloadBase64 += '='.repeat(4 - padding);
+        const payloadObject = JSON.parse(atob(payloadBase64));
+        return payloadObject.role || null;
+    } catch (error) {
+        console.error('Lỗi giải mã token hoặc lấy vai trò:', error);
+        return null;
+    }
+}
+window.getRoleFromToken = getRoleFromToken; // Đưa ra nếu các script không phải module cần
+
+/**
+ * Xử lý việc đăng xuất của người dùng.
+ */
+async function handleLogout() {
+    const token = getSession("token");
+    try {
+        if (token) {
+            await fetch(`${API_BASE_URL}/Auth/logout`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
+            });
+        }
+    } catch (err) {
+        console.error("Lỗi API trong quá trình đăng xuất:", err);
+    } finally {
+        sessionStorage.clear(); // Xóa tất cả dữ liệu session
+        // deleteCookie("token"); // Nếu bạn đang dùng cookies
+        window.location.href = "/Customer/templates/login.html"; // Chuyển hướng đến trang đăng nhập
+    }
+}
+window.handleLogout = handleLogout;
+
+/**
+ * Khởi tạo các phần tử header như tên tài khoản và các link dành riêng cho vai trò.
+ */
+function initializeHeaderFunctionality() {
+    console.log("Đang khởi tạo chức năng header...");
+    // 1. Hiển thị Tên Tài khoản
+    const accountNameElement = document.getElementById('accountName');
+    const token = getSession("token");
+    if (accountNameElement) {
+        if (token) {
+            try {
+                const payloadBase64 = token.split('.')[1];
+                let payloadBase64Standard = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+                const padding = payloadBase64Standard.length % 4;
+                if (padding) payloadBase64Standard += '='.repeat(4 - padding);
+                const payload = JSON.parse(atob(payloadBase64Standard));
+                const userData = JSON.parse(getSession('userData') || '{}');
+                const userNameToDisplay = userData.fullName || payload.unique_name || 'Tài khoản';
+                accountNameElement.textContent = userNameToDisplay;
+            } catch (error) {
+                console.error('Lỗi giải mã token cho tên tài khoản:', error);
+                accountNameElement.textContent = 'Tài khoản';
+            }
+        } else {
+            accountNameElement.textContent = 'Tài khoản';
+        }
+    }
+
+    // 2. Hiển thị Link Dành riêng cho Vai trò trong Header
+    const userRole = getRoleFromToken();
+    const roleLinkContainerHeader = document.getElementById('role-specific-link-container'); // ID phải tồn tại trong header.html
+    if (roleLinkContainerHeader) {
+        if (userRole === "Admin") {
+            roleLinkContainerHeader.innerHTML = `<a href="/Admin/index.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Truy cập Admin</a>`;
+        } else if (userRole === "Seller") {
+            roleLinkContainerHeader.innerHTML = `<a href="/Admin/templates/seller.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Kênh người bán</a>`;
+        } else {
+            roleLinkContainerHeader.innerHTML = ''; // Xóa nếu không có vai trò cụ thể hoặc chưa đăng nhập
+        }
+    } else {
+        // console.warn("Phần tử với ID 'role-specific-link-container' không tìm thấy trong header.");
+    }
+}
+window.initializeHeaderFunctionality = initializeHeaderFunctionality;
+
+
+/* ==============================
+   CÁC HÀM DANH MỤC HEADER
+   ============================== */
+
+function createCategoryLinkElement(category, _isMobile = false) { // tham số isMobile có thể không cần nếu style giống nhau
+    const link = document.createElement('a');
+    link.href = `/Customer/templates/category-products.html?categoryId=${category.categoryID}&categoryName=${encodeURIComponent(category.categoryName)}`;
+    link.className = `block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600`; // Style nhất quán
+    link.textContent = category.categoryName;
+    link.setAttribute('role', 'menuitem');
+    link.addEventListener('click', function (event) {
+        event.preventDefault();
+        setSession('categoryName', category.categoryName);
+        setSession('categoryId', category.categoryID.toString());
+        window.location.href = this.href;
+    });
+    return link;
+}
+
+async function loadHeaderCategories() {
+    console.log("Đang tải danh mục header...");
+    const desktopDropdownContent = document.getElementById('desktopCategoryDropdownContent');
+    const mobileDropdownContent = document.getElementById('mobileCategoryDropdownContent');
+
+    if (!desktopDropdownContent || !mobileDropdownContent) {
+        // console.warn('Container dropdown danh mục không tìm thấy trong header.');
+        return;
+    }
+
+    const loadingMsg = '<p class="px-4 py-2 text-gray-500 text-xs">Đang tải...</p>';
+    desktopDropdownContent.innerHTML = loadingMsg;
+    mobileDropdownContent.innerHTML = loadingMsg;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/Categories/all`);
+        if (!response.ok) {
+            throw new Error(`Lỗi HTTP ${response.status} khi lấy danh mục`);
+        }
+        const categories = await response.json();
+
+        desktopDropdownContent.innerHTML = ''; // Xóa thông báo đang tải
+        mobileDropdownContent.innerHTML = '';   // Xóa thông báo đang tải
+
+        if (categories && categories.length > 0) {
+            categories.forEach(category => {
+                desktopDropdownContent.appendChild(createCategoryLinkElement(category, false));
+                mobileDropdownContent.appendChild(createCategoryLinkElement(category, true)); // Có thể dùng cùng hàm nếu style tương tự
+            });
+        } else {
+            const noCategoryMsg = '<p class="px-4 py-2 text-gray-500 text-xs">Không có danh mục.</p>';
+            desktopDropdownContent.innerHTML = noCategoryMsg;
+            mobileDropdownContent.innerHTML = noCategoryMsg;
+        }
+    } catch (error) {
+        console.error('Lỗi tải danh mục cho header:', error);
+        const errorMsg = `<p class="px-4 py-2 text-red-500 text-xs">Lỗi tải danh mục.</p>`;
+        if (desktopDropdownContent) desktopDropdownContent.innerHTML = errorMsg;
+        if (mobileDropdownContent) mobileDropdownContent.innerHTML = errorMsg;
+    }
+}
+window.loadHeaderCategories = loadHeaderCategories;
+
+
+/* ==============================
+   CÁC HÀM DROPDOWN GIỎ HÀNG HEADER
+   ============================== */
+async function updateCartDropdown() {
+    console.log("Đang cập nhật dropdown giỏ hàng...");
+    const token = getSession('token');
+    const elements = {
+        badge: document.getElementById('cartItemCountBadge'),
+        count: document.getElementById('cartDropdownItemCount'),
+        container: document.getElementById('cartDropdownItemsContainer'),
+        totalPrice: document.getElementById('cartDropdownTotalPrice')
+    };
+
+    // Đảm bảo tất cả các phần tử tồn tại trước khi tiếp tục
+    if (!Object.values(elements).every(el => el !== null)) {
+        // console.warn("Một hoặc nhiều phần tử dropdown giỏ hàng không tìm thấy trong header.");
+        return;
+    }
+
+    if (!token) {
+        elements.badge.textContent = '0';
+        elements.count.textContent = '0';
+        elements.container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">Vui lòng đăng nhập.</p>';
+        elements.totalPrice.textContent = formatCurrency(0);
+        return;
+    }
+
+    elements.container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">Đang tải giỏ hàng...</p>';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/Cart`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const cartData = await response.json(); // Mong đợi CartDto
+            elements.badge.textContent = cartData.totalItems || 0;
+            elements.count.textContent = cartData.totalItems || 0;
+            elements.totalPrice.textContent = formatCurrency(cartData.totalPrice || 0);
+            elements.container.innerHTML = ''; // Xóa thông báo đang tải/item cũ
+
+            if (cartData.cartItems && cartData.cartItems.length > 0) {
+                cartData.cartItems.slice(0, 3).forEach(item => { // Hiển thị tối đa 3 item
+                    elements.container.insertAdjacentHTML('beforeend', `
+                           <div class="flex items-start space-x-2.5 py-2 border-b border-gray-100 last:border-b-0">
+                               <img src="${getImageUrl(item.imageURL)}" alt="${item.productName}" class="w-10 h-10 object-cover rounded flex-shrink-0">
+                               <div class="flex-1 min-w-0">
+                                   <h4 class="text-xs font-medium text-gray-700 truncate" title="${item.productName}">${item.productName}</h4>
+                                   <p class="text-xs text-gray-500">${item.quantity} x ${formatCurrency(item.price)}</p>
+                               </div>
+                           </div>`);
+                });
+                if (cartData.cartItems.length > 3) {
+                    elements.container.insertAdjacentHTML('beforeend', '<p class="text-xs text-center text-gray-400 mt-2">...</p>');
+                }
+            } else {
+                elements.container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">Giỏ hàng trống.</p>';
+            }
+        } else if (response.status === 401) {
+            elements.badge.textContent = '0';
+            elements.count.textContent = '0';
+            elements.totalPrice.textContent = formatCurrency(0);
+            elements.container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">Phiên hết hạn.</p>';
+        }
+        else {
+            elements.container.innerHTML = `<p class="text-red-500 text-xs text-center py-4">Lỗi ${response.status} tải giỏ hàng.</p>`;
+            console.error("Lỗi tải giỏ hàng cho dropdown:", response.status, await response.text());
+        }
+    } catch (error) {
+        elements.container.innerHTML = '<p class="text-red-500 text-xs text-center py-4">Lỗi kết nối.</p>';
+        console.error("Lỗi mạng khi lấy giỏ hàng cho dropdown:", error);
+    }
+}
+window.updateCartDropdown = updateCartDropdown;
+
+
+/* ==============================
+   KHỞI TẠO TRANG CHUNG (Không dành riêng cho component nào)
+   ============================== */
+document.addEventListener('DOMContentLoaded', function () {
+    console.log("DOMContentLoaded chung đã kích hoạt.");
+
+    // Kiểm tra token xác thực cho các trang yêu cầu đăng nhập và không tải header động
+    // Đối với các trang dùng ComponentLoader, init của header sẽ xử lý các khía cạnh xác thực.
+    // Đây là giải pháp dự phòng hoặc cho các trang không có header chuẩn.
+    // const noHeaderPages = ['/login.html', '/register.html']; // Ví dụ
+    // if (!noHeaderPages.some(page => window.location.pathname.includes(page))) {
+    //    if (typeof checkAuthTokenForPage === 'function') checkAuthTokenForPage();
+    // }
+
+    // Khởi tạo các phần tử UI hoặc trình lắng nghe sự kiện không thuộc Alpine, không dành riêng cho header ở đây
+    // ví dụ: cho các dropdown đơn giản không được quản lý bởi Alpine, intersection observer cho hiệu ứng mờ toàn cục, v.v.
+
+    // Ví dụ: Gắn sự kiện đăng xuất vào một nút nếu nó tồn tại ngoài ngữ cảnh Alpine (không khả thi với thiết lập hiện tại)
+    // const globalLogoutButton = document.getElementById('someGlobalLogoutButton');
+    // if (globalLogoutButton && typeof window.handleLogout === 'function') {
+    //     globalLogoutButton.addEventListener('click', window.handleLogout);
+    // }
+});
+
+/**
+ * Kiểm tra trạng thái token xác thực.
+ * Phiên bản này dành cho các trang có thể KHÔNG tải header
+ * hoặc cần kiểm tra chuyển hướng ngay lập tức.
+ * Đối với các trang có header, initializeHeaderFunctionality xử lý hiển thị tên.
+ */
+function checkAuthTokenForPage() {
+    const token = getSession("token");
+    const currentPath = window.location.pathname;
+    const isLoginPage = currentPath.includes("/login.html");
+    const isRegisterPage = currentPath.includes("/register.html"); // Thêm các trang công khai khác nếu cần
+
+    if (!token && !isLoginPage && !isRegisterPage) {
+        console.log('Không tìm thấy token trên trang được bảo vệ, đang chuyển hướng đến đăng nhập.');
+        window.location.href = "/Customer/templates/login.html"; // Điều chỉnh đường dẫn
+        return false; // Chưa xác thực
+    }
+
+    if (token) {
+        try {
+            const payloadBase64 = token.split('.')[1];
+            if (!payloadBase64) throw new Error('Định dạng token không hợp lệ');
+            let payloadBase64Standard = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+            const padding = payloadBase64Standard.length % 4;
+            if (padding) payloadBase64Standard += '='.repeat(4 - padding);
+            const payload = JSON.parse(atob(payloadBase64Standard));
+
+            const now = Date.now() / 1000;
+            const bufferTime = 60; // Bộ đệm 60 giây
+
+            if (payload.exp && now > (payload.exp - bufferTime)) {
+                throw new Error('Token đã hết hạn');
+            }
+            if (payload.nbf && now < payload.nbf) {
+                throw new Error('Token chưa hợp lệ');
+            }
+            return true; // Đã xác thực
+        } catch (error) {
+            console.error('Lỗi xác thực token:', error.message);
+            sessionStorage.clear();
+            if (!isLoginPage && !isRegisterPage) {
+                window.location.href = "/Customer/templates/login.html"; // Điều chỉnh đường dẫn
+            }
+            return false; // Chưa xác thực
+        }
+    }
+    return isLoginPage || isRegisterPage; // Cho phép truy cập đăng nhập/đăng ký nếu không có token
+}
+window.checkAuthTokenForPage = checkAuthTokenForPage; // Đưa ra để gọi trực tiếp nếu cần
+
+function getRoleFromToken() {
+    const token = sessionStorage.getItem('token');
+    if (!token) return null;
+    try {
+        const payloadBase64Url = token.split('.')[1];
+        let payloadBase64 = payloadBase64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const padding = payloadBase64.length % 4;
+        if (padding) payloadBase64 += '='.repeat(4 - padding);
+        const payloadObject = JSON.parse(atob(payloadBase64));
+        return payloadObject.role || null;
+    } catch (error) { return null; }
+}
+
+function setSession(key, value) { sessionStorage.setItem(key, value); }
+function getImageUrl(apiImageUrl) {
+    const placeholderImage = '../assets/images/placeholder.png';
+    if (!apiImageUrl || apiImageUrl.toLowerCase() === 'string' || apiImageUrl.trim() === '') return placeholderImage;
+    if (/^(https?:)?\/\//i.test(apiImageUrl)) return apiImageUrl;
+    return placeholderImage;
+}

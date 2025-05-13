@@ -1,49 +1,44 @@
+// START OF FILE components.js
+
 // Component Loader
 class ComponentLoader {
     constructor() {
         this.components = {
-            header: '/Customer/components/header/header.html', // Đảm bảo đường dẫn đúng
-            footer: '/Customer/components/footer/footer.html'  // Đảm bảo đường dẫn đúng
+            header: '/Customer/components/header/header.html',
+            footer: '/Customer/components/footer/footer.html'
         };
-        // API_BASE_URL và setSession sẽ được lấy từ index.js (global)
     }
 
     async loadComponent(componentName, targetId) {
         try {
             const response = await fetch(this.components[componentName]);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${componentName}`);
             const html = await response.text();
             const targetElement = document.getElementById(targetId);
 
             if (targetElement) {
-                targetElement.innerHTML = html;
+                targetElement.innerHTML = html; // Chèn HTML
 
-                if (window.Alpine && Alpine.initTree) {
+                // headerData đã được đăng ký toàn cục từ index.js
+                // Giờ Alpine.initTree sẽ tìm thấy nó.
+                if (window.Alpine && typeof Alpine.initTree === 'function') {
                     Alpine.initTree(targetElement);
-                }
-                if (window.Alpine && Alpine.start) {
-                    Alpine.start();
-                }
-
-                // Sau khi header được load, gọi hàm khởi tạo từ index.js
-                if (componentName === 'header') {
-                    if (typeof window.initializeHeaderFunctionality === 'function') {
-                        window.initializeHeaderFunctionality(); // Gọi hàm global từ index.js
-                    } else {
-                        console.warn('initializeHeaderFunctionality function not found. Make sure it is defined globally in index.js');
-                    }
+                    console.log(`Alpine.initTree called on #${targetId} for component ${componentName}.`);
+                } else {
+                    console.error("Alpine.initTree is not available or Alpine is not loaded when trying to init component:", componentName);
                 }
             } else {
                 console.error(`Target element with ID '${targetId}' not found for component '${componentName}'.`);
             }
         } catch (error) {
             console.error(`Error loading ${componentName}:`, error);
+            const targetElement = document.getElementById(targetId);
+            if (targetElement) targetElement.innerHTML = `<p class="text-red-500 p-4">Lỗi tải component ${componentName}. Xem console.</p>`;
         }
     }
 
     async loadAll() {
         const path = window.location.pathname;
-        // Điều chỉnh điều kiện kiểm tra trang login cho phù hợp
         const isLoginPage = path.endsWith('/login.html') || path.includes('/Admin/templates/auth/login.html');
 
         if (!isLoginPage) {
@@ -54,6 +49,13 @@ class ComponentLoader {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Kiểm tra xem Alpine đã được load chưa
+    if (window.Alpine) {
+        console.log("Alpine is loaded globally before ComponentLoader runs in DOMContentLoaded.");
+    } else {
+        console.error("Alpine is NOT loaded before ComponentLoader runs in DOMContentLoaded.");
+    }
     const loader = new ComponentLoader();
     loader.loadAll();
 });
+// END OF FILE components.js

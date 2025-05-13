@@ -19,6 +19,63 @@ namespace ShopxEX1.Services.Implementations
             _logger = logger;
         }
 
+        public async Task<Cart> GetOrCreateCartAsync(int userId, bool includeItemsAndProduct = false)
+        {
+            _logger.LogInformation("Đang cố gắng lấy hoặc tạo giỏ hàng cho UserID: {UserId}", userId);
+            var query = _context.Carts.AsQueryable();
+
+            if (includeItemsAndProduct)
+            {
+                query = query.Include(c => c.CartItems.OrderByDescending(ci => ci.AddedAt))
+                             .ThenInclude(ci => ci.Product);
+            }
+            else
+            {
+                query = query.Include(c => c.CartItems.OrderByDescending(ci => ci.AddedAt));
+            }
+
+            var cart = await query.FirstOrDefaultAsync(c => c.UserID == userId);
+
+            if (cart == null)
+            {
+                _logger.LogInformation("Không tìm thấy giỏ hàng hiện có cho UserID: {UserId}. Đang kiểm tra sự tồn tại của người dùng.", userId);
+                var userExists = await _context.Users.AnyAsync(u => u.UserID == userId);
+                if (!userExists)
+                {
+                    _logger.LogWarning("Người dùng với ID: {UserId} không tồn tại. Không thể tạo giỏ hàng.", userId);
+                    throw new KeyNotFoundException($"Người dùng với ID {userId} không tồn tại.");
+                }
+
+                _logger.LogInformation("Đang tạo giỏ hàng mới cho UserID: {UserId}", userId);
+                cart = new Cart { UserID = userId, CreatedAt = DateTime.UtcNow };
+                _context.Carts.Add(cart);
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Tạo và lưu giỏ hàng mới thành công với CartID: {CartId} cho UserID: {UserId}", cart.CartID, userId);
+                }
+                catch (DbUpdateException ex)
+                {
+                    _logger.LogError(ex, "Lỗi khi lưu giỏ hàng mới cho UserID: {UserId}", userId);
+                    throw;
+                }
+            }
+            else
+            {
+                _logger.LogInformation("Tìm thấy giỏ hàng hiện có với CartID: {CartId} cho UserID: {UserId}", cart.CartID, userId);
+            }
+            return cart;
+        }
+
+        public async Task<Cart?> ReloadCartForDtoMapping(int cartId)
+        {
+            _logger.LogInformation("Đang tải lại dữ liệu giỏ hàng cho CartID: {CartId} để ánh xạ DTO.", cartId);
+            return await _context.Carts
+                                 .Include(c => c.CartItems)
+                                    .ThenInclude(ci => ci.Product)
+                                 .AsNoTracking()
+                                 .FirstOrDefaultAsync(c => c.CartID == cartId);
+        }
         /// <summary>
         /// Lấy thông tin chi tiết giỏ hàng của một người dùng.
         /// </summary>
@@ -28,7 +85,7 @@ namespace ShopxEX1.Services.Implementations
         {
             _logger.LogInformation("Đang lấy chi tiết giỏ hàng cho UserID: {UserId}", userId);
             var cart = await _context.Carts
-                .Include(c => c.CartItems)
+                .Include(c => c.CartItems.OrderByDescending(ci => ci.AddedAt))
                     .ThenInclude(ci => ci.Product)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.UserID == userId);
