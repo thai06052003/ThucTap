@@ -23,7 +23,12 @@ namespace ShopxEX1.Controllers
             _logger = logger;
             CurrentUserId = getID.GetCurrentUserId();
         }
-
+        
+        /// <summary>
+        /// Lấy thông tin chi tiết giỏ hàng của một người dùng.
+        /// </summary>
+        /// <param name="userId">ID của người dùng.</param>
+        /// <returns>DTO chứa thông tin giỏ hàng hoặc null nếu không tìm thấy.</returns>
         [HttpGet]
         public async Task<ActionResult<CartDto>> GetCart()
         {
@@ -57,7 +62,16 @@ namespace ShopxEX1.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi khi lấy giỏ hàng.");
             }
         }
-
+        /// <summary>
+        /// Thêm một sản phẩm vào giỏ hàng của người dùng.
+        /// Nếu sản phẩm đã tồn tại, cập nhật số lượng.
+        /// Nếu giỏ hàng chưa tồn tại, tạo mới.
+        /// </summary>
+        /// <param name="userId">ID của người dùng.</param>
+        /// <param name="itemDto">Thông tin sản phẩm và số lượng cần thêm.</param>
+        /// <returns>DTO chứa thông tin giỏ hàng đã được cập nhật.</returns>
+        /// <exception cref="KeyNotFoundException">Ném ra nếu sản phẩm không tồn tại hoặc không hoạt động.</exception>
+        /// <exception cref="InvalidOperationException">Ném ra nếu không đủ hàng tồn kho.</exception>
         [HttpPost("items")]
         public async Task<ActionResult<CartDto>> AddItemToCart([FromBody] CartItemCreateDto itemDto)
         {
@@ -100,7 +114,16 @@ namespace ShopxEX1.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi khi thêm sản phẩm vào giỏ hàng.");
             }
         }
-
+        /// <summary>
+        /// Cập nhật số lượng của một sản phẩm trong giỏ hàng.
+        /// </summary>
+        /// <param name="userId">ID của người dùng.</param>
+        /// <param name="cartItemId">ID của mục trong giỏ hàng cần cập nhật.</param>
+        /// <param name="updateDto">Thông tin số lượng mới.</param>
+        /// <returns>DTO chứa thông tin giỏ hàng đã được cập nhật.</returns>
+        /// <exception cref="KeyNotFoundException">Ném ra nếu giỏ hàng hoặc mục giỏ hàng không tồn tại.</exception>
+        /// <exception cref="UnauthorizedAccessException">Ném ra nếu người dùng cố gắng cập nhật giỏ hàng không phải của mình.</exception>
+        /// <exception cref="InvalidOperationException">Ném ra nếu không đủ hàng tồn kho cho số lượng mới.</exception>
         [HttpPut("items/{cartItemId}")]
         public async Task<ActionResult<CartDto>> UpdateCartItem(int cartItemId, [FromBody] CartItemUpdateDto updateDto)
         {
@@ -143,7 +166,14 @@ namespace ShopxEX1.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi khi cập nhật sản phẩm trong giỏ hàng.");
             }
         }
-
+        /// <summary>
+        /// Xóa một sản phẩm khỏi giỏ hàng.
+        /// </summary>
+        /// <param name="userId">ID của người dùng.</param>
+        /// <param name="cartItemId">ID của mục trong giỏ hàng cần xóa.</param>
+        /// <returns>DTO chứa thông tin giỏ hàng đã được cập nhật.</returns>
+        /// <exception cref="KeyNotFoundException">Ném ra nếu giỏ hàng hoặc mục giỏ hàng không tồn tại.</exception>
+        /// <exception cref="UnauthorizedAccessException">Ném ra nếu người dùng cố gắng xóa mục từ giỏ hàng không phải của mình.</exception>
         [HttpDelete("items/{cartItemId}")]
         public async Task<ActionResult<CartDto>> RemoveCartItem(int cartItemId)
         {
@@ -175,7 +205,12 @@ namespace ShopxEX1.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi khi xóa sản phẩm khỏi giỏ hàng.");
             }
         }
-
+        /// <summary>
+        /// Xóa tất cả sản phẩm khỏi giỏ hàng của người dùng.
+        /// </summary>
+        /// <param name="userId">ID của người dùng.</param>
+        /// <returns>Task biểu thị hoạt động đã hoàn thành.</returns>
+        /// <exception cref="KeyNotFoundException">Ném ra nếu giỏ hàng không tồn tại.</exception>
         [HttpDelete("clear")]
         public async Task<IActionResult> ClearCart()
         {

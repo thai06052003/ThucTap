@@ -163,6 +163,7 @@ namespace ShopxEX1.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<bool>> DeleteCategory(int categoryId)
         {
+            if (categoryId == 1) return NotFound($"Không thể xóa danh mục. Đây là danh mục mặc định không thể xóa.");
             try
             {
                 bool success = await _categoryService.DeleteCategoryAsync(categoryId);

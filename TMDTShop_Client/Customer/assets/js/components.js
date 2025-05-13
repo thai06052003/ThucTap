@@ -2,73 +2,58 @@
 class ComponentLoader {
     constructor() {
         this.components = {
-            header: '/Customer/components/header/header.html',
-            footer: '/Customer/components/footer/footer.html'
+            header: '/Customer/components/header/header.html', // Đảm bảo đường dẫn đúng
+            footer: '/Customer/components/footer/footer.html'  // Đảm bảo đường dẫn đúng
         };
+        // API_BASE_URL và setSession sẽ được lấy từ index.js (global)
     }
 
-    // Load component into target element
     async loadComponent(componentName, targetId) {
         try {
             const response = await fetch(this.components[componentName]);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const html = await response.text();
-            
-            // Insert the HTML
-            document.getElementById(targetId).innerHTML = html;
+            const targetElement = document.getElementById(targetId);
 
-            // Re-init AlpineJS for dynamic content
-            if (window.Alpine && Alpine.initTree) {
-                Alpine.initTree(document.getElementById(targetId));
-            }
-            // Đảm bảo Alpine nhận diện mọi component động (Alpine 3+)
-            if (window.Alpine && Alpine.init) {
-                setTimeout(() => Alpine.init(), 0);
-            }
+            if (targetElement) {
+                targetElement.innerHTML = html;
 
-            // Xử lý các sự kiện sau khi load component
-            if (componentName === 'header') {
-                // Gọi attachLogoutEvent nếu có
-                if (typeof attachLogoutEvent === 'function') {
-                    attachLogoutEvent();
+                if (window.Alpine && Alpine.initTree) {
+                    Alpine.initTree(targetElement);
                 }
-                // Gọi cập nhật tên tài khoản nếu có hàm
-                if (typeof displayAccountName === 'function') {
-                    displayAccountName();
+                if (window.Alpine && Alpine.start) {
+                    Alpine.start();
                 }
+
+                // Sau khi header được load, gọi hàm khởi tạo từ index.js
+                if (componentName === 'header') {
+                    if (typeof window.initializeHeaderFunctionality === 'function') {
+                        window.initializeHeaderFunctionality(); // Gọi hàm global từ index.js
+                    } else {
+                        console.warn('initializeHeaderFunctionality function not found. Make sure it is defined globally in index.js');
+                    }
+                }
+            } else {
+                console.error(`Target element with ID '${targetId}' not found for component '${componentName}'.`);
             }
         } catch (error) {
             console.error(`Error loading ${componentName}:`, error);
         }
     }
 
-    // Helper to load a JS file dynamically
-    async loadScript(src) {
-        return new Promise((resolve, reject) => {
-            if (document.querySelector(`script[src="${src}"]`)) {
-                resolve();
-                return;
-            }
-            const script = document.createElement('script');
-            script.src = src;
-            script.onload = resolve;
-            script.onerror = reject;
-            document.body.appendChild(script);
-        });
-    }
-
-    // Load all components
     async loadAll() {
-        // Don't load header/footer on login page
-        if (!window.location.pathname.includes('/login')) {
+        const path = window.location.pathname;
+        // Điều chỉnh điều kiện kiểm tra trang login cho phù hợp
+        const isLoginPage = path.endsWith('/login.html') || path.includes('/Admin/templates/auth/login.html');
+
+        if (!isLoginPage) {
             await this.loadComponent('header', 'header-container');
             await this.loadComponent('footer', 'footer-container');
         }
     }
 }
 
-// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     const loader = new ComponentLoader();
     loader.loadAll();
-}); 
+});

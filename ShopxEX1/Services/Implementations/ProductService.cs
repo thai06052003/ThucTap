@@ -94,6 +94,10 @@ namespace ShopxEX1.Services.Implementations
                         orderByExpression = p => p.ProductName;
                         ascending = true;
                         break;
+                    case "createdatdesc":
+                        orderByExpression = p => p.CreatedAt;
+                        ascending = false;
+                        break;
                 }
             }
 
@@ -297,7 +301,9 @@ namespace ShopxEX1.Services.Implementations
         public async Task<PagedResult<ProductSummaryDto>> GetProductsByCategoryAsync(ProductFilterDto? filter, int pageNumber, int pageSize, int categoryId)
         {
             IQueryable<Product> query = _context.Products
-                              .Include(p => p.Category);
+                              .Include(p => p.Category)
+                              .Where(p => p.IsActive == true)
+                              .Where(p => p.CategoryID == categoryId);
 
             if (!string.IsNullOrWhiteSpace(filter?.SearchTerm))
             {

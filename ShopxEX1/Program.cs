@@ -64,7 +64,7 @@ namespace ShopxEX1 // Namespace gốc
                                       // *** CHỈ ĐỊNH RÕ ORIGIN FRONTEND CỦA BẠN ***
                                       policyBuilder.WithOrigins(
                                             builder.Configuration.GetValue<string>("AppSettings:CorsAllowedOrigins")?.Split(',') ?? // Đọc từ appsettings
-                                            new[] { "http://127.0.0.1:5500", "http://localhost:5500", "https://127.0.0.1:5500", "https://localhost:5500","https://127.0.0.1:5501" } // Fallback nếu không có config
+                                            new[] { "http://127.0.0.1:5500", "http://localhost:5500", "https://127.0.0.1:5500", "https://localhost:5500" } // Fallback nếu không có config
                                           )
                                            .AllowAnyHeader()
                                            .AllowAnyMethod();

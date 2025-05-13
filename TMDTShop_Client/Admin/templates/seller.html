@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
     header {
       border-radius: 40px;
     }
+
     .sidebar {
       transition: all 0.3s ease;
     }
@@ -58,27 +60,23 @@
       </div>
 
       <nav class="p-4 space-y-2">
-<<<<<<< HEAD
-        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg bg-blue-50 text-blue-600">
+        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg bg-blue-50 text-blue-600"
+          data-section="dashboard">
           <i class="fas fa-tachometer-alt"></i>
           <span class="sidebar-text">Bảng điều khiển</span>
         </a>
-        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100">
-=======
-        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg bg-blue-50 text-blue-600" data-section="dashboard">
-          <i class="fas fa-tachometer-alt"></i>
-          <span class="sidebar-text">Bảng điều khiển</span>
-        </a>
-        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" data-section="shop">
+        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100"
+          data-section="shop">
           <i class="fas fa-store"></i>
           <span class="sidebar-text">Quản lý cửa hàng</span>
         </a>
-        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" data-section="categories">
+        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100"
+          data-section="categories">
           <i class="fas fa-list-alt"></i>
           <span class="sidebar-text">Quản lý danh mục</span>
         </a>
-        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" data-section="products">
->>>>>>> 94500da882b4f16976e7ab64ab462db857b1b2d2
+        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100"
+          data-section="products">
           <i class="fas fa-box-open"></i>
           <span class="sidebar-text">Sản phẩm</span>
         </a>
@@ -102,23 +100,12 @@
           <i class="fas fa-wallet"></i>
           <span class="sidebar-text">Doanh thu</span>
         </a>
-<<<<<<< HEAD
-        <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100">
-          <i class="fas fa-cog"></i>
-          <span class="sidebar-text">Cài đặt</span>
-        </a>
+
       </nav>
 
       <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
         <button class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100 w-full"
           id="toggleSidebar">
-=======
-        
-      </nav>
-
-      <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
-        <button class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100 w-full" id="toggleSidebar">
->>>>>>> 94500da882b4f16976e7ab64ab462db857b1b2d2
           <i class="fas fa-chevron-left"></i>
           <span class="sidebar-text">Thu gọn</span>
         </button>
@@ -128,21 +115,13 @@
     <!-- Main Content -->
     <div class="content flex-1 ml-64" id="mainContent">
       <!-- Top Navigation -->
-<<<<<<< HEAD
-      <header class="bg-white shadow-sm py-4 px-6 flex justify-between items-center sticky top-0 z-40">
-=======
       <header class="bg-white shadow-sm py-4 px-6 flex justify-between items-center sticky top-0 z-60 rounded-lg">
- 
->>>>>>> 94500da882b4f16976e7ab64ab462db857b1b2d2
+
         <div class="flex items-center space-x-4">
           <button class="text-gray-600 md:hidden" id="mobileMenuButton">
             <i class="fas fa-bars"></i>
           </button>
-<<<<<<< HEAD
-          <h1 class="text-xl font-semibold">Bảng điều khiển</h1>
-=======
           <h1 class="text-xl font-semibold" id="pageTitle">Bảng điều khiển</h1>
->>>>>>> 94500da882b4f16976e7ab64ab462db857b1b2d2
         </div>
 
         <div class="flex items-center space-x-6">
@@ -150,12 +129,8 @@
             <button class="text-gray-600 hover:text-blue-600">
               <i class="far fa-bell text-xl"></i>
             </button>
-<<<<<<< HEAD
             <span
               class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center"></span>
-=======
-            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center"></span>
->>>>>>> 94500da882b4f16976e7ab64ab462db857b1b2d2
           </div>
 
           <div class="flex items-center space-x-3">
@@ -169,132 +144,6 @@
 
       <!-- Dashboard Content -->
       <main class="p-6">
-<<<<<<< HEAD
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <div class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-gray-500">Tổng doanh thu</p>
-                <h3 class="text-2xl font-bold mt-2">125.450.000đ</h3>
-              </div>
-              <div class="bg-blue-100 p-3 rounded-full">
-                <i class="fas fa-wallet text-blue-600 text-xl"></i>
-              </div>
-            </div>
-            <p class="text-green-500 text-sm mt-2"><i class="fas fa-arrow-up mr-1"></i> 12.5% so với tháng trước</p>
-          </div>
-
-          <div class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-gray-500">Tổng đơn hàng</p>
-                <h3 class="text-2xl font-bold mt-2">342</h3>
-              </div>
-              <div class="bg-green-100 p-3 rounded-full">
-                <i class="fas fa-shopping-bag text-green-600 text-xl"></i>
-              </div>
-            </div>
-            <p class="text-green-500 text-sm mt-2"><i class="fas fa-arrow-up mr-1"></i> 8.2% so với tháng trước</p>
-          </div>
-
-          <div class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-gray-500">Sản phẩm</p>
-                <h3 class="text-2xl font-bold mt-2">56</h3>
-              </div>
-              <div class="bg-purple-100 p-3 rounded-full">
-                <i class="fas fa-box-open text-purple-600 text-xl"></i>
-              </div>
-            </div>
-            <p class="text-green-500 text-sm mt-2"><i class="fas fa-arrow-up mr-1"></i> 3 sản phẩm mới</p>
-          </div>
-
-          <div class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-gray-500">Đánh giá</p>
-                <h3 class="text-2xl font-bold mt-2">4.7 <span class="text-yellow-400"><i class="fas fa-star"></i></span>
-                </h3>
-              </div>
-              <div class="bg-yellow-100 p-3 rounded-full">
-                <i class="fas fa-star text-yellow-600 text-xl"></i>
-              </div>
-            </div>
-            <p class="text-gray-500 text-sm mt-2">128 đánh giá</p>
-          </div>
-        </div>
-
-        <!-- Charts Row -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <!-- Sales Chart -->
-          <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
-            <div class="flex justify-between items-center mb-4">
-              <h2 class="text-lg font-semibold">Doanh thu 7 ngày gần đây</h2>
-              <select class="border border-gray-300 rounded px-3 py-1 text-sm">
-                <option>7 ngày</option>
-                <option>30 ngày</option>
-                <option>3 tháng</option>
-              </select>
-            </div>
-            <div class="chart-container">
-              <img data-image-keyword="chart" data-image-color="blue"
-                src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=800&amp;q=80"
-                class="w-full h-full object-cover rounded">
-            </div>
-          </div>
-
-          <!-- Top Products -->
-          <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold mb-4">Sản phẩm bán chạy</h2>
-            <div class="space-y-4">
-              <div class="flex items-center space-x-3">
-                <div class="w-12 h-12 rounded overflow-hidden">
-                  <img data-image-keyword="product" data-image-color="white"
-                    src="https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80"
-                    class="w-full h-full object-cover">
-                </div>
-                <div>
-                  <h4 class="font-medium">iPhone 14 Pro Max</h4>
-                  <p class="text-sm text-gray-500">28 đơn • 840.000.000đ</p>
-                </div>
-              </div>
-
-              <div class="flex items-center space-x-3">
-                <div class="w-12 h-12 rounded overflow-hidden">
-                  <img data-image-keyword="product" data-image-color="white"
-                    src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80"
-                    class="w-full h-full object-cover">
-                </div>
-                <div>
-                  <h4 class="font-medium">MacBook Pro M2</h4>
-                  <p class="text-sm text-gray-500">15 đơn • 599.850.000đ</p>
-                </div>
-              </div>
-
-              <div class="flex items-center space-x-3">
-                <div class="w-12 h-12 rounded overflow-hidden">
-                  <img data-image-keyword="product" data-image-color="white"
-                    src="https://images.unsplash.com/photo-1605306792171-9394b91eb0d6?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80"
-                    class="w-full h-full object-cover">
-                </div>
-                <div>
-                  <h4 class="font-medium">Tai nghe Sony</h4>
-                  <p class="text-sm text-gray-500">42 đơn • 251.580.000đ</p>
-                </div>
-              </div>
-
-              <div class="flex items-center space-x-3">
-                <div class="w-12 h-12 rounded overflow-hidden">
-                  <img data-image-keyword="product" data-image-color="white"
-                    src="https://images.unsplash.com/photo-1520390138845-fd2d229dd553?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80"
-                    class="w-full h-full object-cover">
-                </div>
-                <div>
-                  <h4 class="font-medium">Samsung Watch 5</h4>
-                  <p class="text-sm text-gray-500">36 đơn • 269.640.000đ</p>
-=======
         <!-- Dashboard Section -->
         <section id="dashboard-section" class="section active">
           <!-- Stats Cards -->
@@ -342,7 +191,8 @@
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-gray-500">Đánh giá</p>
-                  <h3 class="text-2xl font-bold mt-2">4.7 <span class="text-yellow-400"><i class="fas fa-star"></i></span></h3>
+                  <h3 class="text-2xl font-bold mt-2">4.7 <span class="text-yellow-400"><i
+                        class="fas fa-star"></i></span></h3>
                 </div>
                 <div class="bg-yellow-100 p-3 rounded-full">
                   <i class="fas fa-star text-yellow-600 text-xl"></i>
@@ -365,7 +215,9 @@
                 </select>
               </div>
               <div class="chart-container">
-                <img data-image-keyword="chart" data-image-color="blue" src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=800&amp;q=80" class="w-full h-full object-cover rounded">
+                <img data-image-keyword="chart" data-image-color="blue"
+                  src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=800&amp;q=80"
+                  class="w-full h-full object-cover rounded">
               </div>
             </div>
 
@@ -375,7 +227,9 @@
               <div class="space-y-4">
                 <div class="flex items-center space-x-3">
                   <div class="w-12 h-12 rounded overflow-hidden">
-                    <img data-image-keyword="product" data-image-color="white" src="https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80" class="w-full h-full object-cover">
+                    <img data-image-keyword="product" data-image-color="white"
+                      src="https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80"
+                      class="w-full h-full object-cover">
                   </div>
                   <div>
                     <h4 class="font-medium">iPhone 14 Pro Max</h4>
@@ -385,7 +239,9 @@
 
                 <div class="flex items-center space-x-3">
                   <div class="w-12 h-12 rounded overflow-hidden">
-                    <img data-image-keyword="product" data-image-color="white" src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80" class="w-full h-full object-cover">
+                    <img data-image-keyword="product" data-image-color="white"
+                      src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80"
+                      class="w-full h-full object-cover">
                   </div>
                   <div>
                     <h4 class="font-medium">MacBook Pro M2</h4>
@@ -395,7 +251,9 @@
 
                 <div class="flex items-center space-x-3">
                   <div class="w-12 h-12 rounded overflow-hidden">
-                    <img data-image-keyword="product" data-image-color="white" src="https://images.unsplash.com/photo-1605306792171-9394b91eb0d6?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80" class="w-full h-full object-cover">
+                    <img data-image-keyword="product" data-image-color="white"
+                      src="https://images.unsplash.com/photo-1605306792171-9394b91eb0d6?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80"
+                      class="w-full h-full object-cover">
                   </div>
                   <div>
                     <h4 class="font-medium">Tai nghe Sony</h4>
@@ -405,112 +263,18 @@
 
                 <div class="flex items-center space-x-3">
                   <div class="w-12 h-12 rounded overflow-hidden">
-                    <img data-image-keyword="product" data-image-color="white" src="https://images.unsplash.com/photo-1520390138845-fd2d229dd553?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80" class="w-full h-full object-cover">
+                    <img data-image-keyword="product" data-image-color="white"
+                      src="https://images.unsplash.com/photo-1520390138845-fd2d229dd553?ixlib=rb-4.0.3&amp;ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&amp;auto=format&amp;fit=crop&amp;w=100&amp;q=80"
+                      class="w-full h-full object-cover">
                   </div>
                   <div>
                     <h4 class="font-medium">Samsung Watch 5</h4>
                     <p class="text-sm text-gray-500">36 đơn • 269.640.000đ</p>
                   </div>
->>>>>>> 94500da882b4f16976e7ab64ab462db857b1b2d2
                 </div>
               </div>
             </div>
           </div>
-<<<<<<< HEAD
-        </div>
-
-        <!-- Recent Orders -->
-        <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
-          <div class="p-6 border-b border-gray-200">
-            <div class="flex justify-between items-center">
-              <h2 class="text-lg font-semibold">Đơn hàng gần đây</h2>
-              <a href="#" class="text-blue-600 text-sm">Xem tất cả</a>
-            </div>
-          </div>
-
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái
-                  </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#ORD-2025-001</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Nguyễn Văn A</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">12/11/2025</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">35.980.000đ</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                      class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Đã
-                      giao</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#ORD-2025-002</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Trần Thị B</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">11/11/2025</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">5.990.000đ</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                      class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Đang
-                      giao</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#ORD-2025-003</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Lê Văn C</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">10/11/2025</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">3</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">89.970.000đ</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                      class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Đã
-                      xác nhận</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#ORD-2025-004</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Phạm Thị D</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09/11/2025</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">19.990.000đ</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                      class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Đã
-                      hủy</span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-=======
 
           <!-- Recent Orders -->
           <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
@@ -525,12 +289,17 @@
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách
+                      hàng</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng
+                      thái</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
                   </tr>
                 </thead>
@@ -542,7 +311,9 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">35.980.000đ</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Đã giao</span>
+                      <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Đã
+                        giao</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
@@ -555,7 +326,9 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">5.990.000đ</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Đang giao</span>
+                      <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Đang
+                        giao</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
@@ -568,7 +341,9 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">3</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">89.970.000đ</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Đã xác nhận</span>
+                      <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Đã
+                        xác nhận</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
@@ -581,7 +356,9 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">19.990.000đ</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Đã hủy</span>
+                      <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Đã
+                        hủy</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
@@ -598,7 +375,8 @@
           <div class="bg-white rounded-lg shadow p-6">
             <div class="flex justify-between items-center mb-6">
               <h2 class="text-lg font-semibold">Quản lý danh mục</h2>
-              <button id="add-category-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">
+              <button id="add-category-btn"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">
                 <i class="fas fa-plus mr-2"></i>Thêm danh mục
               </button>
             </div>
@@ -606,9 +384,12 @@
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên danh mục</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mô tả</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên danh
+                      mục</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mô tả
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Hành
+                      động</th>
                   </tr>
                 </thead>
                 <tbody id="category-table-body" class="bg-white divide-y divide-gray-200">
@@ -624,7 +405,8 @@
           <div class="bg-white rounded-lg shadow p-6">
             <div class="flex justify-between items-center mb-6">
               <h2 class="text-lg font-semibold">Quản lý sản phẩm</h2>
-              <button id="add-product-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">
+              <button id="add-product-btn"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">
                 <i class="fas fa-plus mr-2"></i>Thêm sản phẩm
               </button>
             </div>
@@ -632,13 +414,19 @@
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hình ảnh</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên sản phẩm</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Danh mục</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hình ảnh
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên sản
+                      phẩm</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Danh mục
+                    </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng
+                      thái</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Hành
+                      động</th>
                   </tr>
                 </thead>
                 <tbody id="product-table-body" class="bg-white divide-y divide-gray-200">
@@ -654,7 +442,8 @@
           <div class="bg-white rounded-lg shadow p-6">
             <div class="flex justify-between items-center mb-6">
               <h2 class="text-lg font-semibold">Thông tin cửa hàng</h2>
-              <button id="edit-shop-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">
+              <button id="edit-shop-btn"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">
                 <i class="fas fa-edit mr-2"></i>Chỉnh sửa
               </button>
             </div>
@@ -713,37 +502,10 @@
             </div>
           </div>
         </section>
->>>>>>> 94500da882b4f16976e7ab64ab462db857b1b2d2
       </main>
     </div>
   </div>
 
-<<<<<<< HEAD
-  <script>
-    // Toggle sidebar
-    document.getElementById('toggleSidebar').addEventListener('click', function () {
-      const sidebar = document.getElementById('sidebar');
-      const mainContent = document.getElementById('mainContent');
-
-      sidebar.classList.toggle('collapsed');
-      mainContent.classList.toggle('expanded');
-
-      if (sidebar.classList.contains('collapsed')) {
-        this.innerHTML = '<i class="fas fa-chevron-right"></i><span class="sidebar-text">Mở rộng</span>';
-      } else {
-        this.innerHTML = '<i class="fas fa-chevron-left"></i><span class="sidebar-text">Thu gọn</span>';
-      }
-    });
-
-    // Mobile menu toggle
-    document.getElementById('mobileMenuButton').addEventListener('click', function () {
-      const sidebar = document.getElementById('sidebar');
-      sidebar.classList.toggle('hidden');
-    });
-  </script>
-</body>
-
-=======
   <!-- Modal for Add/Edit Category -->
   <div id="category-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
     <div class="modal-backdrop fixed inset-0 bg-black opacity-50"></div>
@@ -752,15 +514,21 @@
       <form id="category-form">
         <div class="mb-4">
           <label for="category-name" class="block text-sm font-medium text-gray-700">Tên danh mục</label>
-          <input type="text" id="category-name" name="category-name" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+          <input type="text" id="category-name" name="category-name"
+            class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required>
         </div>
         <div class="mb-4">
           <label for="category-description" class="block text-sm font-medium text-gray-700">Mô tả</label>
-          <textarea id="category-description" name="category-description" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="3"></textarea>
+          <textarea id="category-description" name="category-description"
+            class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            rows="3"></textarea>
         </div>
         <div class="flex justify-end space-x-3">
-          <button type="button" id="cancel-btn" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition action-btn">Hủy</button>
-          <button type="submit" id="save-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">Lưu</button>
+          <button type="button" id="cancel-btn"
+            class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition action-btn">Hủy</button>
+          <button type="submit" id="save-btn"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">Lưu</button>
         </div>
       </form>
     </div>
@@ -775,37 +543,50 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="mb-4">
             <label for="product-name" class="block text-sm font-medium text-gray-700">Tên sản phẩm</label>
-            <input type="text" id="product-name" name="product-name" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+            <input type="text" id="product-name" name="product-name"
+              class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required>
           </div>
           <div class="mb-4">
             <label for="product-category" class="block text-sm font-medium text-gray-700">Danh mục</label>
-            <select id="product-category" name="product-category" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+            <select id="product-category" name="product-category"
+              class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required>
               <!-- Danh mục sẽ được thêm bằng JavaScript -->
             </select>
           </div>
           <div class="mb-4">
             <label for="product-price" class="block text-sm font-medium text-gray-700">Giá</label>
-            <input type="number" id="product-price" name="product-price" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+            <input type="number" id="product-price" name="product-price"
+              class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required>
           </div>
           <div class="mb-4">
             <label for="product-quantity" class="block text-sm font-medium text-gray-700">Số lượng</label>
-            <input type="number" id="product-quantity" name="product-quantity" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+            <input type="number" id="product-quantity" name="product-quantity"
+              class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required>
           </div>
           <div class="mb-4 md:col-span-2">
             <label for="product-description" class="block text-sm font-medium text-gray-700">Mô tả</label>
-            <textarea id="product-description" name="product-description" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="3"></textarea>
+            <textarea id="product-description" name="product-description"
+              class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows="3"></textarea>
           </div>
           <div class="mb-4 md:col-span-2">
             <label for="product-images" class="block text-sm font-medium text-gray-700">Hình ảnh</label>
-            <input type="file" id="product-images" name="product-images" multiple accept="image/*" class="mt-1 block w-full">
+            <input type="file" id="product-images" name="product-images" multiple accept="image/*"
+              class="mt-1 block w-full">
             <div id="image-preview" class="mt-2 grid grid-cols-4 gap-2">
               <!-- Preview images will be added here -->
             </div>
           </div>
         </div>
         <div class="flex justify-end space-x-3">
-          <button type="button" id="product-cancel-btn" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition action-btn">Hủy</button>
-          <button type="submit" id="product-save-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">Lưu</button>
+          <button type="button" id="product-cancel-btn"
+            class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition action-btn">Hủy</button>
+          <button type="submit" id="product-save-btn"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">Lưu</button>
         </div>
       </form>
     </div>
@@ -827,11 +608,14 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Tên cửa hàng</label>
-            <input type="text" name="shopName" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+            <input type="text" name="shopName"
+              class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
-            <select name="status" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <select name="status"
+              class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               <option value="Active">Hoạt động</option>
               <option value="Inactive">Tạm ngưng</option>
               <option value="Pending">Đang chờ duyệt</option>
@@ -841,24 +625,29 @@
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Mô tả cửa hàng</label>
-          <textarea name="description" rows="4" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Nhập mô tả về cửa hàng của bạn..."></textarea>
+          <textarea name="description" rows="4"
+            class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Nhập mô tả về cửa hàng của bạn..."></textarea>
         </div>
 
         <!-- Thông tin liên hệ -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Email liên hệ</label>
-            <input type="email" name="contactEmail" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <input type="email" name="contactEmail"
+              class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
-            <input type="tel" name="phoneNumber" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <input type="tel" name="phoneNumber"
+              class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
           </div>
         </div>
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
-          <input type="text" name="address" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+          <input type="text" name="address"
+            class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
         </div>
 
         <!-- Hình ảnh -->
@@ -872,7 +661,8 @@
               </div>
               <div class="flex-1">
                 <input type="file" name="logo" accept="image/*" class="hidden" id="logoInput">
-                <button type="button" onclick="document.getElementById('logoInput').click()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
+                <button type="button" onclick="document.getElementById('logoInput').click()"
+                  class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
                   Chọn ảnh
                 </button>
                 <p class="text-xs text-gray-500 mt-1">PNG, JPG tối đa 2MB</p>
@@ -884,12 +674,14 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Banner cửa hàng</label>
             <div class="mt-1 flex items-center space-x-4">
               <div class="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                <img id="currentBanner" src="" alt="Banner hiện tại" class="w-full h-full object-cover rounded-lg hidden">
+                <img id="currentBanner" src="" alt="Banner hiện tại"
+                  class="w-full h-full object-cover rounded-lg hidden">
                 <i class="fas fa-image text-gray-400 text-2xl" id="bannerPlaceholder"></i>
               </div>
               <div class="flex-1">
                 <input type="file" name="banner" accept="image/*" class="hidden" id="bannerInput">
-                <button type="button" onclick="document.getElementById('bannerInput').click()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
+                <button type="button" onclick="document.getElementById('bannerInput').click()"
+                  class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
                   Chọn ảnh
                 </button>
                 <p class="text-xs text-gray-500 mt-1">PNG, JPG tối đa 5MB</p>
@@ -904,7 +696,8 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Xem trước logo</label>
             <div class="relative">
               <img src="" alt="Logo preview" class="w-full h-48 object-contain rounded-lg border border-gray-300">
-              <button type="button" onclick="removeImage('logo')" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600">
+              <button type="button" onclick="removeImage('logo')"
+                class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600">
                 <i class="fas fa-times"></i>
               </button>
             </div>
@@ -914,7 +707,8 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Xem trước banner</label>
             <div class="relative">
               <img src="" alt="Banner preview" class="w-full h-48 object-contain rounded-lg border border-gray-300">
-              <button type="button" onclick="removeImage('banner')" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600">
+              <button type="button" onclick="removeImage('banner')"
+                class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600">
                 <i class="fas fa-times"></i>
               </button>
             </div>
@@ -923,10 +717,12 @@
 
         <!-- Nút điều khiển -->
         <div class="flex justify-end space-x-3 pt-4 border-t">
-          <button type="button" id="cancel-shop-btn" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition">
+          <button type="button" id="cancel-shop-btn"
+            class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition">
             Hủy
           </button>
-          <button type="submit" id="save-shop-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+          <button type="submit" id="save-shop-btn"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
             Lưu thay đổi
           </button>
         </div>
@@ -935,6 +731,7 @@
   </div>
 
   <script src="../assets/js/seller.js"></script>
+  <script src="../assets/js/index.js"></script>
 </body>
->>>>>>> 94500da882b4f16976e7ab64ab462db857b1b2d2
+
 </html>

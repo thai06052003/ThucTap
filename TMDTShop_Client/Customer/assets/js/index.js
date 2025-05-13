@@ -1,5 +1,36 @@
-/* Kiểm tra token phía client và hiển thị tên tài khoản */
-async function checkAuthToken() {
+/* URL API */
+const API_BASE_URL = 'https://localhost:7088/api'
+
+// --- Phần logic hiển thị của bạn ---
+const adminView = `<a href="/Admin/index.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Truy cập với quyền ADMIN</a>`;
+const sellerView = `<a href="/Admin/templates/seller.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Truy cập với quyền Seller</a>`;
+
+// Lấy vai trò từ token
+const role = getRoleFromToken();
+console.log(role)
+
+// Tìm phần tử container trong HTML bằng ID
+const linkContainer = document.getElementById('role-specific-link-container');
+
+// Kiểm tra xem phần tử container có tồn tại không
+if (linkContainer) {
+    // Kiểm tra vai trò và chèn HTML tương ứng
+    if (role === "Admin") {
+        linkContainer.innerHTML = adminView; // Chèn view Admin vào container
+    } else if (role === "Seller") {
+        linkContainer.innerHTML = sellerView; // Chèn view Seller vào container
+    } else {
+        // Tùy chọn: Xử lý trường hợp không phải Admin/Seller hoặc không có vai trò
+        // Ví dụ: để trống hoặc hiển thị một thông báo khác
+        linkContainer.innerHTML = ''; // Để trống container
+        console.log("Vai trò không phải Admin hoặc Seller, hoặc không tìm thấy vai trò.");
+    }
+} else {
+    console.error("Không tìm thấy phần tử với ID 'role-specific-link-container'.");
+}
+
+// kiểm tra trạng thái đăng nhập
+function checkAuthToken() {
     const accountNameElement = document.getElementById('accountName');
     const userNameElement = document.getElementById('userName');
     const token = sessionStorage.getItem("token");
@@ -60,6 +91,37 @@ async function checkAuthToken() {
         window.location.href = "/Customer/templates/login.html";
         return;
     }
+}
+
+// Tạo mới + cập nhật session
+function setSession(key, value) {
+    // Kiểm tra xem sessionStorage có chứa key hay không
+    if (sessionStorage.getItem(key) === null) {
+        // Nếu chưa tồn tại, tạo mới và gán giá trị
+        sessionStorage.setItem(key, value);
+        console.log(`Đã tạo session mới với key: ${key}`);
+    } else {
+        // Nếu đã tồn tại, cập nhật giá trị
+        sessionStorage.setItem(key, value);
+        console.log(`Đã cập nhật session với key: ${key}`);
+    }
+}
+
+// Xóa session
+function removeSession(key) {
+    sessionStorage.removeItem(key)
+}
+
+// Xử lý ảnh 
+function getImageUrl(apiImageUrl) {
+    const placeholderImage = '../assets/images/placeholder.png';
+    if (!apiImageUrl || apiImageUrl.toLowerCase() === 'string' || apiImageUrl.trim() === '') {
+        return placeholderImage;
+    }
+    if (/^(https?:)?\/\//i.test(apiImageUrl)) {
+        return apiImageUrl;
+    }
+    return placeholderImage;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -310,6 +372,58 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         });
+    }
+
+    /* Lấy role người dùng từ token */
+    function getRoleFromToken() {
+        // 1. Lấy token từ Session Storage
+        const token = sessionStorage.getItem('token');
+
+        if (!token) {
+            console.error('Không tìm thấy token trong Session Storage.');
+            return null; // Hoặc trả về giá trị mặc định/xử lý lỗi khác
+        }
+
+        try {
+            // 2. Tách lấy phần payload (phần thứ 2)
+            // Phần payload là chuỗi Base64Url
+            const payloadBase64Url = token.split('.')[1];
+            if (!payloadBase64Url) {
+                console.error('Định dạng token không hợp lệ: Thiếu payload.');
+                return null;
+            }
+
+
+            // 3. Chuyển đổi Base64Url thành Base64 chuẩn (thay thế '-' bằng '+' và '_' bằng '/')
+            let payloadBase64 = payloadBase64Url.replace(/-/g, '+').replace(/_/g, '/');
+
+            // Thêm padding '=' nếu cần thiết (Base64 yêu cầu độ dài là bội số của 4)
+            // Hàm atob cần điều này
+            const padding = payloadBase64.length % 4;
+            if (padding) {
+                payloadBase64 += '='.repeat(4 - padding);
+            }
+
+            // Giải mã Base64 thành chuỗi JSON
+            const decodedPayloadString = atob(payloadBase64); // atob là hàm có sẵn của trình duyệt
+
+            // 4. Phân tích chuỗi JSON thành đối tượng JavaScript
+            const payloadObject = JSON.parse(decodedPayloadString);
+
+            // 5. Lấy giá trị của thuộc tính 'role'
+            const userRole = payloadObject.role;
+
+            if (userRole === undefined) {
+                console.warn('Thuộc tính "role" không tồn tại trong payload của token.');
+                return null; // Hoặc giá trị mặc định
+            }
+
+            return userRole;
+
+        } catch (error) {
+            console.error('Lỗi khi giải mã hoặc phân tích token:', error);
+            return null; // Xử lý lỗi
+        }
     }
 
     checkAuthToken();

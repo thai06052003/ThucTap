@@ -19,64 +19,11 @@ namespace ShopxEX1.Services.Implementations
             _logger = logger;
         }
 
-        public async Task<Cart> GetOrCreateCartAsync(int userId, bool includeItemsAndProduct = false)
-        {
-            _logger.LogInformation("Đang cố gắng lấy hoặc tạo giỏ hàng cho UserID: {UserId}", userId);
-            var query = _context.Carts.AsQueryable();
-
-            if (includeItemsAndProduct)
-            {
-                query = query.Include(c => c.CartItems)
-                             .ThenInclude(ci => ci.Product);
-            }
-            else
-            {
-                query = query.Include(c => c.CartItems);
-            }
-
-            var cart = await query.FirstOrDefaultAsync(c => c.UserID == userId);
-
-            if (cart == null)
-            {
-                _logger.LogInformation("Không tìm thấy giỏ hàng hiện có cho UserID: {UserId}. Đang kiểm tra sự tồn tại của người dùng.", userId);
-                var userExists = await _context.Users.AnyAsync(u => u.UserID == userId);
-                if (!userExists)
-                {
-                    _logger.LogWarning("Người dùng với ID: {UserId} không tồn tại. Không thể tạo giỏ hàng.", userId);
-                    throw new KeyNotFoundException($"Người dùng với ID {userId} không tồn tại.");
-                }
-
-                _logger.LogInformation("Đang tạo giỏ hàng mới cho UserID: {UserId}", userId);
-                cart = new Cart { UserID = userId, CreatedAt = DateTime.UtcNow };
-                _context.Carts.Add(cart);
-                try
-                {
-                    await _context.SaveChangesAsync();
-                    _logger.LogInformation("Tạo và lưu giỏ hàng mới thành công với CartID: {CartId} cho UserID: {UserId}", cart.CartID, userId);
-                }
-                catch (DbUpdateException ex)
-                {
-                    _logger.LogError(ex, "Lỗi khi lưu giỏ hàng mới cho UserID: {UserId}", userId);
-                    throw;
-                }
-            }
-            else
-            {
-                _logger.LogInformation("Tìm thấy giỏ hàng hiện có với CartID: {CartId} cho UserID: {UserId}", cart.CartID, userId);
-            }
-            return cart;
-        }
-
-        public async Task<Cart?> ReloadCartForDtoMapping(int cartId)
-        {
-            _logger.LogInformation("Đang tải lại dữ liệu giỏ hàng cho CartID: {CartId} để ánh xạ DTO.", cartId);
-            return await _context.Carts
-                                 .Include(c => c.CartItems)
-                                    .ThenInclude(ci => ci.Product)
-                                 .AsNoTracking()
-                                 .FirstOrDefaultAsync(c => c.CartID == cartId);
-        }
-
+        /// <summary>
+        /// Lấy thông tin chi tiết giỏ hàng của một người dùng.
+        /// </summary>
+        /// <param name="userId">ID của người dùng.</param>
+        /// <returns>DTO chứa thông tin giỏ hàng hoặc null nếu không tìm thấy.</returns>
         public async Task<CartDto?> GetCartByUserIdAsync(int userId)
         {
             _logger.LogInformation("Đang lấy chi tiết giỏ hàng cho UserID: {UserId}", userId);
@@ -96,7 +43,16 @@ namespace ShopxEX1.Services.Implementations
             _logger.LogInformation("Lấy giỏ hàng thành công với CartID: {CartId} cho UserID: {UserId}", cart.CartID, userId);
             return _mapper.Map<CartDto>(cart);
         }
-
+        /// <summary>
+        /// Thêm một sản phẩm vào giỏ hàng của người dùng.
+        /// Nếu sản phẩm đã tồn tại, cập nhật số lượng.
+        /// Nếu giỏ hàng chưa tồn tại, tạo mới.
+        /// </summary>
+        /// <param name="userId">ID của người dùng.</param>
+        /// <param name="itemDto">Thông tin sản phẩm và số lượng cần thêm.</param>
+        /// <returns>DTO chứa thông tin giỏ hàng đã được cập nhật.</returns>
+        /// <exception cref="KeyNotFoundException">Ném ra nếu sản phẩm không tồn tại hoặc không hoạt động.</exception>
+        /// <exception cref="InvalidOperationException">Ném ra nếu không đủ hàng tồn kho.</exception>
         public async Task<CartDto> AddItemToCartAsync(int userId, CartItemCreateDto itemDto)
         {
             _logger.LogInformation("Đang cố gắng thêm sản phẩm ProductID: {ProductId}, Số lượng: {Quantity} vào giỏ hàng cho UserID: {UserId}", itemDto.ProductID, itemDto.Quantity, userId);
@@ -168,7 +124,16 @@ namespace ShopxEX1.Services.Implementations
             _logger.LogInformation("Thêm/cập nhật sản phẩm thành công cho CartID: {CartId}", cart.CartID);
             return _mapper.Map<CartDto>(updatedCartEntity);
         }
-
+        /// <summary>
+        /// Cập nhật số lượng của một sản phẩm trong giỏ hàng.
+        /// </summary>
+        /// <param name="userId">ID của người dùng.</param>
+        /// <param name="cartItemId">ID của mục trong giỏ hàng cần cập nhật.</param>
+        /// <param name="updateDto">Thông tin số lượng mới.</param>
+        /// <returns>DTO chứa thông tin giỏ hàng đã được cập nhật.</returns>
+        /// <exception cref="KeyNotFoundException">Ném ra nếu giỏ hàng hoặc mục giỏ hàng không tồn tại.</exception>
+        /// <exception cref="UnauthorizedAccessException">Ném ra nếu người dùng cố gắng cập nhật giỏ hàng không phải của mình.</exception>
+        /// <exception cref="InvalidOperationException">Ném ra nếu không đủ hàng tồn kho cho số lượng mới.</exception>
         public async Task<CartDto> UpdateCartItemAsync(int userId, int cartItemId, CartItemUpdateDto updateDto)
         {
             _logger.LogInformation("Đang cố gắng cập nhật CartItemID: {CartItemId} với Số lượng: {Quantity} cho UserID: {UserId}", cartItemId, updateDto.Quantity, userId);
@@ -240,7 +205,14 @@ namespace ShopxEX1.Services.Implementations
             _logger.LogInformation("Cập nhật CartItemID: {CartItemId} thành công cho CartID: {CartId}", cartItemId, cart.CartID);
             return _mapper.Map<CartDto>(updatedCartEntity);
         }
-
+        /// <summary>
+        /// Xóa một sản phẩm khỏi giỏ hàng.
+        /// </summary>
+        /// <param name="userId">ID của người dùng.</param>
+        /// <param name="cartItemId">ID của mục trong giỏ hàng cần xóa.</param>
+        /// <returns>DTO chứa thông tin giỏ hàng đã được cập nhật.</returns>
+        /// <exception cref="KeyNotFoundException">Ném ra nếu giỏ hàng hoặc mục giỏ hàng không tồn tại.</exception>
+        /// <exception cref="UnauthorizedAccessException">Ném ra nếu người dùng cố gắng xóa mục từ giỏ hàng không phải của mình.</exception>
         public async Task<CartDto> RemoveCartItemAsync(int userId, int cartItemId)
         {
             _logger.LogInformation("Đang cố gắng xóa CartItemID: {CartItemId} cho UserID: {UserId}", cartItemId, userId);
@@ -291,7 +263,12 @@ namespace ShopxEX1.Services.Implementations
             _logger.LogInformation("Xóa CartItemID: {CartItemId} thành công và trả về giỏ hàng đã cập nhật CartID: {CartId}", cartItemId, cart.CartID);
             return _mapper.Map<CartDto>(updatedCartEntity);
         }
-
+        /// <summary>
+        /// Xóa tất cả sản phẩm khỏi giỏ hàng của người dùng.
+        /// </summary>
+        /// <param name="userId">ID của người dùng.</param>
+        /// <returns>Task biểu thị hoạt động đã hoàn thành.</returns>
+        /// <exception cref="KeyNotFoundException">Ném ra nếu giỏ hàng không tồn tại.</exception>
         public async Task ClearCartAsync(int userId)
         {
             _logger.LogInformation("Đang cố gắng xóa toàn bộ giỏ hàng cho UserID: {UserId}", userId);

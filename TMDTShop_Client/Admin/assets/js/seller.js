@@ -1,22 +1,5 @@
 // API base URL
-const API_BASE = 'https://localhost:5191/api';
-
-// Check authentication on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const token = getCookie('token');
-    if (!token) {
-        console.log('No token found, redirecting to login');
-        window.location.href = '../../Customer/Templates/login.html';
-        return;
-    }
-    console.log('Token found, proceeding with initialization');
-    
-    // Initialize the page
-    const defaultSection = document.querySelector('[data-section="dashboard"]');
-    if (defaultSection) {
-        defaultSection.click();
-    }
-});
+const API_BASE = 'https://localhost:7088/api';
 
 // Toggle sidebar
 document.getElementById('toggleSidebar').addEventListener('click', function () {

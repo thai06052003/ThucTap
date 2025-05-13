@@ -105,7 +105,7 @@ namespace ShopxEX1.Controllers
         /// <param name="pageNumber">Số trang (mặc định 1).</param>
         /// <param name="pageSize">Số lượng mục trên trang (mặc định 10).</param>
         /// <returns>Danh sách sản phẩm tóm tắt có phân trang.</returns>
-        [HttpGet("/category/{categoryId}")]
+        [HttpGet("Category/{categoryId}")]
         public async Task<ActionResult<PagedResult<ProductSummaryDto>>> GetProductsByCategory(int categoryId, [FromQuery] ProductFilterDto filter, [FromQuery] int pageNumber = 1, [FromQuery] string pageSizeInput = "10")
         {
             const int MaxPageSize = 100;

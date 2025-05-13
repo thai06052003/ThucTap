@@ -221,8 +221,8 @@
             aria-orientation="vertical">
             <a href="info.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Tài khoản của tôi</a>
             <!-- Menu item truy cập theo role -->
-            <div id="roleAccessItem" class="hidden">
-              <a href="#" id="roleAccessLink" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem"></a>
+            <div id="role-specific-link-container">
+              <!-- Nội dung sẽ được chèn vào đây bởi JavaScript -->
             </div>
             <a href="cart.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Đơn hàng</a>
             <button id="logoutButton" @click.stop class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Đăng xuất</button>
@@ -325,7 +325,6 @@
             </div>
           </div>
         </div>
-        <a href="products.html" class="text-gray-700 hover:text-blue-600 transition">Sản phẩm</a>
         <a href="promotion.html" class="text-gray-700 hover:text-blue-600 transition">Khuyến mãi</a>
         <a href="contact.html" class="text-gray-700 hover:text-blue-600 transition">Liên hệ</a>
       </nav>
@@ -343,6 +342,7 @@ document.addEventListener('alpine:init', () => {
     }
   }))
 })
+console.log('ok')
 </script>
 
 

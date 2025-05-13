@@ -13,5 +13,6 @@
         public string? CategoryName { get; set; }
         public string? ShopName { get; set; }
         public int StockQuantity { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }
