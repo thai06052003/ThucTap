@@ -447,18 +447,95 @@ function getImageUrl(apiImageUrl) {
    ============================== */
 
 /**
+ * Cache lưu trữ tên shop theo sellerId để tránh gọi API nhiều lần
+ */
+const shopNameCache = new Map();
+
+/**
+ * Lấy tên shop dựa trên sellerId
+ * @param {number|string} sellerId - ID của người bán
+ * @returns {Promise<string>} Tên shop
+ */
+async function getShopNameBySellerId(sellerId) {
+    // Nếu đã có trong cache thì trả về luôn
+    if (shopNameCache.has(sellerId)) {
+        return shopNameCache.get(sellerId);
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/Seller/${sellerId}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const sellerData = await response.json();
+        const shopName = sellerData.shopName || `Shop ${sellerId}`;
+        
+        // Lưu vào cache để dùng lại
+        shopNameCache.set(sellerId, shopName);
+        
+        return shopName;
+    } catch (error) {
+        console.error(`Lỗi khi lấy thông tin shop cho sellerId ${sellerId}:`, error);
+        return `Shop ${sellerId}`;
+    }
+}
+
+/**
  * Tạo HTML cho thẻ sản phẩm
  * @param {Object} product - Đối tượng sản phẩm từ API
  * @param {boolean} isNew - Có phải sản phẩm mới không
  * @returns {string} HTML của thẻ sản phẩm
  */
 function createProductCardHTML(product, isNew = false) {
+    // Nếu đã có shopName trong product, dùng luôn
+    if (product.shopName) {
+        return createProductCardWithShopName(product, product.shopName, isNew);
+    }
+    
+    // Nếu chưa có shopName, đặt giá trị mặc định và sau đó sẽ được cập nhật bằng JavaScript
+    const sellerId = product.sellerId || null;
+    const defaultShopName = sellerId ? `Shop ${sellerId}` : 'Shop không xác định';
+    
+    const html = createProductCardWithShopName(product, defaultShopName, isNew);
+    
+    // Nếu có sellerId, tải shopName và cập nhật sau
+    if (sellerId) {
+        // ID duy nhất cho sản phẩm này
+        const productCardId = `product-${product.productID}-${Date.now()}`;
+        
+        // Đảm bảo phần tử shopName có ID để cập nhật sau
+        const updatedHtml = html.replace(
+            `<a href="seller-profile.html?sellerId=${sellerId}" class="text-gray-600 hover:text-blue-600 text-xs">${defaultShopName}</a>`,
+            `<a href="seller-profile.html?sellerId=${sellerId}" class="text-gray-600 hover:text-blue-600 text-xs" id="${productCardId}">${defaultShopName}</a>`
+        );
+        
+        // Tải shopName và cập nhật DOM
+        setTimeout(async () => {
+            try {
+                const shopName = await getShopNameBySellerId(sellerId);
+                const shopNameElement = document.getElementById(productCardId);
+                if (shopNameElement) {
+                    shopNameElement.textContent = shopName;
+                }
+            } catch (error) {
+                console.error(`Lỗi cập nhật tên shop cho sản phẩm ${product.productID}:`, error);
+            }
+        }, 0);
+        
+        return updatedHtml;
+    }
+    
+    return html;
+}
+
+/**
+ * Tạo HTML cho thẻ sản phẩm với shop name đã biết
+ */
+function createProductCardWithShopName(product, shopName, isNew = false) {
     const price = product.price ?? null;
     const originalPrice = product.originalPrice ?? null;
     const discountPercent = product.discountPercent ?? 0;
-    const ratingAverage = Math.round(product.ratingAverage ?? 0);
-    const reviewCount = product.reviewCount ?? 0;
     const productName = product.productName || 'Sản phẩm không tên';
+    const sellerId = product.sellerId || null;
 
     // Xử lý URL ảnh
     let imageUrl = 'https://via.placeholder.com/500x500.png?text=No+Image';
@@ -471,10 +548,6 @@ function createProductCardHTML(product, isNew = false) {
             imageUrl = `https://localhost:7088/${product.imageURL}`;
         }
     }
-
-    // Tạo HTML cho sao đánh giá
-    const ratingStars = '<i class="fas fa-star"></i>'.repeat(ratingAverage) +
-                      '<i class="far fa-star"></i>'.repeat(5 - ratingAverage);
 
     // Kiểm tra nếu có giá gốc và giá hiện tại thấp hơn
     const showOriginalPrice = originalPrice && price !== null && originalPrice > price;
@@ -503,10 +576,10 @@ function createProductCardHTML(product, isNew = false) {
             <div class="p-4">
                 <a href="product-detail.html?productId=${product.productID}" class="text-gray-800 hover:text-blue-600 font-medium block mb-1 truncate" title="${productName}">${productName}</a>
                 <div class="flex items-center mb-2">
-                    <div class="flex text-yellow-400 text-sm">
-                        ${ratingStars}
+                    <div class="flex items-center">
+                        <i class="fas fa-store text-blue-500 text-sm mr-1"></i>
+                        <a href="seller-profile.html?sellerId=${sellerId}" class="text-gray-600 hover:text-blue-600 text-xs">${shopName}</a>
                     </div>
-                    <span class="text-gray-500 text-xs ml-1">(${reviewCount})</span>
                 </div>
                 <div class="flex items-center">
                     <span class="text-red-500 font-bold">${formatCurrency(price)}</span>
@@ -545,9 +618,29 @@ async function loadFeaturedProducts() {
             products = getRandomItems(products, 5);
         }
         
-        // Xóa placeholder và hiển thị sản phẩm
+        // Xóa placeholder
         featuredProductsContainer.innerHTML = '';
-        products.forEach(product => {
+        
+        // Tạo mảng promises để lấy tên shop cho mỗi sản phẩm (nếu cần)
+        const productPromises = products.map(async (product) => {
+            // Nếu product đã có shopName, sử dụng shopName đó
+            if (product.shopName) {
+                return { product, shopName: product.shopName };
+            }
+            // Nếu không, lấy shopName từ API
+            else if (product.sellerId) {
+                const shopName = await getShopNameBySellerId(product.sellerId);
+                return { product, shopName };
+            }
+            // Trường hợp không có cả hai
+            return { product, shopName: 'Shop không xác định' };
+        });
+        
+        // Đợi tất cả các promises hoàn thành
+        const productWithShopNames = await Promise.all(productPromises);
+        
+        // Hiển thị sản phẩm với tên shop
+        productWithShopNames.forEach(({ product, shopName }) => {
             const productHTML = createProductCardHTML(product);
             featuredProductsContainer.insertAdjacentHTML('beforeend', productHTML);
         });
@@ -585,10 +678,30 @@ async function loadNewArrivals() {
             products = getRandomItems(products, 5);
         }
         
-        // Xóa placeholder và hiển thị sản phẩm
+        // Xóa placeholder
         newArrivalsContainer.innerHTML = '';
-        products.forEach(product => {
-            const productHTML = createProductCardHTML(product, true); // true để hiển thị nhãn "Mới"
+        
+        // Tạo mảng promises để lấy tên shop cho mỗi sản phẩm (nếu cần)
+        const productPromises = products.map(async (product) => {
+            // Nếu product đã có shopName, sử dụng shopName đó
+            if (product.shopName) {
+                return { product, shopName: product.shopName };
+            }
+            // Nếu không, lấy shopName từ API
+            else if (product.sellerId) {
+                const shopName = await getShopNameBySellerId(product.sellerId);
+                return { product, shopName };
+            }
+            // Trường hợp không có cả hai
+            return { product, shopName: 'Shop không xác định' };
+        });
+        
+        // Đợi tất cả các promises hoàn thành
+        const productWithShopNames = await Promise.all(productPromises);
+        
+        // Hiển thị sản phẩm với tên shop
+        productWithShopNames.forEach(({ product, shopName }) => {
+            const productHTML = createProductCardHTML(product, true);
             newArrivalsContainer.insertAdjacentHTML('beforeend', productHTML);
         });
     } catch (error) {
