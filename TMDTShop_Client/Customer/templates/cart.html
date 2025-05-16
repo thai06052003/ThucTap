@@ -10,21 +10,58 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css"> <!-- Link CSS chung -->
     <style>
-        .quantity-input {
-            width: 4rem;
-            /* Điều chỉnh độ rộng của input số lượng */
-            text-align: center;
+        .quantity-wrapper {
+            position: relative;
+            display: inline-flex;
+            width: 6rem;
             border: 1px solid #e5e7eb;
-            /* gray-300 */
+            border-radius: 0.25rem;
+            overflow: hidden;
+        }
+
+        .quantity-input {
+            width: 100%;
+            text-align: center;
+            border: none;
+            outline: none;
+            padding: 0.5rem 1.75rem;
+            /* Ẩn mũi tên lên xuống của input number */
+            -webkit-appearance: none;
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        /* Ẩn mũi tên trong input number cho các trình duyệt khác nhau */
+        .quantity-input::-webkit-outer-spin-button,
+        .quantity-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
 
         .quantity-btn {
-            border: 1px solid #e5e7eb;
-            /* gray-300 */
+            position: absolute;
+            top: 0;
+            bottom: 0;
             background-color: #f9fafb;
-            /* gray-50 */
-            padding: 0.5rem 0.75rem;
+            border: none;
+            width: 1.75rem;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #374151;
+            /* gray-700 */
+            cursor: pointer;
+        }
+
+        .decrease-quantity {
+            left: 0;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .increase-quantity {
+            right: 0;
+            border-left: 1px solid #e5e7eb;
         }
 
         .quantity-btn:hover {
@@ -179,11 +216,13 @@
                             <p class="text-md font-medium text-red-500 mt-1">${formatCurrency(item.price)}</p>
                         </div>
                         <div class="flex items-center gap-2 self-center md:self-auto">
-                            <button class="quantity-btn decrease-quantity" data-item-id="${item.cartItemID}" aria-label="Giảm số lượng">-</button>
-                            <input type="number" value="${item.quantity}" min="1" max="${item.availableStock}"
-                                   class="quantity-input focus:outline-none focus:ring-1 focus:ring-blue-500 update-quantity-input"
-                                   data-item-id="${item.cartItemID}">
-                            <button class="quantity-btn increase-quantity" data-item-id="${item.cartItemID}" aria-label="Tăng số lượng">+</button>
+                            <div class="quantity-wrapper">
+                                <button class="quantity-btn decrease-quantity" data-item-id="${item.cartItemID}" aria-label="Giảm số lượng">-</button>
+                                <input type="number" value="${item.quantity}" min="1" max="${item.availableStock}"
+                                       class="quantity-input focus:outline-none focus:ring-1 focus:ring-blue-500 update-quantity-input"
+                                       data-item-id="${item.cartItemID}">
+                                <button class="quantity-btn increase-quantity" data-item-id="${item.cartItemID}" aria-label="Tăng số lượng">+</button>
+                            </div>
                         </div>
                         <div class="text-md font-semibold text-gray-700 w-full md:w-auto text-center md:text-right md:min-w-[120px]">
                             ${formatCurrency(itemSubtotal)}

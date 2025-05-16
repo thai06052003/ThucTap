@@ -13,6 +13,6 @@ namespace ShopxEX1.Dtos.SellerCategory
         public string CategoryName { get; set; } = string.Empty;
         [StringLength(500)]
         public string? Description { get; set; }
-        public bool IsActive { get; set; }
+        public bool? IsActive { get; set; }
     }
 }

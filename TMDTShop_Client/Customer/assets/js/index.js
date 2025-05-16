@@ -441,3 +441,178 @@ function getImageUrl(apiImageUrl) {
     if (/^(https?:)?\/\//i.test(apiImageUrl)) return apiImageUrl;
     return placeholderImage;
 }
+
+/* ==============================
+   QUẢN LÝ SẢN PHẨM TRANG CHỦ
+   ============================== */
+
+/**
+ * Tạo HTML cho thẻ sản phẩm
+ * @param {Object} product - Đối tượng sản phẩm từ API
+ * @param {boolean} isNew - Có phải sản phẩm mới không
+ * @returns {string} HTML của thẻ sản phẩm
+ */
+function createProductCardHTML(product, isNew = false) {
+    const price = product.price ?? null;
+    const originalPrice = product.originalPrice ?? null;
+    const discountPercent = product.discountPercent ?? 0;
+    const ratingAverage = Math.round(product.ratingAverage ?? 0);
+    const reviewCount = product.reviewCount ?? 0;
+    const productName = product.productName || 'Sản phẩm không tên';
+
+    // Xử lý URL ảnh
+    let imageUrl = 'https://via.placeholder.com/500x500.png?text=No+Image';
+    if (product.imageURL) {
+        if (product.imageURL.startsWith('http://') || product.imageURL.startsWith('https://')) {
+            imageUrl = product.imageURL;
+        } else if (product.imageURL.startsWith('/')) {
+            imageUrl = `https://localhost:7088${product.imageURL}`;
+        } else {
+            imageUrl = `https://localhost:7088/${product.imageURL}`;
+        }
+    }
+
+    // Tạo HTML cho sao đánh giá
+    const ratingStars = '<i class="fas fa-star"></i>'.repeat(ratingAverage) +
+                      '<i class="far fa-star"></i>'.repeat(5 - ratingAverage);
+
+    // Kiểm tra nếu có giá gốc và giá hiện tại thấp hơn
+    const showOriginalPrice = originalPrice && price !== null && originalPrice > price;
+
+    return `
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition product-card">
+            <div class="relative">
+                <a href="product-detail.html?productId=${product.productID}">
+                    <img src="${imageUrl}" alt="${productName}" class="w-full h-48 object-cover" loading="lazy" onerror="this.onerror=null; this.src='https://via.placeholder.com/500x500.png?text=Image+Error';">
+                </a>
+                ${discountPercent > 0 ? `<div class="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">-${discountPercent}%</div>` : ''}
+                ${isNew ? `<div class="absolute top-2 ${discountPercent > 0 ? 'right-2' : 'left-2'} bg-green-500 text-white text-xs font-bold px-2 py-1 rounded">Mới</div>` : ''}
+                
+                <div class="product-actions absolute bottom-0 left-0 right-0 bg-white/90 flex justify-center space-x-2 p-2">
+                    <button title="Yêu thích" class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                        <i class="far fa-heart text-sm"></i>
+                    </button>
+                    <button title="Xem nhanh" class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                        <i class="fas fa-search text-sm"></i>
+                    </button>
+                    <button title="Thêm vào giỏ" onclick="addToCart(${product.productID})" class="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                        <i class="fas fa-shopping-cart text-sm"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-4">
+                <a href="product-detail.html?productId=${product.productID}" class="text-gray-800 hover:text-blue-600 font-medium block mb-1 truncate" title="${productName}">${productName}</a>
+                <div class="flex items-center mb-2">
+                    <div class="flex text-yellow-400 text-sm">
+                        ${ratingStars}
+                    </div>
+                    <span class="text-gray-500 text-xs ml-1">(${reviewCount})</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-red-500 font-bold">${formatCurrency(price)}</span>
+                    ${showOriginalPrice ? `<span class="text-gray-500 text-sm line-through ml-2">${formatCurrency(originalPrice)}</span>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Tải và hiển thị sản phẩm nổi bật
+ */
+async function loadFeaturedProducts() {
+    const featuredProductsContainer = document.querySelector('.featured-products-container');
+    if (!featuredProductsContainer) return;
+    
+    try {
+        // Thêm placeholder loading
+        featuredProductsContainer.innerHTML = '<div class="col-span-full text-center py-4"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div><p class="mt-2 text-gray-500">Đang tải sản phẩm nổi bật...</p></div>';
+        
+        // Lấy nhiều sản phẩm hơn (20 sản phẩm) để sau đó chọn ngẫu nhiên
+        const response = await fetch(`${API_BASE_URL}/Products?pageNumber=1&pageSize=20`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const result = await response.json();
+        let products = result.items || [];
+        
+        if (!products || products.length === 0) {
+            featuredProductsContainer.innerHTML = '<p class="col-span-full text-center text-gray-500">Không có sản phẩm nổi bật nào.</p>';
+            return;
+        }
+        
+        // Chọn ngẫu nhiên 5 sản phẩm
+        if (products.length > 5) {
+            products = getRandomItems(products, 5);
+        }
+        
+        // Xóa placeholder và hiển thị sản phẩm
+        featuredProductsContainer.innerHTML = '';
+        products.forEach(product => {
+            const productHTML = createProductCardHTML(product);
+            featuredProductsContainer.insertAdjacentHTML('beforeend', productHTML);
+        });
+    } catch (error) {
+        console.error('Lỗi khi tải sản phẩm nổi bật:', error);
+        featuredProductsContainer.innerHTML = `<p class="col-span-full text-center text-red-500">Đã xảy ra lỗi khi tải sản phẩm nổi bật: ${error.message}</p>`;
+    }
+}
+
+/**
+ * Tải và hiển thị sản phẩm mới
+ */
+async function loadNewArrivals() {
+    const newArrivalsContainer = document.querySelector('.new-arrivals-container');
+    if (!newArrivalsContainer) return;
+    
+    try {
+        // Thêm placeholder loading
+        newArrivalsContainer.innerHTML = '<div class="col-span-full text-center py-4"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div><p class="mt-2 text-gray-500">Đang tải sản phẩm mới...</p></div>';
+        
+        // Lấy sản phẩm mới nhất, nhiều hơn để chọn ngẫu nhiên
+        const response = await fetch(`${API_BASE_URL}/Products?pageNumber=1&pageSize=20&sortBy=CreatedAt&sortDirection=desc`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const result = await response.json();
+        let products = result.items || [];
+        
+        if (!products || products.length === 0) {
+            newArrivalsContainer.innerHTML = '<p class="col-span-full text-center text-gray-500">Không có sản phẩm mới nào.</p>';
+            return;
+        }
+        
+        // Chọn ngẫu nhiên 5 sản phẩm
+        if (products.length > 5) {
+            products = getRandomItems(products, 5);
+        }
+        
+        // Xóa placeholder và hiển thị sản phẩm
+        newArrivalsContainer.innerHTML = '';
+        products.forEach(product => {
+            const productHTML = createProductCardHTML(product, true); // true để hiển thị nhãn "Mới"
+            newArrivalsContainer.insertAdjacentHTML('beforeend', productHTML);
+        });
+    } catch (error) {
+        console.error('Lỗi khi tải sản phẩm mới:', error);
+        newArrivalsContainer.innerHTML = `<p class="col-span-full text-center text-red-500">Đã xảy ra lỗi khi tải sản phẩm mới: ${error.message}</p>`;
+    }
+}
+
+/**
+ * Lấy ngẫu nhiên n phần tử từ một mảng
+ * @param {Array} array - Mảng gốc
+ * @param {number} n - Số phần tử cần lấy
+ * @returns {Array} Mảng mới chứa n phần tử ngẫu nhiên
+ */
+function getRandomItems(array, n) {
+    const shuffled = [...array].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, n);
+}
+
+// Khởi chạy các hàm khi trang được tải
+document.addEventListener('DOMContentLoaded', () => {
+    // Các hàm khởi tạo khác đã có...
+    
+    // Tải sản phẩm nổi bật và sản phẩm mới
+    loadFeaturedProducts();
+    loadNewArrivals();
+});

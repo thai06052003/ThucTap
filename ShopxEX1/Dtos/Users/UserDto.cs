@@ -14,5 +14,7 @@
         public DateTime? Birthday { get; set; }
         public bool? Gender { get; set; }
         public string? Avatar { get; set; }
+        public int? SellerID { get; set; } // Thêm SellerId
+        public string? ShopName { get; set; } // Thêm ShopName
     }
 }
