@@ -7,6 +7,7 @@
     <title>Sản phẩm theo Danh mục - ShopX</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="icon" type="image/png" href="/Customer/assets/images/logo.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
@@ -26,7 +27,7 @@
     <div id="header-container"></div>
 
     <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
+    <main id="mainContent" class="container mx-auto px-4 py-8">
         <section class="py-12">
             <div class="container mx-auto px-4">
                 <!-- Breadcrumbs -->
@@ -142,7 +143,10 @@
                     totalPages = pagedResult.totalPages;
                     currentPage = pagedResult.pageNumber; // Cập nhật lại currentPage từ response
                     setupPagination(totalPages, currentPage);
-
+                    const mainContentElement = document.getElementById('mainContent');
+                    if (mainContentElement) {
+                        mainContentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
                 } catch (error) {
                     console.error('Lỗi khi tải sản phẩm theo danh mục:', error);
                     productListDiv.innerHTML = `<p class="text-center text-red-500 col-span-full">Đã xảy ra lỗi khi tải sản phẩm. ${error.message}</p>`;

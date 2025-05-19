@@ -46,11 +46,6 @@ namespace ShopxEX1.Services.Implementations
 
             // Tạo Access Token
             var accessTokenResult = GenerateJwtToken(user);
-
-            // Không còn Refresh Token
-            // Không cần SaveChanges ở đây nếu không cập nhật gì khác trên User
-
-            // _logger?.LogInformation("User {UserId} logged in successfully.", user.UserID);
             return new AuthResultDto
             {
                 Success = true,

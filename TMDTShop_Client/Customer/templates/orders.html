@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đơn hàng của tôi - ShopX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="icon" type="image/png" href="/Customer/assets/images/logo.jpg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/style.css"> <!-- CSS chung của Customer -->
+    <style>
+        /* Style cho status badges, có thể dùng chung với Admin hoặc tùy chỉnh */
+        .status-badge {
+            padding: 0.25em 0.6em;
+            border-radius: 0.25rem;
+            font-size: 0.8em;
+            font-weight: 500;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            display: inline-block;
+            min-width: 100px;
+            /* Cho độ rộng tối thiểu */
+        }
+
+        .status-cho-xac-nhan {
+            background-color: #fef3c7;
+            color: #b45309;
+        }
+
+        .status-dang-xu-ly {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-dang-giao {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-da-giao {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-yeu-cau-tra-hang-hoan-tien {
+            background-color: #fffbeb;
+            color: #b45309;
+        }
+
+        .status-da-hoan-tien {
+            background-color: #ede9fe;
+            color: #5b21b6;
+        }
+
+        .status-da-huy {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-default {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+
+        /* Nút chi tiết */
+        .detail-button {
+            background-color: #eff6ff;
+            color: #2563eb;
+            padding: 0.3rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .detail-button:hover {
+            background-color: #dbeafe;
+        }
+
+        .detail-button i {
+            margin-right: 0.25rem;
+        }
+
+        .order-card-action-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            /* rounded-sm của Tailwind */
+            font-size: 0.875rem;
+            /* text-sm */
+            font-weight: 500;
+            /* font-medium */
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 font-sans">
+    <!-- Container cho Header, sẽ được components.js điền vào -->
+    <div id="header-container">
+        <!-- Nội dung header sẽ được tải vào đây -->
+    </div>
+
+    <main id="mainContent" class="container mx-auto px-4 py-8">
+        <nav class="text-sm mb-6" aria-label="Breadcrumb">
+            <ol class="list-none p-0 inline-flex">
+                <li class="flex items-center">
+                    <a href="/Customer/index.html" class="text-blue-600 hover:underline">Trang chủ</a>
+                    <i class="fas fa-chevron-right fa-xs mx-2 text-gray-500"></i>
+                </li>
+                <li class="text-gray-500" aria-current="page">Đơn hàng của tôi</li>
+            </ol>
+        </nav>
+
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Đơn hàng của tôi</h1>
+
+        <!-- Filters -->
+        <div class="bg-white p-4 md:p-6 rounded-lg shadow-md mb-6">
+            <form id="customerOrderFilterForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                <div>
+                    <label for="customerStatusFilter" class="block text-sm font-medium text-gray-700 mb-1">Trạng
+                        thái</label>
+                    <select id="customerStatusFilter" name="status"
+                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                        <option value="">Tất cả</option>
+                        <!-- Options sẽ được điền bởi JS -->
+                    </select>
+                </div>
+                <div>
+                    <label for="customerStartDateFilter" class="block text-sm font-medium text-gray-700 mb-1">Từ
+                        ngày</label>
+                    <input type="date" id="customerStartDateFilter" name="startDate"
+                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors" />
+                </div>
+                <div>
+                    <label for="customerEndDateFilter" class="block text-sm font-medium text-gray-700 mb-1">Đến
+                        ngày</label>
+                    <input type="date" id="customerEndDateFilter" name="endDate"
+                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors" />
+                </div>
+                <div class="sm:col-span-2 lg:col-span-1 flex justify-end items-end">
+                    <button type="submit"
+                        class="bg-indigo-600 text-white px-5 py-2 rounded-md hover:bg-indigo-700 transition font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 w-full sm:w-auto">
+                        <i class="fas fa-filter mr-2"></i>Lọc
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Order List -->
+        <div id="customerOrderListContainer" class="space-y-4">
+            <div id="customerLoadingOrders" class="text-center py-10">
+                <i class="fas fa-spinner fa-spin text-indigo-500 text-3xl"></i>
+                <p class="mt-2 text-gray-600">Đang tải đơn hàng...</p>
+            </div>
+        </div>
+
+        <div id="customerNoOrders" class="hidden text-center py-10 bg-white rounded-lg shadow-md">
+            <i class="fas fa-box-open text-gray-400 text-4xl mb-3"></i>
+            <p class="text-gray-600">Bạn chưa có đơn hàng nào.</p>
+            <a href="/Customer/index.html"
+                class="mt-4 inline-block bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition">
+                Tiếp tục mua sắm
+            </a>
+        </div>
+
+        <!-- Pagination -->
+        <div id="customerPaginationContainer"
+            class="hidden flex flex-col sm:flex-row justify-between items-center mt-8 text-sm text-gray-600">
+            <div id="customerPaginationInfo" class="mb-2 sm:mb-0">
+                Hiển thị <span id="customerCurrentPageInfo" class="font-medium">0</span> / <span
+                    id="customerTotalPagesInfo" class="font-medium">0</span> trang
+                (Tổng <span id="customerTotalItemsInfo" class="font-medium">0</span> đơn hàng)
+            </div>
+            <div class="flex items-center space-x-1">
+                <button id="customerPrevPageBtn"
+                    class="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-medium py-2 px-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="flex items-center">
+                    <input type="number" id="customerPageInput" min="1"
+                        class="p-2 border border-gray-300 rounded-md w-16 text-center shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <button id="customerGoToPageBtn"
+                        class="bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-2 px-3 rounded-md ml-1 transition-colors">Đi</button>
+                </div>
+                <button type="button" id="customerNextPageBtn"
+                    class="bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-medium py-2 px-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Container cho Footer, sẽ được components.js điền vào -->
+    <div id="footer-container">
+        <!-- Nội dung footer sẽ được tải vào đây -->
+    </div>
+
+    <!-- index.js phải được load TRƯỚC components.js và script của trang này -->
+    <script src="../assets/js/index.js"></script>
+    <script type="module" src="../assets/js/components.js"></script>
+
+    <script>
+        // Đảm bảo rằng script này chạy SAU KHI index.js và components.js đã thực thi
+        // và DOMContentLoaded đã hoàn tất.
+        // components.js sẽ load header/footer, index.js sẽ định nghĩa các hàm toàn cục.
+
+        // Bọc trong một hàm để đảm bảo các hàm từ index.js đã sẵn sàng
+        function initializeCustomerOrdersPage() {
+            // DOM Elements
+            const orderListContainer = document.getElementById('customerOrderListContainer');
+            const loadingOrdersElement = document.getElementById('customerLoadingOrders');
+            const noOrdersElement = document.getElementById('customerNoOrders');
+
+            const filterForm = document.getElementById('customerOrderFilterForm');
+            const statusFilter = document.getElementById('customerStatusFilter');
+            const startDateFilter = document.getElementById('customerStartDateFilter');
+            const endDateFilter = document.getElementById('customerEndDateFilter');
+
+            const paginationContainer = document.getElementById('customerPaginationContainer');
+            const paginationInfoElement = document.getElementById('customerPaginationInfo');
+            const currentPageInfoElement = document.getElementById('customerCurrentPageInfo');
+            const totalPagesInfoElement = document.getElementById('customerTotalPagesInfo');
+            const totalItemsInfoElement = document.getElementById('customerTotalItemsInfo');
+            const prevPageBtn = document.getElementById('customerPrevPageBtn');
+            const nextPageBtn = document.getElementById('customerNextPageBtn');
+            const pageInput = document.getElementById('customerPageInput');
+            const goToPageBtn = document.getElementById('customerGoToPageBtn');
+
+            let currentPage = 1;
+            const DEFAULT_PAGE_SIZE = 5;
+
+            const ORDER_STATUSES = Object.freeze({
+                CHO_XAC_NHAN: "Chờ xác nhận",
+                DANG_XU_LY: "Đang xử lý",
+                DANG_GIAO: "Đang giao",
+                DA_GIAO: "Đã giao",
+                YEU_CAU_TRA_HANG_HOAN_TIEN: "Yêu cầu trả hàng/ hoàn tiền",
+                DA_HOAN_TIEN: "Đã hoàn tiền",
+                DA_HUY: "Đã hủy"
+            });
+            const ALL_VALID_STATUSES_FOR_FILTER = Object.values(ORDER_STATUSES);
+
+            // Kiểm tra xem các hàm từ index.js có tồn tại không
+            if (typeof formatDate !== 'function' || typeof formatCurrency !== 'function' || typeof getSession !== 'function' || typeof API_BASE_URL === 'undefined') {
+                console.error("Một số hàm hoặc biến toàn cục từ index.js chưa sẵn sàng. Trang có thể không hoạt động đúng.");
+                loadingOrdersElement.innerHTML = '<p class="text-red-500 text-center">Lỗi tải trang. Vui lòng thử lại.</p>';
+                return; // Dừng thực thi nếu các phụ thuộc chưa sẵn sàng
+            }
+
+
+            function getStatusClass(status) {
+                switch (status) {
+                    case ORDER_STATUSES.CHO_XAC_NHAN: return 'status-cho-xac-nhan';
+                    case ORDER_STATUSES.DANG_XU_LY: return 'status-dang-xu-ly';
+                    case ORDER_STATUSES.DANG_GIAO: return 'status-dang-giao';
+                    case ORDER_STATUSES.DA_GIAO: return 'status-da-giao';
+                    case ORDER_STATUSES.YEU_CAU_TRA_HANG_HOAN_TIEN: return 'status-yeu-cau-tra-hang-hoan-tien';
+                    case ORDER_STATUSES.DA_HOAN_TIEN: return 'status-da-hoan-tien';
+                    case ORDER_STATUSES.DA_HUY: return 'status-da-huy';
+                    default:
+                        console.warn(`Trạng thái không xác định trong getStatusClass: "${status}"`);
+                        return 'status-default';
+                }
+            }
+
+            function populateStatusFilter() {
+                ALL_VALID_STATUSES_FOR_FILTER.forEach(status => {
+                    const option = document.createElement('option');
+                    option.value = status;
+                    option.textContent = status;
+                    statusFilter.appendChild(option);
+                });
+            }
+
+            async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refreshCallback) {
+                const token = getSession('token');
+                if (!token && token != null) {
+                    alert('Bạn cần đăng nhập để có thể sử dụng chức năng này')
+                    sessionStorage.clear();
+                    window.location.assign('/Customer/templates/login.html')
+                }
+                try {
+                    const response = await fetch(`${API_BASE_URL}/Orders/${orderId}/status`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ newStatus: newStatus })
+                    });
+                    if (response.ok) {
+                        alert(successMessage || `Cập nhật trạng thái đơn hàng #${orderId} thành công!`);
+                        if (refreshCallback) refreshCallback();
+                    } else {
+                        const errorData = await response.json();
+                        alert(`Lỗi: ${errorData.message || response.statusText}`);
+                    }
+                } catch (error) {
+                    alert(`Lỗi kết nối: ${error.message}`);
+                }
+            }
+
+
+            window.customerRequestReturn = (orderId) => {
+                if (confirm(`Bạn có muốn gửi Yêu cầu trả hàng/ hoàn tiền cho đơn hàng #${orderId} không?`)) {
+                    updateOrderStatusViaAPI(orderId, ORDER_STATUSES.YEU_CAU_TRA_HANG_HOAN_TIEN,
+                        `Yêu cầu trả hàng/ hoàn tiền cho đơn hàng #${orderId} đã được gửi. Shop sẽ liên hệ với bạn.`,
+                        () => fetchCustomerOrders(page = 1)
+                    );
+                }
+            };
+
+            async function fetchCustomerOrders(page = 1) {
+                loadingOrdersElement.classList.remove('hidden');
+                orderListContainer.innerHTML = '';
+                noOrdersElement.classList.add('hidden');
+                paginationContainer.classList.add('hidden');
+
+                currentPage = page;
+                const params = new URLSearchParams({
+                    pageNumber: currentPage.toString(),
+                    pageSize: DEFAULT_PAGE_SIZE.toString()
+                });
+
+                const status = statusFilter.value;
+                if (status) params.append('Status', status);
+                const startDate = startDateFilter.value;
+                if (startDate) params.append('StartDate', startDate);
+                const endDate = endDateFilter.value;
+                if (endDate) params.append('EndDate', endDate);
+
+                const token = getSession('token');
+                if (!token) {
+                    // checkAuthTokenForPage sẽ xử lý redirect, ở đây chỉ dừng
+                    console.log("Không có token, không tải đơn hàng.");
+                    loadingOrdersElement.classList.add('hidden');
+                    noOrdersElement.innerHTML = '<p class="text-gray-600">Vui lòng <a href="/Customer/templates/login.html" class="text-indigo-600 hover:underline">đăng nhập</a> để xem đơn hàng.</p>';
+                    noOrdersElement.classList.remove('hidden');
+                    return;
+                }
+
+                const url = `${API_BASE_URL}/Orders/my-orders?${params.toString()}`;
+
+                try {
+                    const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                    loadingOrdersElement.classList.add('hidden');
+
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                            window.location.href = "/Customer/templates/login.html";
+                            return;
+                        }
+                        const errorText = await response.text();
+                        throw new Error(`Lỗi ${response.status}: ${errorText || "Không thể tải đơn hàng."}`);
+                    }
+                    const data = await response.json();
+
+                    if (data.items && data.items.length > 0) {
+                        renderOrderList(data.items);
+                        updatePaginationUI(data);
+                        paginationContainer.classList.remove('hidden');
+                    } else {
+                        noOrdersElement.classList.remove('hidden');
+                        paginationContainer.classList.add('hidden');
+                    }
+                    const mainContentElement = document.getElementById('mainContent');
+                    if (mainContentElement) {
+                        mainContentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+
+                } catch (error) {
+                    console.error('Lỗi khi tải đơn hàng của khách hàng:', error);
+                    orderListContainer.innerHTML = `<p class="text-red-500 text-center p-4 bg-red-100 rounded-md">${error.message}</p>`;
+                    loadingOrdersElement.classList.add('hidden');
+                    paginationContainer.classList.add('hidden');
+                }
+            }
+
+            function renderOrderList(orders) { // orders giờ là một mảng các OrderDto
+                orderListContainer.innerHTML = '';
+                orders.forEach(order => {
+                    const orderCard = document.createElement('div');
+                    orderCard.className = 'bg-white rounded-lg shadow-md mb-6 overflow-hidden'; // Thêm mb-6 và overflow-hidden
+
+                    const currentStatus = order.status;
+                    const statusClass = getStatusClass(currentStatus);
+                    console.log(order)
+                    // --- Phần Header của Card Đơn Hàng ---
+                    // Cố gắng lấy tên shop từ sản phẩm đầu tiên làm đại diện, hoặc hiển thị "Nhiều người bán"
+                    // Logic này cần được cải thiện nếu bạn muốn nhóm theo người bán một cách chính xác
+                    let representativeShopName = "ShopX Mall"; // Mặc định
+                    if (order.items && order.items.length > 0 && order.items[0].shopName && order.items[0].shopName !== "N/A") {
+                        // Kiểm tra xem tất cả sản phẩm có cùng shopName không
+                        const allSameShop = order.items.every(item => item.shopName === order.items[0].shopName);
+                        if (allSameShop) {
+                            representativeShopName = order.items[0].shopName;
+                        } else {
+                            representativeShopName = "Nhiều người bán"; // Hoặc không hiển thị gì cả
+                        }
+                    }
+
+                    let orderHeaderHTML = `
+                        <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+                            <div class="flex items-center">
+                                <i class="fas fa-store text-indigo-600 mr-2"></i> <!-- Icon shop -->
+                                <span class="font-semibold text-gray-700 text-sm">${representativeShopName}</span>
+                                <!-- Nút Chat và Xem Shop có thể thêm sau nếu có API/link -->
+                            </div>
+                            <div class="text-xs font-medium uppercase ${statusClass === 'status-da-giao' ? 'text-green-600' : (statusClass === 'status-da-huy' ? 'text-red-600' : 'text-orange-500')}">
+                                ${currentStatus}
+                            </div>
+                        </div>
+                    `;
+
+                    // --- Phần Danh sách Sản phẩm ---
+                    let itemsHtml = '';
+                    if (order.items && order.items.length > 0) {
+                        order.items.forEach(item => {
+                            // Giả sử chưa có thông tin phân loại hàng, chỉ có số lượng
+                            // Giá gốc và giá bán có thể cần thêm trường vào OrderDetailDto nếu API hỗ trợ
+                            // Hiện tại chỉ có unitPrice (là giá bán)
+                            itemsHtml += `
+                                <div class="flex items-start p-4 border-b border-gray-100 last:border-b-0">
+                                    <img src="${getImageUrl(item.productImageURL)}" alt="${item.productName}" class="w-16 h-16 object-cover rounded mr-4 flex-shrink-0">
+                                    <div class="flex-grow">
+                                        <a href="/Customer/templates/product-detail.html?productId=${item.productID}" class="text-lg text-gray-800 px-1 mb-1 leading-tight hover:bg-sky-200 rounded-full">${item.productName}</a>
+                                        <p class="text-sm text-gray-500">Phân loại hàng: ${item.categoryName}</p>
+                                        <p class="text-xs text-gray-500">Số lượng: x${item.quantity}</p>
+                                        ${item.shopName && item.shopName !== "N/A" && representativeShopName === "Nhiều người bán" ? `<p class="text-xs text-gray-500">Shop: ${item.shopName}</p>` : ''}
+                                    </div>
+                                    <div class="text-sm text-right ml-4 flex-shrink-0">
+                                        <span class="text-indigo-600 font-medium">${formatCurrency(item.unitPrice * item.quantity)}</span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        itemsHtml = '<p class="p-4 text-sm text-gray-500">Không có sản phẩm trong đơn hàng này.</p>';
+                    }
+
+                    // --- Phần Tổng tiền và Nút Hành động ---
+                    let orderFooterHTML = `
+                        <div class="p-4 bg-gray-50">
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-sm text-gray-600 mr-2">${date(order.orderDate)}</span>
+                                <div>
+                                    <span class="text-sm text-gray-600 mr-2">Thành tiền:</span>
+                                    <span class="text-xl font-bold text-red-500">${formatCurrency(order.totalPayment)}</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col sm:flex-row justify-end items-center gap-2">
+                                <!-- Nút yêu cầu trả hàng/ hoàn tiền: chỉ hiển thị khi Đã giao và chưa yêu cầu trả hàng/ hoàn tiền (cần thêm logic/flag) -->
+                                ${order.status === ORDER_STATUSES.DA_GIAO && order?.orderDate && getDateDifference(order.orderDate) < 3 ? `
+                                    <button onclick="customerRequestReturn(${order.orderID})" class="customer-return-request-btn w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-sm text-sm font-medium transition-colors">
+                                        Yêu cầu trả hàng/ hoàn tiền
+                                    </button>` : ''
+                        }
+                                <!-- Nút Mua lại: có thể dẫn đến trang sản phẩm hoặc thêm lại vào giỏ (cần logic phức tạp) -->
+                                <button onclick="window.rebuyOrder(${order.orderID})" class="w-full sm:w-auto bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded-sm text-sm font-medium transition-colors">
+                                    Mua Lại
+                                </button>
+                                <a href="/Customer/templates/order-detail.html?id=${order.orderID}" 
+                                   class="w-full sm:w-auto text-center bg-white hover:bg-gray-100 text-indigo-600 border border-indigo-300 px-4 py-2 rounded-sm text-sm font-medium transition-colors">
+                                   Xem Chi Tiết Đơn
+                                </a>
+                            </div>
+                        </div>
+                    `;
+
+                    orderCard.innerHTML = orderHeaderHTML + itemsHtml + orderFooterHTML;
+                    orderListContainer.appendChild(orderCard);
+                });
+            }
+
+            function updatePaginationUI(data) {
+                if (data && data.totalCount > 0) {
+                    paginationInfoElement.classList.remove('hidden');
+                    paginationContainer.classList.remove('hidden'); // Ensure pagination container is visible
+                    currentPageInfoElement.textContent = data.pageNumber;
+                    totalPagesInfoElement.textContent = data.totalPages;
+                    totalItemsInfoElement.textContent = data.totalCount;
+                    pageInput.value = data.pageNumber;
+                    pageInput.max = data.totalPages;
+
+                    prevPageBtn.disabled = !data.hasPreviousPage;
+                    nextPageBtn.disabled = !data.hasNextPage;
+                    goToPageBtn.disabled = (data.totalPages <= 1);
+                } else {
+                    paginationInfoElement.classList.add('hidden');
+                    paginationContainer.classList.add('hidden'); // Hide if no data
+                    currentPageInfoElement.textContent = '0';
+                    totalPagesInfoElement.textContent = '0';
+                    totalItemsInfoElement.textContent = '0';
+                    pageInput.value = '1';
+                    pageInput.max = '1';
+                    [prevPageBtn, nextPageBtn, goToPageBtn].forEach(btn => btn.disabled = true);
+                }
+            }
+
+            filterForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                fetchCustomerOrders(1);
+            });
+
+            prevPageBtn.addEventListener('click', () => {
+                if (currentPage > 1) fetchCustomerOrders(currentPage - 1);
+            });
+            nextPageBtn.addEventListener('click', () => {
+                const totalPages = parseInt(totalPagesInfoElement.textContent) || 1;
+                if (currentPage < totalPages) fetchCustomerOrders(currentPage + 1);
+            });
+            goToPageBtn.addEventListener('click', () => {
+                const targetPage = parseInt(pageInput.value);
+                const totalPages = parseInt(totalPagesInfoElement.textContent) || 1;
+                if (targetPage >= 1 && targetPage <= totalPages && targetPage !== currentPage) {
+                    fetchCustomerOrders(targetPage);
+                } else if (targetPage !== currentPage) {
+                    alert(`Vui lòng nhập số trang hợp lệ từ 1 đến ${totalPages}.`);
+                    pageInput.value = currentPage;
+                }
+            });
+            pageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    goToPageBtn.click();
+                }
+            });
+
+            // Initial Load
+            if (checkAuthTokenForPage()) { // Hàm này đã có trong index.js
+                populateStatusFilter();
+                fetchCustomerOrders(currentPage);
+            } else {
+                loadingOrdersElement.classList.add('hidden');
+                noOrdersElement.innerHTML = '<p class="text-gray-600">Vui lòng <a href="/Customer/templates/login.html" class="text-indigo-600 hover:underline">đăng nhập</a> để xem đơn hàng.</p>';
+                noOrdersElement.classList.remove('hidden');
+                paginationContainer.classList.add('hidden');
+            }
+        }
+
+        // Đợi cho đến khi các script khác (index.js, components.js) có thể đã chạy xong
+        // và DOMContentLoaded của chúng đã hoàn tất.
+        // Một cách đơn giản là dùng setTimeout, nhưng không lý tưởng.
+        // Cách tốt hơn là components.js phát ra một sự kiện tùy chỉnh khi nó load xong.
+        // Hoặc, đảm bảo thứ tự load script là index.js -> components.js -> script của trang này.
+
+        // Vì components.js load bất đồng bộ, chúng ta cần đảm bảo nó hoàn thành
+        // trước khi gọi initializeCustomerOrdersPage.
+        // Cách đơn giản là chờ một chút.
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeCustomerOrdersPage);
+        } else {
+            // DOMContentLoaded đã xảy ra, nhưng components.js có thể vẫn đang load
+            // Nếu components.js không có cơ chế báo hiệu hoàn thành, dùng setTimeout
+            // là một giải pháp tạm thời.
+            setTimeout(initializeCustomerOrdersPage, 200); // Chờ 200ms để components load xong
+        }
+    </script>
+</body>
+
+</html>

@@ -44,11 +44,22 @@ namespace ShopxEX1.Services.Implementations
             return user?.IsInRole("Admin") ?? false;
         }
 
-        public async Task<PagedResult<ProductSummaryDto>> GetProductsAsync(ProductFilterDto? filter, int pageNumber, int pageSize)
+        public async Task<PagedResult<ProductSummaryDto>> GetProductsAsync(ProductFilterDto? filter, int pageNumber, int pageSize, bool customerPage = false)
         {
-            IQueryable<Product> query = _context.Products
-                              .Include(p => p.Category)
-                              .Include(p => p.Seller);
+            IQueryable<Product> query = null;
+            if (customerPage)
+            {
+                query = _context.Products
+                                  .Include(p => p.Category)
+                                  .Include(p => p.Seller)
+                                  .Where(p => p.IsActive == true);
+            }                   
+            else
+            {
+                query = _context.Products
+                                  .Include(p => p.Category)
+                                  .Include(p => p.Seller);
+            }
 
             if (!string.IsNullOrWhiteSpace(filter?.SearchTerm))
             {
@@ -119,7 +130,6 @@ namespace ShopxEX1.Services.Implementations
             var productDtos = _mapper.Map<IEnumerable<ProductSummaryDto>>(items);
             return new PagedResult<ProductSummaryDto>(productDtos, pageNumber, pageSize, totalCount);
         }
-
         public async Task<ProductDto?> GetProductByIdAsync(int productId)
         {
             var product = await _context.Products

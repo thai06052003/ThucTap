@@ -74,7 +74,12 @@ namespace ShopxEX1 // Namespace gốc
 
             // 2. DbContext Configuration
             builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("ShopX")));
+            {
+                options.UseSqlServer(builder.Configuration.GetConnectionString("ShopX"));
+                options.EnableSensitiveDataLogging();
+                options.LogTo(Console.WriteLine);
+
+            });
 
             // 3. AutoMapper Configuration
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
@@ -89,6 +94,7 @@ namespace ShopxEX1 // Namespace gốc
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<ICartService, CartService>();
+            builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<ISessionService, SessionService>();
 
             // 6. Controller Configuration

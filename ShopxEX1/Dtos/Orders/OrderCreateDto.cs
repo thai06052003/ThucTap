@@ -6,9 +6,12 @@ namespace ShopxEX1.Dtos.Orders
     public class OrderCreateDto
     {
         [Required][StringLength(255)] public string ShippingAddress { get; set; } = string.Empty;
-        [Required][StringLength(50)] public string PaymentMethod { get; set; } = string.Empty; // Cần cột này trong Order
+
         public string? DiscountCode { get; set; }
-        // UserID và CartID lấy từ context
+
+        [Required(ErrorMessage = "Vui lòng chọn ít nhất một sản phẩm để đặt hàng.")]
+        [MinLength(1, ErrorMessage = "Vui lòng chọn ít nhất một sản phẩm để đặt hàng.")]
+        public List<int> SelectedCartItemIds { get; set; } = new List<int>();
     }
 
 }

@@ -1,0 +1,40 @@
+<script>
+    console.log("HI")
+    function checkAuth() {
+        const token = sessionStorage.getItem('token')
+        if (token) {
+            try {
+                const payloadBase64 = token.split('.')[1];
+                if (!payloadBase64) throw new Error('Định dạng token không hợp lệ');
+                let payloadBase64Standard = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+                const padding = payloadBase64Standard.length % 4;
+                if (padding) payloadBase64Standard += '='.repeat(4 - padding);
+                const payload = JSON.parse(atob(payloadBase64Standard));
+
+                const now = Date.now() / 1000;
+                const bufferTime = 60; // Bộ đệm 60 giây
+
+                if (payload.exp && now > (payload.exp - bufferTime)) {
+                    throw new Error('Token đã hết hạn');
+                }
+                if (payload.nbf && now < payload.nbf) {
+                    throw new Error('Token chưa hợp lệ');
+                }
+                window.location.href = '/Customer/templates/index.html'
+            } catch (error) {
+                console.error('Lỗi xác thực token:', error.message);
+                sessionStorage.clear();
+                if (!isLoginPage && !isRegisterPage) {
+                    alert("Bạn cần phai đăng nhập!")
+                    window.location.href = "/Customer/templates/login.html"; // Điều chỉnh đường dẫn
+                }
+                return false; // Chưa xác thực
+            }
+        }
+        else {
+            console.log('Đang chuyển hướng đến trang đăng nhập')
+            window.location.href = '/Customer/templates/login.html'
+        }
+    }
+    checkAuth()
+</script>

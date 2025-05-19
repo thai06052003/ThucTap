@@ -6,6 +6,7 @@
         public int OrderID { get; set; }
         public DateTime? OrderDate { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal TotalPayment { get; set; }
         public string Status { get; set; } = string.Empty;
         public int NumberOfItems { get; set; } // Tính toán
         public string? CustomerName { get; set; } // Tên khách hàng (cho Seller/Admin)

@@ -85,6 +85,19 @@ function getImageUrl(apiImageUrl) {
 window.getImageUrl = getImageUrl;
 
 /**
+ * Chuẩn hóa lại kiểu hiển thị ngày/tháng/năm
+ * @param {string} apiImageUrl - URL hình ảnh từ API.
+ * @returns {string} URL hình ảnh hợp lệ hoặc ảnh giữ chỗ.
+ */
+function formatDate(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+window.formatDate = formatDate;
+
+/**
  * Đặt một giá trị vào sessionStorage.
  * @param {string} key - Khóa.
  * @param {string} value - Giá trị.
@@ -97,6 +110,28 @@ function setSession(key, value) {
     }
 }
 window.setSession = setSession;
+
+// Hàm định dạng hiển thị ngày/tháng/năm
+function date(dateTime) {
+    const dateTimeString = dateTime;
+    const date = new Date(dateTimeString);
+
+    const year = date.getFullYear(); // 2025
+    const month = date.getMonth() + 1; // 5 (Cộng thêm 1 vì tháng trong JS bắt đầu từ 0)
+    const day = date.getDate(); // 19
+
+    const formattedDate = `${day.toString().padStart(2, '0')}-${month.toString().padStart(2, '0')}-${year}`;
+    return formattedDate
+}
+
+// Hàm so sánh thời gian (return: ngày)
+function getDateDifference(date) {
+    const currentDate = new Date()
+    date = new Date(date)
+    return (currentDate - date) / (1000 * 60 * 60 * 24)
+}
+
+window.date = date;
 
 /**
  * Lấy một giá trị từ sessionStorage.
@@ -203,6 +238,26 @@ function initializeHeaderFunctionality() {
         }
     } else {
         // console.warn("Phần tử với ID 'role-specific-link-container' không tìm thấy trong header.");
+    }
+
+    // 3. Setup Header Search Form
+    const headerSearchForm = document.getElementById('headerSearchForm');
+    const headerSearchInput = document.getElementById('headerSearchInput');
+
+    if (headerSearchForm && headerSearchInput) {
+        headerSearchForm.addEventListener('submit', function (event) {
+            event.preventDefault(); // Ngăn form submit theo cách truyền thống
+            const searchTerm = headerSearchInput.value.trim();
+            if (searchTerm) {
+                // Chuyển hướng đến trang kết quả tìm kiếm với searchTerm làm query parameter
+                window.location.href = `/Customer/templates/search-results.html?searchTerm=${encodeURIComponent(searchTerm)}`;
+            } else {
+                // Có thể thông báo người dùng nhập từ khóa hoặc không làm gì cả
+                // headerSearchInput.focus(); // Ví dụ: focus lại vào ô tìm kiếm
+            }
+        });
+    } else {
+        console.warn("Header search form or input not found.");
     }
 }
 window.initializeHeaderFunctionality = initializeHeaderFunctionality;
@@ -352,23 +407,6 @@ window.updateCartDropdown = updateCartDropdown;
    ============================== */
 document.addEventListener('DOMContentLoaded', function () {
     console.log("DOMContentLoaded chung đã kích hoạt.");
-
-    // Kiểm tra token xác thực cho các trang yêu cầu đăng nhập và không tải header động
-    // Đối với các trang dùng ComponentLoader, init của header sẽ xử lý các khía cạnh xác thực.
-    // Đây là giải pháp dự phòng hoặc cho các trang không có header chuẩn.
-    // const noHeaderPages = ['/login.html', '/register.html']; // Ví dụ
-    // if (!noHeaderPages.some(page => window.location.pathname.includes(page))) {
-    //    if (typeof checkAuthTokenForPage === 'function') checkAuthTokenForPage();
-    // }
-
-    // Khởi tạo các phần tử UI hoặc trình lắng nghe sự kiện không thuộc Alpine, không dành riêng cho header ở đây
-    // ví dụ: cho các dropdown đơn giản không được quản lý bởi Alpine, intersection observer cho hiệu ứng mờ toàn cục, v.v.
-
-    // Ví dụ: Gắn sự kiện đăng xuất vào một nút nếu nó tồn tại ngoài ngữ cảnh Alpine (không khả thi với thiết lập hiện tại)
-    // const globalLogoutButton = document.getElementById('someGlobalLogoutButton');
-    // if (globalLogoutButton && typeof window.handleLogout === 'function') {
-    //     globalLogoutButton.addEventListener('click', window.handleLogout);
-    // }
 });
 
 /**
@@ -412,6 +450,7 @@ function checkAuthTokenForPage() {
             console.error('Lỗi xác thực token:', error.message);
             sessionStorage.clear();
             if (!isLoginPage && !isRegisterPage) {
+                alert("Bạn cần phai đăng nhập!")
                 window.location.href = "/Customer/templates/login.html"; // Điều chỉnh đường dẫn
             }
             return false; // Chưa xác thực
@@ -420,6 +459,7 @@ function checkAuthTokenForPage() {
     return isLoginPage || isRegisterPage; // Cho phép truy cập đăng nhập/đăng ký nếu không có token
 }
 window.checkAuthTokenForPage = checkAuthTokenForPage; // Đưa ra để gọi trực tiếp nếu cần
+checkAuthTokenForPage()
 
 function getRoleFromToken() {
     const token = sessionStorage.getItem('token');

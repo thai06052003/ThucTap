@@ -6,7 +6,11 @@
         public int OrderDetailID { get; set; }
         public int ProductID { get; set; }
         public string ProductName { get; set; } = string.Empty; // Cần map từ Product
+        public int CategoryID { get; set; }
+        public string CategoryName { get; set; } = string.Empty; // Cần map từ Product
         public string? ProductImageURL { get; set; } // Cần map từ Product
+        public int SellerID { get; set; }
+        public string ShopName { get; set; } = string.Empty; // Cần map từ Product -> seller
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; } // Giá lúc đặt hàng
         public decimal LineTotal => UnitPrice * Quantity;

@@ -4,9 +4,10 @@
     {
         public int OrderID { get; set; }
         public int UserID { get; set; } // FK (NOT NULL trong SQL mới)
-        public int DiscountID { get; set; }
+        public int? DiscountID { get; set; }
         public DateTime OrderDate { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal TotalPayment { get; set; }
         public string Status { get; set; } = string.Empty;
         public string? DiscountCode { get; set; } // Cho phép NULL
         public string ShippingAddress { get; set; } = string.Empty;

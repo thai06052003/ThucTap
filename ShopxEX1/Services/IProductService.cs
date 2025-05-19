@@ -14,7 +14,7 @@ namespace ShopxEX1.Services
         /// <param name="pageNumber">Số trang hiện tại.</param>
         /// <param name="pageSize">Số lượng mục trên mỗi trang.</param>
         /// <returns>Kết quả phân trang chứa danh sách ProductSummaryDto.</returns>
-        Task<PagedResult<ProductSummaryDto>> GetProductsAsync(ProductFilterDto? filter, int pageNumber, int pageSize);
+        Task<PagedResult<ProductSummaryDto>> GetProductsAsync(ProductFilterDto? filter, int pageNumber, int pageSize, bool customerPage = false);
 
         /// <summary>
         /// Lấy danh sách sản phẩm theo seller có phân trang và lọc.

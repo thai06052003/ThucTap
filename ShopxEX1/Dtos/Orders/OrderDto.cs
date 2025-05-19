@@ -8,10 +8,11 @@ namespace ShopxEX1.Dtos.Orders
         public int OrderID { get; set; }
         public DateTime? OrderDate { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal TotalPayment { get; set; }
         public string Status { get; set; } = string.Empty;
         public string ShippingAddress { get; set; } = string.Empty;
         public string? DiscountCode { get; set; }
-        public string PaymentMethod { get; set; } = string.Empty; // Lấy từ Order Model đã sửa
+        
         public List<OrderDetailDto> Items { get; set; } = new List<OrderDetailDto>();
         public UserDto? CustomerInfo { get; set; }
     }
