@@ -21,5 +21,7 @@ namespace ShopxEX1.Dtos.Auth
         public string? Birthday { get; set; }
         public bool? Gender { get; set; }
         public string? Address { get; set; }
+         public string Role { get; set; }
+        public string ShopName { get; set; }
     }
 } 

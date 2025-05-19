@@ -8,6 +8,8 @@ namespace ShopxEX1.Dtos.SellerCategory
     /// </summary>
     public class SellerCategoryCreateDto
     {
+        [Required(ErrorMessage = "Seller ID is required. This should typically be derived from the authenticated user.")]
+        public int SellerID { get; set; }
         [Required(ErrorMessage = "Tên danh mục là bắt buộc")]
         [StringLength(100)]
         public string CategoryName { get; set; } = string.Empty;

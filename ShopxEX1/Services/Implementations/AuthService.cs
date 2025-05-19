@@ -12,6 +12,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ShopxEX1.Services.Implementations
 {
@@ -34,6 +35,7 @@ namespace ShopxEX1.Services.Implementations
         public async Task<AuthResultDto> LoginAsync(LoginDto loginDto)
         {
             var user = await _context.Users
+                                    .Include(u => u.SellerProfile) // Nếu cần SellerProfile
                                      .AsNoTracking() // Có thể dùng AsNoTracking vì chỉ đọc để tạo token
                                      .FirstOrDefaultAsync(u => u.Email == loginDto.Email);
 
@@ -51,10 +53,12 @@ namespace ShopxEX1.Services.Implementations
                 Success = true,
                 Token = accessTokenResult.Token,
                 Expiration = accessTokenResult.Expiration,
-                // RefreshToken = null, // Loại bỏ trường này khỏi DTO
-                User = _mapper.Map<UserDto>(user),
+                User = userDto,
                 Message = "Đăng nhập thành công."
             };
+
+
+            return result;
         }
 
         public async Task<AuthResultDto> SocialLoginAsync(SocialLoginRequestDto socialLoginDto)
@@ -106,7 +110,7 @@ namespace ShopxEX1.Services.Implementations
             {
                 await _context.SaveChangesAsync();
                 var accessTokenResult = GenerateJwtToken(user);
-
+    
                 return new AuthResultDto
                 {
                     Success = true,
@@ -292,13 +296,14 @@ namespace ShopxEX1.Services.Implementations
             throw new NotImplementedException();
         }
 
-       public async Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto updateDto)
+public async Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto updateDto)
 {
     try
     {
         Console.WriteLine($"Bắt đầu cập nhật thông tin cho user {userId}");
         
         var user = await _context.Users
+            .Include(u => u.SellerProfile)
             .AsTracking()
             .FirstOrDefaultAsync(u => u.UserID == userId);
 
@@ -308,29 +313,44 @@ namespace ShopxEX1.Services.Implementations
             return new AuthResultDto { Success = false, Message = "Không tìm thấy người dùng" };
         }
 
-        Console.WriteLine($"Thông tin user trước khi cập nhật: {JsonSerializer.Serialize(user)}");
+        // Configure JsonSerializerOptions to handle circular references
+        var jsonOptions = new JsonSerializerOptions
+        {
+            ReferenceHandler = ReferenceHandler.Preserve,
+            WriteIndented = true // Optional, for readable output
+        };
+
+        Console.WriteLine($"Thông tin user trước khi cập nhật: {JsonSerializer.Serialize(user, jsonOptions)}");
 
         // Kiểm tra email mới có bị trùng không
         if (!string.IsNullOrEmpty(updateDto.Email) && updateDto.Email != user.Email)
         {
             Console.WriteLine($"Kiểm tra email mới: {updateDto.Email}");
+            if (!IsValidEmail(updateDto.Email))
+            {
+                return new AuthResultDto { Success = false, Message = "Định dạng email không hợp lệ" };
+            }
             var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == updateDto.Email);
             if (existingUser != null)
             {
                 Console.WriteLine($"Email {updateDto.Email} đã tồn tại");
-                return new AuthResultDto { Success = false, Message = "Email already exists." };
+                return new AuthResultDto { Success = false, Message = "Email đã tồn tại" };
             }
             user.Email = updateDto.Email;
         }
 
-        // Cập nhật thông tin
-        Console.WriteLine($"Cập nhật thông tin: {JsonSerializer.Serialize(updateDto)}");
+        // Cập nhật thông tin cá nhân
+        Console.WriteLine($"Cập nhật thông tin: {JsonSerializer.Serialize(updateDto, jsonOptions)}");
         user.FullName = updateDto.FullName;
         if (!string.IsNullOrEmpty(updateDto.Phone)) user.Phone = updateDto.Phone;
         if (!string.IsNullOrEmpty(updateDto.Birthday)) 
         {
             if (DateTime.TryParse(updateDto.Birthday, out DateTime birthday))
             {
+                if (birthday > DateTime.UtcNow)
+                {
+                    return new AuthResultDto { Success = false, Message = "Ngày sinh không được là ngày trong tương lai" };
+                }
                 user.Birthday = birthday;
                 Console.WriteLine($"Đã cập nhật ngày sinh: {birthday}");
             }
@@ -342,32 +362,194 @@ namespace ShopxEX1.Services.Implementations
         }
         if (updateDto.Gender.HasValue) user.Gender = updateDto.Gender.Value;
         if (!string.IsNullOrEmpty(updateDto.Address)) user.Address = updateDto.Address;
-        
-        // Thêm cập nhật avatar
         if (!string.IsNullOrEmpty(updateDto.Avatar)) 
         {
             user.Avatar = updateDto.Avatar;
             Console.WriteLine($"Đã cập nhật avatar: {updateDto.Avatar}");
+        }        // Xử lý vai trò
+        if (!string.IsNullOrEmpty(updateDto.Role))
+        {
+            // Chuẩn hóa role: chuyển đổi thành chữ hoa đầu tiên
+            updateDto.Role = char.ToUpper(updateDto.Role[0]) + updateDto.Role.Substring(1).ToLower();
+            Console.WriteLine($"Role sau khi chuẩn hóa: {updateDto.Role}");
+            
+            string oldRole = user.Role;            if (updateDto.Role == "Seller")
+            {                if (user.Role != "Seller")
+                {
+                    // Cập nhật role thành Seller
+                    user.Role = "Seller";
+                    _context.Entry(user).Property(u => u.Role).IsModified = true;
+                    
+                    // Đồng thời đánh dấu toàn bộ entity để đảm bảo các thay đổi được theo dõi
+                    _context.Entry(user).State = EntityState.Modified;
+                    
+                    Console.WriteLine($"Đã cập nhật vai trò thành Seller cho user {userId}");
+                    
+                    // Kiểm tra xem đã từng có SellerProfile chưa (bất kể IsActive=0 hay 1)
+                    var existingSellerProfile = await _context.Sellers
+                        .FirstOrDefaultAsync(s => s.UserID == userId);
+                    
+                    if (existingSellerProfile != null)
+                    {
+                        // Đã từng có SellerProfile, kích hoạt lại
+                        Console.WriteLine($"Kích hoạt lại SellerProfile với ID: {existingSellerProfile.SellerID}");
+                        
+                        // Cập nhật trong entity
+                        existingSellerProfile.IsActive = true;
+                        _context.Entry(existingSellerProfile).Property(s => s.IsActive).IsModified = true;
+                        
+                        if (!string.IsNullOrEmpty(updateDto.ShopName))
+                        {
+                            existingSellerProfile.ShopName = updateDto.ShopName;
+                            _context.Entry(existingSellerProfile).Property(s => s.ShopName).IsModified = true;
+                        }
+                          // Cập nhật trực tiếp qua SQL để đảm bảo
+                        string updateSellerSql = $"UPDATE Sellers SET IsActive = 1";
+                        
+                        if (!string.IsNullOrEmpty(updateDto.ShopName))
+                        {
+                            updateSellerSql += $", ShopName = '{updateDto.ShopName}'";
+                        }
+                        
+                        updateSellerSql += $" WHERE UserID = {userId}";
+                        
+                        await _context.Database.ExecuteSqlRawAsync(updateSellerSql);
+                        Console.WriteLine($"Đã cập nhật IsActive = 1 cho SellerProfile hiện có");
+                    }
+                    else if (user.SellerProfile == null)
+                    {
+                        // Tạo mới SellerProfile vì chưa từng có
+                        Console.WriteLine($"Tạo mới SellerProfile cho user {userId}");
+                        
+                        // Sử dụng DbSet để tạo mới SellerProfile
+                        var shopName = !string.IsNullOrEmpty(updateDto.ShopName) ? updateDto.ShopName : $"{user.FullName}'s Shop";
+                          // Sử dụng câu lệnh SQL trực tiếp để tạo SellerProfile
+                        string sql = $@"
+                            INSERT INTO Sellers (UserID, ShopName, CreatedAt, IsActive) 
+                            VALUES ({userId}, '{shopName}', '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")}', 1);
+                            SELECT SCOPE_IDENTITY();";
+                            
+                        var sellerId = await _context.Database.ExecuteSqlRawAsync(sql);
+                        Console.WriteLine($"Đã tạo mới SellerProfile với ID: {sellerId}, ShopName: {shopName}");
+                        
+                        // Refresh entity để lấy SellerProfile mới tạo
+                        await _context.Entry(user).ReloadAsync();
+                    }                    else if (!string.IsNullOrEmpty(updateDto.ShopName))
+                    {
+                        user.SellerProfile.ShopName = updateDto.ShopName;
+                        Console.WriteLine($"Đã cập nhật ShopName: {updateDto.ShopName}");
+                    }
+                    else
+                    {
+                        // SellerProfile đã tồn tại, chỉ cập nhật IsActive = 1
+                        user.SellerProfile.IsActive = true;
+                        _context.Entry(user.SellerProfile).State = EntityState.Modified;
+                          // Đảm bảo IsActive được cập nhật bằng SQL trực tiếp
+                        string updateSellerSql = $"UPDATE Sellers SET IsActive = 1 WHERE UserID = {userId}";
+                        await _context.Database.ExecuteSqlRawAsync(updateSellerSql);
+                        Console.WriteLine($"Đã cập nhật IsActive = 1 cho SellerProfile hiện có");
+                    }
+                }                else if (!string.IsNullOrEmpty(updateDto.ShopName))
+                {
+                    // Chỉ cập nhật ShopName nếu người dùng đã là Seller và có SellerProfile
+                    var existingSellerProfile = await _context.Sellers
+                        .FirstOrDefaultAsync(s => s.UserID == userId);
+                        
+                    if (existingSellerProfile != null) 
+                    {
+                        // Cập nhật trong entity
+                        existingSellerProfile.ShopName = updateDto.ShopName;
+                        existingSellerProfile.IsActive = true; // Đảm bảo là active
+                        
+                        _context.Entry(existingSellerProfile).Property(s => s.ShopName).IsModified = true;
+                        _context.Entry(existingSellerProfile).Property(s => s.IsActive).IsModified = true;
+                          // Cập nhật SQL trực tiếp
+                        string updateShopNameSql = $"UPDATE Sellers SET ShopName = '{updateDto.ShopName}', IsActive = 1 WHERE UserID = {userId}";
+                        await _context.Database.ExecuteSqlRawAsync(updateShopNameSql);
+                        
+                        Console.WriteLine($"Đã cập nhật ShopName: {updateDto.ShopName} và IsActive = 1");
+                    }
+                }
+            }            else if (updateDto.Role == "Customer")
+            {
+                // Cập nhật role thành Customer
+                user.Role = "Customer";
+                _context.Entry(user).Property(u => u.Role).IsModified = true;
+                _context.Entry(user).State = EntityState.Modified;
+                Console.WriteLine($"Đã cập nhật vai trò thành Customer cho user {userId}");
+                
+                // Xử lý SellerProfile khi user chuyển từ Seller về Customer
+                // Truy vấn trực tiếp để lấy SellerProfile hiện tại (kể cả inactive)
+                var existingSellerProfile = await _context.Sellers
+                    .FirstOrDefaultAsync(s => s.UserID == userId);
+                
+                if (existingSellerProfile != null)
+                {
+                    // Có SellerProfile - cập nhật IsActive = 0 thay vì xóa
+                    Console.WriteLine($"Tìm thấy SellerProfile với ID {existingSellerProfile.SellerID}, đặt IsActive = 0");
+                      existingSellerProfile.IsActive = false;
+                    _context.Entry(existingSellerProfile).Property(s => s.IsActive).IsModified = true;
+                    
+                    // Thực hiện cập nhật SQL trực tiếp để đảm bảo
+                    string updateSellerSql = $"UPDATE Sellers SET IsActive = 0 WHERE UserID = {userId}";
+                    await _context.Database.ExecuteSqlRawAsync(updateSellerSql);
+                    Console.WriteLine($"Đã thực hiện SQL để cập nhật IsActive = 0 cho SellerProfile");
+                    
+                    // Cập nhật biến user.SellerProfile để phản ánh thay đổi nếu có
+                    if (user.SellerProfile != null)
+                    {
+                        user.SellerProfile.IsActive = false;
+                    }
+                }
+                
+                // Đảm bảo cập nhật mà không bị ảnh hưởng bởi tracking của EF Core
+                await _context.SaveChangesAsync();
+                
+                // Lưu role Customer trực tiếp qua SQL để đảm bảo
+                string updateRoleSql = $"UPDATE Users SET Role = 'Customer' WHERE UserID = {userId}";
+                await _context.Database.ExecuteSqlRawAsync(updateRoleSql);
+                Console.WriteLine($"Đã cập nhật trực tiếp Role = Customer qua SQL");
+            }
+              // Thử cập nhật Role ngay lập tức bằng SQL nếu có thay đổi
+            if (oldRole != user.Role)
+            {
+                // Đảm bảo sử dụng giá trị đã chuẩn hóa
+                string updateRoleSql = $"UPDATE Users SET Role = '{user.Role}' WHERE UserID = {userId}";
+                var roleUpdateResult = await _context.Database.ExecuteSqlRawAsync(updateRoleSql);
+                Console.WriteLine($"Cập nhật trực tiếp Role qua SQL: {roleUpdateResult} bản ghi bị ảnh hưởng");
+            }
         }
 
-        Console.WriteLine($"Thông tin user sau khi cập nhật: {JsonSerializer.Serialize(user)}");
-
-        // Đánh dấu entity đã thay đổi
-        _context.Entry(user).State = EntityState.Modified;
-
-        try
+        Console.WriteLine($"Thông tin user sau khi cập nhật: {JsonSerializer.Serialize(user, jsonOptions)}");        try
         {
-            // Lưu thay đổi và kiểm tra kết quả
+            // Trước khi lưu, kiểm tra lại trạng thái của entity
+            Console.WriteLine($"Trước khi SaveChanges - Trạng thái entity: {_context.Entry(user).State}");
+            Console.WriteLine($"IsModified cho Role: {_context.Entry(user).Property(u => u.Role).IsModified}");
+            Console.WriteLine($"Giá trị Role hiện tại: {user.Role}");
+            
+            // Thêm khối try-catch cho việc update trực tiếp Role nếu SaveChanges không thành công
             var result = await _context.SaveChangesAsync();
-            Console.WriteLine($"Lưu thay đổi thành công, số bản ghi bị ảnh hưởng: {result}");
-
-            if (result <= 0)
+            Console.WriteLine($"Lưu thay đổi thành công, số bản ghi bị ảnh hưởng: {result}");            // Kiểm tra xem Role đã được cập nhật chưa
+            var updatedUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserID == userId);
+            Console.WriteLine($"Sau khi SaveChanges - Giá trị Role trong database: {updatedUser?.Role}");
+            
+            if ((result <= 0 || (updatedUser != null && updatedUser.Role != updateDto.Role)) && !string.IsNullOrEmpty(updateDto.Role))
             {
-                Console.WriteLine("Không có thay đổi nào được lưu vào database");
-                return new AuthResultDto { Success = false, Message = "Không thể lưu thay đổi vào database" };
+                Console.WriteLine("Role chưa được cập nhật đúng, thử sử dụng SQL trực tiếp");
+                // Sử dụng SQL trực tiếp nếu EntityFramework không thành công hoặc không cập nhật đúng Role
+                // Đảm bảo sử dụng giá trị chuẩn hóa cho update SQL
+                string updateRoleSql = $"UPDATE Users SET Role = '{updateDto.Role}' WHERE UserID = {userId}";
+                result = await _context.Database.ExecuteSqlRawAsync(updateRoleSql);
+                Console.WriteLine($"Kết quả SQL update trực tiếp: {result}");
+                
+                if (result <= 0)
+                {
+                    Console.WriteLine("Không có thay đổi nào được lưu vào database");
+                    return new AuthResultDto { Success = false, Message = "Không thể lưu thay đổi vào database" };
+                }
             }
 
-            // Refresh entity từ database để đảm bảo dữ liệu mới nhất
+            // Reload để lấy dữ liệu mới nhất từ DB
             await _context.Entry(user).ReloadAsync();
         }
         catch (Exception ex)
@@ -375,17 +557,74 @@ namespace ShopxEX1.Services.Implementations
             Console.WriteLine($"Lỗi khi lưu thay đổi: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
             throw;
-        }
-
-        // Map user to UserDto
+        }        // Lấy dữ liệu mới nhất từ database sau khi đã lưu mọi thay đổi
+        await _context.Entry(user).ReloadAsync();
+        
+        // Truy vấn lại từ database để chắc chắn có thông tin mới nhất
+        user = await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.UserID == userId);
+            
+        // Truy vấn trực tiếp Role từ database để đảm bảo lấy đúng giá trị hiện tại
+        var roleInDb = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.UserID == userId)
+            .Select(u => u.Role)
+            .FirstOrDefaultAsync();
+            
+        Console.WriteLine($"Role trong database sau khi reload: {roleInDb}");
+            
+        // Truy vấn trực tiếp SellerProfile từ database với điều kiện IsActive
+        var sellerProfile = await _context.Sellers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.UserID == userId);
+            
+        Console.WriteLine($"SellerProfile: {(sellerProfile != null ? $"ID={sellerProfile.SellerID}, IsActive={sellerProfile.IsActive}" : "không tồn tại")}");
+        
+        // Tạo DTO với thông tin chính xác từ database
         var userDto = _mapper.Map<UserDto>(user);
-        Console.WriteLine($"Đã map user sang DTO: {JsonSerializer.Serialize(userDto)}");
+        
+        // Đảm bảo gán đúng Role từ database
+        userDto.Role = roleInDb;
+        
+        // Chỉ thêm thông tin Seller nếu role là Seller VÀ có SellerProfile active
+        if (roleInDb == "Seller" && sellerProfile != null && sellerProfile.IsActive)
+        {
+            userDto.SellerID = sellerProfile.SellerID;
+            userDto.ShopName = sellerProfile.ShopName;
+            Console.WriteLine($"Role là Seller, có SellerProfile active với ID: {sellerProfile.SellerID}");
+        }
+        else
+        {
+            // Đảm bảo DTO không có thông tin seller
+            userDto.SellerID = 0;
+            userDto.ShopName = null;
+            Console.WriteLine($"Role là {roleInDb} hoặc SellerProfile không active, không gán thông tin seller");
+        }
+        
+        Console.WriteLine($"Đã map user sang DTO: {JsonSerializer.Serialize(userDto, jsonOptions)}");        // Tạo lại user object với dữ liệu mới nhất từ database
+        var freshUser = await _context.Users
+            .Include(u => u.SellerProfile)
+            .AsNoTracking() 
+            .FirstOrDefaultAsync(u => u.UserID == userId);
+            
+        // Tạo token mới với user có thông tin mới nhất
+        var newAccessTokenResult = GenerateJwtToken(freshUser);
+        
+        // Log thông tin để debug
+        Console.WriteLine($"Token mới được tạo với Role={freshUser.Role}");
+        
+        if (freshUser.Role == "Seller" && freshUser.SellerProfile != null && freshUser.SellerProfile.IsActive) {
+            Console.WriteLine($"Token mới chứa claim SellerId={freshUser.SellerProfile.SellerID}");
+        }
 
         return new AuthResultDto
         {
             Success = true,
             Message = "Cập nhật thông tin thành công",
-            User = userDto
+            User = userDto,
+            Token = newAccessTokenResult.Token,
+            Expiration = newAccessTokenResult.Expiration
         };
     }
     catch (Exception ex)
@@ -393,6 +632,20 @@ namespace ShopxEX1.Services.Implementations
         Console.WriteLine($"Lỗi UpdateProfile: {ex.Message}");
         Console.WriteLine($"Stack trace: {ex.StackTrace}");
         return new AuthResultDto { Success = false, Message = "Lỗi hệ thống khi cập nhật thông tin" };
+    }
+}
+
+// Hàm helper để kiểm tra định dạng email
+private bool IsValidEmail(string email)
+{
+    try
+    {
+        var addr = new System.Net.Mail.MailAddress(email);
+        return addr.Address == email;
+    }
+    catch
+    {
+        return false;
     }
 }
     }

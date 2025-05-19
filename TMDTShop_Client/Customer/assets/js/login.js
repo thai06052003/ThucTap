@@ -104,18 +104,61 @@ document.querySelector('#loginFormSubmit')?.addEventListener('submit', async (e)
     console.log('Login response data:', data);
     if (!response.ok) throw new Error(data.message || `Lỗi đăng nhập`);
 
+    // Log thông tin vai trò để debug
+    console.log('Role from API:', data.user?.role);
+    console.log('Full API response data:', JSON.stringify(data, null, 2));
+    
     // Lưu token và thông tin người dùng dưới dạng JSON
     sessionStorage.clear();
     sessionStorage.setItem('token', data.token);
-    sessionStorage.setItem('userData', JSON.stringify({
+    
+    // Đảm bảo vai trò và thông tin shop được lưu chính xác
+    let userRole = '';
+    let shopName = '';
+    
+    if (data.user) {
+        userRole = data.user.role || '';
+        if (data.user.shopName) {
+            shopName = data.user.shopName;
+        } else if (data.shopName) {
+            shopName = data.shopName;
+        }
+    } else if (data.role) {
+        userRole = data.role;
+        shopName = data.shopName || '';
+    }
+    
+    console.log('Determined role value to save:', userRole);
+    console.log('Determined shopName to save:', shopName);
+    
+    const userData = {
       fullName: data.user?.fullName || data.fullName || email,
       email: data.user?.email || email,
       phone: data.user?.phone || '',
       birthday: data.user?.birthday || '',
       gender: data.user?.gender,
       address: data.user?.address || '',
-      avatar: data.user?.avatar || ''
-    }));
+      avatar: data.user?.avatar || '',
+      role: userRole,
+      shopName: shopName
+    };
+    
+    console.log('Role being saved:', userData.role);
+    sessionStorage.setItem('userData', JSON.stringify(userData));
+    
+    // Nếu là seller, lấy thông tin shop nếu chưa có
+    if (userRole.toLowerCase() === 'seller' && (!shopName || shopName === '')) {
+      try {
+        // Sử dụng sellerUtils nếu đã tải
+        if (window.sellerUtils) {
+          await window.sellerUtils.ensureShopInfo();
+          console.log('Shop info updated by sellerUtils after login');
+        }
+      } catch (error) {
+        console.error('Error getting shop info:', error);
+      }
+    }
+    
     console.log('Token saved:', sessionStorage.getItem('token'));
     console.log('UserData saved:', sessionStorage.getItem('userData'));
 
@@ -198,38 +241,73 @@ async function handleSocialLogin(user) {
     return;
   }
 
-  const userData = {
+  // Đổi tên thành requestData để tránh xung đột
+  const requestData = {
     email: user.email,
     provider: provider,
     userId: user.uid,
     displayName: user.displayName || '',
     photoURL: user.photoURL || '',
-    phoneNumber: user.phoneNumber || ''
+    phoneNumber: user.phoneNumber || '',
+    role: user.role || '',
+    shopName: user.shopName || ''
   };
 
   try {
     const res = await fetch(`${API_BASE}/social-login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userData)
+      body: JSON.stringify(requestData)
     });
 
     const data = await res.json();
     console.log('Social login response data:', data);
     if (!res.ok) throw new Error(data.message || "Đăng nhập thất bại");
 
+    // Log thông tin vai trò để debug
+    console.log('Role from Social API:', data.user?.role || data.role);
+    console.log('Full Social API response data:', JSON.stringify(data, null, 2));
+    
     // Lưu token và thông tin người dùng dưới dạng JSON
     sessionStorage.clear();
     sessionStorage.setItem('token', data.token);
-    sessionStorage.setItem('userData', JSON.stringify({
+    
+    // Đảm bảo vai trò và thông tin shop được lưu chính xác
+    let userRole = '';
+    let shopName = '';
+    
+    if (data.user) {
+        userRole = data.user.role || '';
+        if (data.user.shopName) {
+            shopName = data.user.shopName;
+        } else if (data.shopName) {
+            shopName = data.shopName;
+        }
+    } else if (data.role) {
+        userRole = data.role;
+        shopName = data.shopName || '';
+    }
+    
+    console.log('Determined role value to save:', userRole);
+    console.log('Determined shopName to save:', shopName);
+    
+    // Biến này vẫn có thể giữ tên userData vì nó là biến mới
+    const userData = {
       fullName: data.user?.fullName || data.fullName || user.displayName || user.email,
       email: data.user?.email || user.email,
       phone: data.user?.phone || user.phoneNumber || '',
       birthday: data.user?.birthday || '',
       gender: data.user?.gender,
       address: data.user?.address || '',
-      avatar: data.user?.avatar || ''
-    }));
+      avatar: data.user?.avatar || '',
+      role: userRole,
+      shopName: shopName || ''
+    };
+    
+    // Lưu userData vào sessionStorage
+    sessionStorage.setItem('userData', JSON.stringify(userData));
+    
+    console.log('Social login - Role being saved:', userData.role);
     console.log('Token saved:', sessionStorage.getItem('token'));
     console.log('UserData saved:', sessionStorage.getItem('userData'));
 

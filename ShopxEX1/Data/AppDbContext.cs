@@ -39,7 +39,8 @@ namespace ShopxEX1.Data
                 entity.Property(e => e.IsActive).HasDefaultValue(true); // Giá trị mặc định là true
                 entity.Property(e => e.SocialProvider).HasMaxLength(50);
                 entity.Property(e => e.SocialID).HasMaxLength(255);
-                entity.Property(e => e.Role).IsRequired().HasMaxLength(50).HasDefaultValue("Customer"); // Giá trị mặc định là "Customer"
+                entity.Property(e => e.Role).IsRequired().HasMaxLength(50).ValueGeneratedNever();
+                // HasDefaultValue("Customer"); // Giá trị mặc định là "Customer"
 
                 // Các mối quan hệ được định nghĩa qua các thuộc tính điều hướng (navigation properties) bên dưới
             });

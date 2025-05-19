@@ -15,15 +15,36 @@
             width: 4rem;
             text-align: center;
             border: 1px solid #e5e7eb;
-            /* gray-300 */
+            border-radius: 0.25rem;
+            overflow: hidden;
+        }
+
+        .quantity-input {
+            width: 100%;
+            text-align: center;
+            border: none;
+            outline: none;
+            padding: 0.5rem 1.75rem;
+            /* Ẩn mũi tên lên xuống của input number */
+            -webkit-appearance: none;
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        /* Ẩn mũi tên trong input number cho các trình duyệt khác nhau */
+        .quantity-input::-webkit-outer-spin-button,
+        .quantity-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
 
         .quantity-btn {
-            border: 1px solid #e5e7eb;
-            /* gray-300 */
+            position: absolute;
+            top: 0;
+            bottom: 0;
             background-color: #f9fafb;
-            /* gray-50 */
-            padding: 0.5rem 0.75rem;
+            border: none;
+            width: 1.75rem;
             font-weight: bold;
             transition: background-color 0.15s ease-in-out;
         }

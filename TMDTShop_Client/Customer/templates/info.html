@@ -101,6 +101,23 @@
                                     </label>
                                 </div>
                             </div>
+                             <!-- Vai trò -->
+                             <div>
+                                <label class="block text-gray-700 font-medium mb-2">Vai trò</label>
+                                <div class="flex items-center space-x-4">
+                                    <select id="role" class="mt-1 p-2 w-full border rounded" disabled>
+                                        <option value="customer" >Customer</option>
+                                        <option value="seller">Seller</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Tên cửa hàng (hiển thị khi người dùng là Seller) -->
+                            <div id="shopNameContainer" class="hidden">
+                                <label for="shopName" class="block text-gray-700 font-medium mb-2">Tên cửa hàng</label>
+                                <input type="text" id="shopName" name="shopName" disabled
+                                    class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition disabled:bg-gray-100">
+                            </div>
                         </div>
                         <hr class="my-6 border-gray-200">
                         <h3 class="text-lg font-semibold mb-4">Địa chỉ</h3>
@@ -221,10 +238,33 @@
         </div>
     </main>
 
-    <!-- Scripts -->
+    <!-- Footer Container -->
+    <div id="footer-container"></div>
+    
+    <!-- JavaScript -->
+    <!-- Thêm script seller.js trước info.js -->
+    <script src="../assets/js/seller.js"></script>
     <script src="../assets/js/index.js"></script>
-    <script src="../assets/js/components.js"></script>
     <script src="../assets/js/info.js"></script>
+    <script src="../assets/js/components.js"></script>
+    <script>
+        // Đợi đến khi trang tải xong và các script đã sẵn sàng
+        document.addEventListener('DOMContentLoaded', function() {
+            // Đợi thêm một chút để đảm bảo info.js đã được tải
+            setTimeout(async function() {
+                if (typeof checkRole === 'function') {
+                    try {
+                        await checkRole();
+                        console.log('checkRole đã được gọi thành công từ HTML');
+                    } catch (error) {
+                        console.error('Lỗi khi gọi checkRole:', error);
+                    }
+                } else {
+                    console.error('Hàm checkRole không tồn tại!');
+                }
+            }, 500);
+        });
+    </script>
 </body>
 
 </html>

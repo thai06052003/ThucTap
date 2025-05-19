@@ -1,21 +1,21 @@
 // Kiểm tra và xử lý role người dùng
 function checkUserRole() {
-    const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
     const roleAccessItem = document.getElementById('roleAccessItem');
     const roleAccessLink = document.getElementById('roleAccessLink');
     const accountName = document.getElementById('accountName');
 
     // Hiển thị tên người dùng nếu đã đăng nhập
-    if (userInfo.fullName) {
-        accountName.textContent = userInfo.fullName;
+    if (userData.fullName) {
+        accountName.textContent = userData.fullName;
     }
 
     // Kiểm tra và hiển thị menu theo role
-    if (userInfo.role === 'Admin') {
+    if (userData.role === 'Admin') {
         roleAccessItem.classList.remove('hidden');
         roleAccessLink.textContent = 'Truy cập với quyền ADMIN';
         roleAccessLink.href = '../../Admin/templates/index.html';
-    } else if (userInfo.role === 'Seller') {
+    } else if (userData.role === 'Seller') {
         roleAccessItem.classList.remove('hidden');
         roleAccessLink.textContent = 'Truy cập với quyền SELLER';
         roleAccessLink.href = '../../Seller/templates/index.html';
@@ -24,17 +24,17 @@ function checkUserRole() {
 
 // Kiểm tra quyền truy cập trang
 function checkPageAccess() {
-    const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
     const currentPath = window.location.pathname;
 
     // Kiểm tra quyền truy cập trang Admin
-    if (currentPath.includes('/Admin/') && userInfo.role !== 'Admin') {
+    if (currentPath.includes('/Admin/') && userData.role !== 'Admin') {
         window.location.href = '/Customer/templates/login.html';
         return false;
     }
 
     // Kiểm tra quyền truy cập trang Seller
-    if (currentPath.includes('/Seller/') && userInfo.role !== 'Seller') {
+    if (currentPath.includes('/Seller/') && userData.role !== 'Seller') {
         window.location.href = '/Customer/templates/login.html';
         return false;
     }
@@ -44,8 +44,8 @@ function checkPageAccess() {
 
 // Kiểm tra đăng nhập
 function checkLogin() {
-    const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
-    if (!userInfo.token) {
+    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+        if (!userData.token) {
         window.location.href = '/Customer/templates/login.html';
         return false;
     }
