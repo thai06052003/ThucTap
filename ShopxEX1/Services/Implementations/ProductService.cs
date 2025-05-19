@@ -345,5 +345,64 @@ namespace ShopxEX1.Services.Implementations
             var productDtos = _mapper.Map<IEnumerable<ProductSummaryDto>>(items);
             return new PagedResult<ProductSummaryDto>(productDtos, pageNumber, pageSize, totalCount);
         }
+        public async Task<List<ProductSummaryDto>> GetBestSellingProductsAsync(int count = 5)
+        {
+            if (count <= 0)
+            {
+                count = 5;
+            }
+
+            // Nhóm các OrderDetail theo ProductID và tính tổng Quantity đã bán cho mỗi ProductID
+            var productSales = await _context.OrderDetails
+                .GroupBy(od => od.ProductID)
+                .Select(g => new
+                {
+                    ProductID = g.Key,
+                    TotalQuantitySold = g.Sum(od => od.Quantity)
+                })
+                .OrderByDescending(ps => ps.TotalQuantitySold) // Sắp xếp theo số lượng bán giảm dần
+                .Take(count) // Lấy top 'count' sản phẩm
+                .ToListAsync();
+
+            if (!productSales.Any())
+            {
+                return new List<ProductSummaryDto>(); // Trả về danh sách rỗng nếu không có sản phẩm nào được bán
+            }
+
+            // Lấy thông tin chi tiết của các sản phẩm bán chạy này
+            var bestSellingProductIds = productSales.Select(ps => ps.ProductID).ToList();
+
+            var products = await _context.Products
+                .Where(p => bestSellingProductIds.Contains(p.ProductID) && p.IsActive) // Chỉ lấy sản phẩm còn active
+                .Include(p => p.Category)  // Include thông tin cần thiết cho ProductSummaryDto
+                .Include(p => p.Seller)    // Include thông tin cần thiết cho ProductSummaryDto
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Sắp xếp lại danh sách products theo đúng thứ tự bán chạy (vì query ở bước 2 không đảm bảo thứ tự), map sang DTO
+            var sortedProducts = products
+                .OrderBy(p => bestSellingProductIds.IndexOf(p.ProductID)) // Sắp xếp theo thứ tự của bestSellingProductIds
+                .ToList();
+
+            return _mapper.Map<List<ProductSummaryDto>>(sortedProducts);
+        }
+        public async Task<List<ProductSummaryDto>> GetNewestProductsAsync(int count = 20)
+        {
+            if (count <= 0)
+            {
+                count = 20; // Giá trị mặc định an toàn
+            }
+
+            var newestProducts = await _context.Products
+                .Where(p => p.IsActive) // Chỉ lấy sản phẩm còn active
+                .OrderByDescending(p => p.CreatedAt) // Sắp xếp theo ngày tạo giảm dần (mới nhất lên đầu)
+                .Take(count) // Lấy top 'count' sản phẩm
+                .Include(p => p.Category) // Include thông tin cần thiết cho ProductSummaryDto
+                .Include(p => p.Seller)   // Include thông tin cần thiết cho ProductSummaryDto
+                .AsNoTracking()
+                .ToListAsync();
+
+            return _mapper.Map<List<ProductSummaryDto>>(newestProducts);
+        }
     }
 }

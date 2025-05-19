@@ -63,5 +63,17 @@ namespace ShopxEX1.Services
         /// <exception cref="NotFoundException">Ném ra nếu không tìm thấy sản phẩm.</exception>
         /// <exception cref="UnauthorizedAccessException">Ném ra nếu người bán không sở hữu sản phẩm.</exception>
         Task<bool> DeleteProductAsync(int productId, int sellerId, string status = "notActive"); // Dùng void và ném exception
+        /// <summary>
+        /// Lấy ra những sản phẩm được đặt hàng nhiều nhất dựa trên số lượt đặt hàng
+        /// </summary>
+        /// <param name="count">Số lượng sản phẩm lấy ra</param>
+        /// <returns>Những sản phẩm phù hợp yêu cầu</returns>
+        Task<List<ProductSummaryDto>> GetBestSellingProductsAsync(int count = 5);
+        /// <summary>
+        /// Lấy ra những sản phẩm mới được thêm mới
+        /// </summary>
+        /// <param name="count">Số lượng sản phẩm lấy ra</param>
+        /// <returns>Những sản phẩm phù hợp yêu cầu</returns>
+        Task<List<ProductSummaryDto>> GetNewestProductsAsync(int count = 20);
     }
 }

@@ -304,5 +304,44 @@ namespace ShopxEX1.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi trong quá trình xóa sản phẩm.");
             }
         }
+        [HttpGet("best-selling")]
+        [AllowAnonymous] // Hoặc [Authorize] tùy theo yêu cầu
+        public async Task<ActionResult<List<ProductSummaryDto>>> GetBestSelling(int count = 5)
+        {
+            try
+            {
+                var products = await _productService.GetBestSellingProductsAsync(count);
+                if (products == null || !products.Any())
+                {
+                    return NotFound("Không tìm thấy sản phẩm bán chạy nào.");
+                }
+                return Ok(products);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy sản phẩm bán chạy nhất.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Lỗi máy chủ nội bộ.");
+            }
+        }
+
+        [HttpGet("newest")]
+        [AllowAnonymous] // Hoặc [Authorize] tùy theo yêu cầu
+        public async Task<ActionResult<List<ProductSummaryDto>>> GetNewest(int count = 20)
+        {
+            try
+            {
+                var products = await _productService.GetNewestProductsAsync(count);
+                if (products == null || !products.Any())
+                {
+                    return NotFound("Không tìm thấy sản phẩm mới nào.");
+                }
+                return Ok(products);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy sản phẩm mới nhất.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Lỗi máy chủ nội bộ.");
+            }
+        }
     }
 }

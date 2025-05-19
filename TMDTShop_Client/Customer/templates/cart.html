@@ -15,36 +15,15 @@
             width: 4rem;
             text-align: center;
             border: 1px solid #e5e7eb;
-            border-radius: 0.25rem;
-            overflow: hidden;
-        }
-
-        .quantity-input {
-            width: 100%;
-            text-align: center;
-            border: none;
-            outline: none;
-            padding: 0.5rem 1.75rem;
-            /* Ẩn mũi tên lên xuống của input number */
-            -webkit-appearance: none;
-            -moz-appearance: textfield;
-            appearance: textfield;
-        }
-
-        /* Ẩn mũi tên trong input number cho các trình duyệt khác nhau */
-        .quantity-input::-webkit-outer-spin-button,
-        .quantity-input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+            /* gray-300 */
         }
 
         .quantity-btn {
-            position: absolute;
-            top: 0;
-            bottom: 0;
+            border: 1px solid #e5e7eb;
+            /* gray-300 */
             background-color: #f9fafb;
-            border: none;
-            width: 1.75rem;
+            /* gray-50 */
+            padding: 0.5rem 0.75rem;
             font-weight: bold;
             transition: background-color 0.15s ease-in-out;
         }
@@ -150,7 +129,7 @@
 <body class="bg-gray-100">
     <div id="header-container"></div>
 
-    <main id="" class="container mx-auto px-4 py-8">
+    <main id="mainContent" class="container mx-auto px-4 py-8">
         <section class="bg-white p-4 md:p-8 rounded-lg shadow-xl">
             <nav class="text-sm mb-6" aria-label="Breadcrumb">
                 <ol class="list-none p-0 inline-flex">
@@ -377,21 +356,25 @@
             }
 
             function attachEventListeners() {
-                document.querySelectorAll('.cart-item-checkbox, #selectAllCheckbox').forEach(checkbox => {
-                    checkbox.removeEventListener('change', handleCheckboxChange); // Xóa listener cũ để tránh duplicate
+                selectAllCheckbox.removeEventListener('change', handleCheckboxChange);
+                selectAllCheckbox.addEventListener('change', handleCheckboxChange);
+
+                cartItemsContainerEl.querySelectorAll('.cart-item-checkbox').forEach(checkbox => {
                     checkbox.addEventListener('change', handleCheckboxChange);
                 });
-                document.querySelectorAll('.decrease-quantity, .increase-quantity, .update-quantity-input, .remove-item').forEach(el => {
-                    // Xóa listener cũ nếu cần, hoặc đảm bảo hàm xử lý không bị gọi nhiều lần
-                    // Ví dụ đơn giản:
-                    const clone = el.cloneNode(true);
-                    el.parentNode.replaceChild(clone, el);
-                });
 
-                document.querySelectorAll('.decrease-quantity').forEach(button => button.addEventListener('click', handleQuantityChange));
-                document.querySelectorAll('.increase-quantity').forEach(button => button.addEventListener('click', handleQuantityChange));
-                document.querySelectorAll('.update-quantity-input').forEach(input => input.addEventListener('change', handleQuantityChange));
-                document.querySelectorAll('.remove-item').forEach(button => button.addEventListener('click', handleRemoveItem));
+                cartItemsContainerEl.querySelectorAll('.decrease-quantity').forEach(button => {
+                    button.addEventListener('click', handleQuantityChange);
+                });
+                cartItemsContainerEl.querySelectorAll('.increase-quantity').forEach(button => {
+                    button.addEventListener('click', handleQuantityChange);
+                });
+                cartItemsContainerEl.querySelectorAll('.update-quantity-input').forEach(input => {
+                    input.addEventListener('change', handleQuantityChange);
+                });
+                cartItemsContainerEl.querySelectorAll('.remove-item').forEach(button => {
+                    button.addEventListener('click', handleRemoveItem);
+                });
             }
 
             function handleCheckboxChange() {
@@ -399,27 +382,77 @@
             }
 
             function handleQuantityChange(event) {
-                const itemId = event.target.dataset.itemId;
-                const cartItemDiv = document.querySelector(`.py-4[data-cart-item-id="${itemId}"]`);
+                const triggeredElement = event.target;
+                let itemId;
+                let quantityInput;
+                let actionType;
+
+                if (triggeredElement.dataset.itemId) {
+                    itemId = triggeredElement.dataset.itemId;
+                    if (triggeredElement.classList.contains('decrease-quantity')) {
+                        actionType = 'decrease';
+                        quantityInput = triggeredElement.nextElementSibling;
+                    } else if (triggeredElement.classList.contains('increase-quantity')) {
+                        actionType = 'increase';
+                        quantityInput = triggeredElement.previousElementSibling;
+                    } else if (triggeredElement.classList.contains('update-quantity-input')) {
+                        actionType = 'input';
+                        quantityInput = triggeredElement;
+                    }
+                } else {
+                   const button = triggeredElement.closest('.quantity-btn');
+                    if (button && button.dataset.itemId) {
+                        itemId = button.dataset.itemId;
+                        if (button.classList.contains('decrease-quantity')) {
+                            actionType = 'decrease';
+                            quantityInput = button.nextElementSibling;
+                        } else if (button.classList.contains('increase-quantity')) {
+                            actionType = 'increase';
+                            quantityInput = button.previousElementSibling;
+                        }
+                    }
+                }
+
+                // Nếu không tìm thấy itemId hoặc actionType, thoát sớm
+                if (!itemId || !actionType || !quantityInput) {
+                    console.error('Lỗi: Không thể xác định itemId, actionType hoặc quantityInput trong handleQuantityChange.', { triggeredElement, itemId, actionType });
+                    return;
+                }
+
+                const cartItemDiv = document.querySelector(`div[data-cart-item-id="${itemId}"]`);
+
+                if (!cartItemDiv) {
+                    console.error(`Lỗi: Không tìm thấy thẻ div của sản phẩm với ID: ${itemId}. Kiểm tra lại selector!`);
+                    return;
+                }
+
                 const stock = parseInt(cartItemDiv.dataset.stock);
                 let newQuantity;
 
-                if (event.target.classList.contains('decrease-quantity')) {
-                    const input = event.target.nextElementSibling;
-                    newQuantity = parseInt(input.value) - 1;
-                } else if (event.target.classList.contains('increase-quantity')) {
-                    const input = event.target.previousElementSibling;
-                    newQuantity = parseInt(input.value) + 1;
-                } else { // input change
-                    newQuantity = parseInt(event.target.value);
+                if (actionType === 'decrease') {
+                    newQuantity = parseInt(quantityInput.value) - 1;
+                } else if (actionType === 'increase') {
+                    newQuantity = parseInt(quantityInput.value) + 1;
+                } else if (actionType === 'input') {
+                    newQuantity = parseInt(quantityInput.value);
                 }
 
-                if (isNaN(newQuantity) || newQuantity < 1) newQuantity = 1;
+
+                if (isNaN(newQuantity) || newQuantity < 1) {
+                    newQuantity = 1;
+                }
                 if (newQuantity > stock) {
                     alert(`Chỉ còn tối đa ${stock} sản phẩm.`);
                     newQuantity = stock;
-                    if (event.target.tagName === 'INPUT') event.target.value = stock;
                 }
+
+                quantityInput.value = newQuantity;
+
+                const currentItemData = currentCartData.cartItems.find(item => item.cartItemID == itemId);
+                if (currentItemData && currentItemData.quantity === newQuantity && actionType !== 'input') {
+                    return;
+                }
+
                 updateCartItemQuantity(itemId, newQuantity);
             }
 
@@ -485,6 +518,10 @@
                     if (response.ok) renderCart(await response.json());
                     else if (response.status === 401) { sessionStorage.removeItem('token'); window.location.href = 'login.html'; }
                     else renderCart({ cartItems: [], totalItems: 0, totalPrice: 0 }); // Xử lý lỗi khác như giỏ hàng trống
+                    const mainContentElement = document.getElementById('mainContent');
+                    if (mainContentElement) {
+                        mainContentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
                 } catch (error) {
                     console.error("Lỗi tải giỏ hàng:", error);
                     cartItemsContainerEl.innerHTML = `<p class="text-red-500 text-center col-span-full py-4">Lỗi tải giỏ hàng.</p>`;

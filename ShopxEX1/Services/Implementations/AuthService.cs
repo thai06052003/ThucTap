@@ -46,6 +46,14 @@ namespace ShopxEX1.Services.Implementations
                 return new AuthResultDto { Success = false, Message = "Email hoặc mật khẩu không chính xác, hoặc tài khoản đã bị khóa." };
             }
 
+            var userDto = _mapper.Map<UserDto>(user);
+            if (user.Role == "Seller" && user.SellerProfile != null)
+            {
+                userDto.SellerID = user.SellerProfile.SellerID;
+                userDto.ShopName = user.SellerProfile.ShopName;
+                Console.WriteLine($"Updated DTO with seller info: {JsonSerializer.Serialize(userDto)}");
+            }
+
             // Tạo Access Token
             var accessTokenResult = GenerateJwtToken(user);
             return new AuthResultDto
@@ -56,9 +64,6 @@ namespace ShopxEX1.Services.Implementations
                 User = userDto,
                 Message = "Đăng nhập thành công."
             };
-
-
-            return result;
         }
 
         public async Task<AuthResultDto> SocialLoginAsync(SocialLoginRequestDto socialLoginDto)
