@@ -94,7 +94,7 @@ namespace ShopxEX1.Services.Implementations
 
                                         -- Product columns (cho đối tượng Product lồng nhau) - Bắt đầu split từ đây
                                         p.ProductID     AS Dapper_SplitOn_Product_ProductID, -- Khóa chính của Product, dùng cho splitOn
-                                        p.CategoryID    AS Product_CategoryID,
+                                        p.CategoryID,
                                         p.ProductName,
                                         p.Description   AS Product_Description,
                                         p.Price         AS Product_Price,
@@ -114,13 +114,13 @@ namespace ShopxEX1.Services.Implementations
                                         s.IsActive      AS Seller_IsActive,
 
                                         -- Category columns (cho đối tượng Category lồng trong Product) - Bắt đầu split từ đây
-                                        s.CategoryID      AS Dapper_SplitOn_Category_CategoryID, -- Khóa chính của Category, dùng cho splitOn
-                                        s.CategoryName
+                                        c.CategoryID      AS Dapper_SplitOn_Category_CategoryID, -- Khóa chính của Category, dùng cho splitOn
+                                        c.CategoryName
                                     FROM CartItems ci
                                     INNER JOIN Carts crt ON ci.CartID = crt.CartID
                                     INNER JOIN Products p ON ci.ProductID = p.ProductID
                                     INNER JOIN Sellers s ON p.SellerID = s.SellerID                                    
-                                    INNER JOIN Categories c ON p.CatrgoryID = c.CategoryID
+                                    INNER JOIN Categories c ON p.CategoryID = c.CategoryID
                                     WHERE crt.UserID = @UserIdParam
                                       AND ci.CartItemID IN @SelectedCartItemIdsParam";
 

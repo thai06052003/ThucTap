@@ -118,13 +118,19 @@
                     <div class="mb-6">
                         <label for="quantityInput" class="block text-sm font-medium text-gray-700 mb-2">Số
                             lượng:</label>
-                        <div class="flex items-center">
+                        <div class="flex items-center relative"> <!-- Thêm relative cho container cha -->
                             <button id="decreaseQuantity"
-                                class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-3 rounded-l">-</button>
-                            <input type="number" id="quantityInput" name="quantity" value="1" min="1" max="99"
-                                class="w-16 text-center border-t border-b border-gray-300 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-l-md transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-gray-400 relative z-0"
+                                aria-label="Giảm số lượng">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <input type="number" id="quantityInput" name="quantity" value="1" min="1" max="99" class="w-16 text-center border-t border-b border-gray-200 py-2 px-0  text-gray-800 font-medium  focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500  appearance-none [-moz-appearance:textfield]  relative focus:z-10"
+                            aria-label="Số lượng sản phẩm">
                             <button id="increaseQuantity"
-                                class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-3 rounded-r">+</button>
+                                class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-r-md transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-gray-400 relative z-0"
+                                aria-label="Tăng số lượng">
+                                <i class="fas fa-plus"></i>
+                            </button>
                             <span class="text-sm text-gray-500 ml-4">(Còn <span id="stockQuantityInfo">0</span> sản
                                 phẩm)</span>
                         </div>
@@ -375,18 +381,18 @@
                             let errorMessage = `Lỗi ${response.status}: `;
 
                             if (response.status === 400) { // Bad Request
-                                errorMessage += errorData.message || "Yêu cầu không hợp lệ. Vui lòng kiểm tra lại số lượng hoặc sản phẩm.";
+                                errorMessage = errorData.message || "Yêu cầu không hợp lệ. Vui lòng kiểm tra lại số lượng hoặc sản phẩm.";
                                 if (errorData.message && errorData.message.toLowerCase().includes("không đủ hàng tồn kho")) {
                                     // Nếu lỗi do hết hàng từ server (có thể do người khác mua), tải lại chi tiết sản phẩm
                                     await fetchProductDetails(currentProductData.productID);
                                 }
                             } else if (response.status === 401) { // Unauthorized
-                                errorMessage += "Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.";
+                                errorMessage = "Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.";
                                 // Cân nhắc: sessionStorage.removeItem('token'); window.location.href = 'login.html';
                             } else if (response.status === 404) { // Not Found
-                                errorMessage += errorData.message || "Sản phẩm hoặc người dùng không tìm thấy.";
+                                errorMessage = errorData.message || "Sản phẩm hoặc người dùng không tìm thấy.";
                             } else {
-                                errorMessage += errorData.message || "Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.";
+                                errorMessage = errorData.message || "Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.";
                             }
                             alert(errorMessage);
                             console.error('Lỗi khi thêm vào giỏ hàng:', errorData);

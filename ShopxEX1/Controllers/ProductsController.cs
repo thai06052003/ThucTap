@@ -107,6 +107,7 @@ namespace ShopxEX1.Controllers
         {
             int? sellerId = _getId.GetSellerId();
             if (!sellerId.HasValue) throw new Exception($"Bạn không phải là Seller.");
+
             const int MaxPageSize = 100;
             int pageSize;
 

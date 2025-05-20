@@ -214,8 +214,7 @@ namespace ShopxEX1.Mappings
             CreateMap<Discount, DiscountDto>();
 
             CreateMap<DiscountCreateDto, Discount>()
-                .ForMember(dest => dest.DiscountID, opt => opt.Ignore())
-                .ForMember(dest => dest.IsActive, opt => opt.Ignore());
+                .ForMember(dest => dest.DiscountID, opt => opt.Ignore());
 
             CreateMap<DiscountUpdateDto, Discount>()
                 .ForMember(dest => dest.DiscountID, opt => opt.Ignore())

@@ -47,6 +47,32 @@ function formatDate(date) {
   return `${day}/${month}/${year}`;
 }
 
+/**
+ * Đưa dữ liệu vào thẻ input
+ * @param {Date|string} dateInput - The date to format.
+ * @returns {string} Formatted date string ('YYYY-MM-DD') or empty string if invalid.
+ */
+function formatDateForInput(dateInput) {
+  if (!dateInput) return '';
+  try {
+    const date = new Date(dateInput);
+    // Kiểm tra xem date có hợp lệ không sau khi new Date()
+    if (isNaN(date.getTime())) {
+      console.warn("formatDateForInput received an invalid date:", dateInput);
+      return '';
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    console.error("Error formatting date for input:", dateInput, e);
+    return '';
+  }
+}
+window.formatDateForInput = formatDateForInput
+
 document.addEventListener('DOMContentLoaded', function () {
 
   // --- Lấy các container tĩnh (phải có trong index.html) ---
@@ -113,7 +139,7 @@ function setupSidebarListeners(sidebarContainer, contentArea) {
         }
         if (content) {
           // Đặt max-height dựa trên trạng thái active
-          content.style.maxHeight = group.classList.contains('active') ? content.scrollHeight + 'px' : '0px';
+          content.style.maxHeight = group.classList.contains('active') ? content.scrollHeight + 40 + 'px' : '0px';
         }
       }
       return; // Dừng xử lý click tại đây
