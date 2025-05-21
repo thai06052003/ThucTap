@@ -1,10 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using ShopxEX1.Data;
 using ShopxEX1.Dtos.Orders;
 using ShopxEX1.Helpers;
 using ShopxEX1.Services;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ShopxEX1.Controllers
 {
@@ -28,43 +31,76 @@ namespace ShopxEX1.Controllers
         /// Tạo một đơn hàng mới từ giỏ hàng của người dùng hiện tại.
         /// </summary>
         [HttpPost]
-        public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] OrderCreateDto createDto)
+public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] OrderCreateDto createDto)
+{
+    if (!ModelState.IsValid)
+    {
+        return BadRequest(ModelState);
+    }
+    try
+    {
+        var userId = _getID.GetCurrentUserId();
+        
+        // Kiểm tra trạng thái của các shop trước khi tạo đơn hàng
+        if (createDto.SelectedCartItemIds?.Any() == true)
         {
-            if (!ModelState.IsValid)
+            // Lấy AppDbContext từ DI container
+            using var scope = HttpContext.RequestServices.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            
+            // Lấy các CartItems theo ID để truy xuất thông tin seller
+            var sellerIds = await dbContext.CartItems
+                .Where(c => createDto.SelectedCartItemIds.Contains(c.CartItemID))
+                .Include(c => c.Product)
+                .Select(c => c.Product.SellerID)
+                .Distinct()
+                .ToListAsync();
+            
+            // Kiểm tra shop có đang bảo trì không
+            var inactiveShops = await dbContext.Sellers
+                .Where(s => sellerIds.Contains(s.SellerID) && !s.IsActive)
+                .Select(s => new { s.SellerID, s.ShopName })
+                .ToListAsync();
+            
+            if (inactiveShops.Any())
             {
-                return BadRequest(ModelState);
-            }
-            try
-            {
-                var userId = _getID.GetCurrentUserId();
-                var createdOrders = await _orderService.CreateOrderFromCartAsync(userId, createDto);
-
-                if (createdOrders.Any())
-                {
-                    return Ok(createdOrders);
-                }
-                else
-                {
-                    // Trường hợp hiếm hoi không có đơn hàng nào được tạo dù không có lỗi
-                    return BadRequest("Không thể tạo đơn hàng từ giỏ hàng hiện tại.");
-                }
-            }
-            catch (KeyNotFoundException ex)
-            {
-                _logger.LogWarning(ex, "Lỗi tạo đơn hàng: Resource không tìm thấy.");
-                return NotFound(new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(ex, "Lỗi tạo đơn hàng: Thao tác không hợp lệ.");
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi không mong muốn khi tạo đơn hàng.");
-                return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi khi xử lý yêu cầu của bạn.");
+                return BadRequest(new {
+                    success = false,
+                    message = "Không thể đặt hàng vì một số shop đang trong chế độ bảo trì",
+                    shops = inactiveShops
+                });
             }
         }
+        
+        // Tiếp tục logic tạo đơn hàng hiện có
+        var createdOrders = await _orderService.CreateOrderFromCartAsync(userId, createDto);
+
+        if (createdOrders.Any())
+        {
+            return Ok(createdOrders);
+        }
+        else
+        {
+            // Trường hợp hiếm hoi không có đơn hàng nào được tạo dù không có lỗi
+            return BadRequest("Không thể tạo đơn hàng từ giỏ hàng hiện tại.");
+        }
+    }
+    catch (KeyNotFoundException ex)
+    {
+        _logger.LogWarning(ex, "Lỗi tạo đơn hàng: Resource không tìm thấy.");
+        return NotFound(new { message = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        _logger.LogWarning(ex, "Lỗi tạo đơn hàng: Thao tác không hợp lệ.");
+        return BadRequest(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Lỗi không mong muốn khi tạo đơn hàng.");
+        return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi khi xử lý yêu cầu của bạn.");
+    }
+}
 
         /// <summary>
         /// [Customer] Lấy lịch sử đơn hàng của người dùng hiện tại.

@@ -12,6 +12,7 @@ namespace ShopxEX1.Dtos.Orders
         [Required(ErrorMessage = "Vui lòng chọn ít nhất một sản phẩm để đặt hàng.")]
         [MinLength(1, ErrorMessage = "Vui lòng chọn ít nhất một sản phẩm để đặt hàng.")]
         public List<int> SelectedCartItemIds { get; set; } = new List<int>();
+        
     }
 
 }

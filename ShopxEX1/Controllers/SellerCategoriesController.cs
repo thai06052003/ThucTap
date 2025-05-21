@@ -6,19 +6,21 @@ using ShopxEX1.Dtos.SellerCategory;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ShopxEX1.Helpers;
 using System;
-
 namespace ShopxEX1.Controllers
 {
     [ApiController]
-    [Route("api/sellers/{sellerId}/categories")]
+    [Route("api/sellerCategories")]
     public class SellerCategoriesController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly GetID _getID;
 
-        public SellerCategoriesController(AppDbContext context)
+        public SellerCategoriesController(AppDbContext context, GetID getID)
         {
             _context = context;
+            _getID = getID;
         }
 
         private bool IsAuthorizedToAccess(int routeSellerId)
@@ -28,9 +30,10 @@ namespace ShopxEX1.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<SellerCategoryReadDto>>> GetSellerCategories(int sellerId)
+        public async Task<ActionResult<IEnumerable<SellerCategoryReadDto>>> GetSellerCategories()
         {
-            if (!IsAuthorizedToAccess(sellerId)) return Forbid();
+            int? sellerId = _getID.GetSellerId();
+            if (sellerId == null) throw new Exception("Bạn không có quyền");
 
             var sellerExists = await _context.Sellers.AnyAsync(s => s.SellerID == sellerId);
             if (!sellerExists)
@@ -54,9 +57,10 @@ namespace ShopxEX1.Controllers
         }
 
         [HttpGet("{categoryId}")]
-        public async Task<ActionResult<SellerCategoryReadDto>> GetSellerCategory(int sellerId, int categoryId)
-        {
-            if (!IsAuthorizedToAccess(sellerId)) return Forbid();
+        public async Task<ActionResult<SellerCategoryReadDto>> GetSellerCategory( int categoryId)
+        { int? sellerId = _getID.GetSellerId(); 
+            if (sellerId == null) throw new Exception("Bạn không có quyền");
+           
 
             var category = await _context.SellerCategories
                                         .Where(sc => sc.SellerID == sellerId && sc.SellerCategoryID == categoryId)
@@ -79,9 +83,10 @@ namespace ShopxEX1.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<SellerCategoryReadDto>> CreateSellerCategory(int sellerId, [FromBody] SellerCategoryCreateDto createDto)
+        public async Task<ActionResult<SellerCategoryReadDto>> CreateSellerCategory([FromBody] SellerCategoryCreateDto createDto)
         {
-            if (!IsAuthorizedToAccess(sellerId)) return Forbid();
+            int? sellerId = _getID.GetSellerId();
+    if (sellerId == null) throw new Exception("Bạn không có quyền");
 
             if (!ModelState.IsValid)
             {
@@ -96,7 +101,7 @@ namespace ShopxEX1.Controllers
 
             var newCategory = new SellerCategory
             {
-                SellerID = sellerId,
+                SellerID = sellerId.Value,
                 CategoryName = createDto.CategoryName,
                 Description = createDto.Description,
                 IsActive = createDto.IsActive,
@@ -127,9 +132,10 @@ namespace ShopxEX1.Controllers
         }
 
         [HttpPut("{categoryId}")]
-        public async Task<IActionResult> UpdateSellerCategory(int sellerId, int categoryId, [FromBody] SellerCategoryUpdateDto updateDto)
+        public async Task<IActionResult> UpdateSellerCategory( int categoryId, [FromBody] SellerCategoryUpdateDto updateDto)
         {
-            if (!IsAuthorizedToAccess(sellerId)) return Forbid();
+            int? sellerId = _getID.GetSellerId();
+    if (sellerId == null) throw new Exception("Bạn không có quyền");
 
             if (!ModelState.IsValid)
             {
@@ -170,9 +176,10 @@ namespace ShopxEX1.Controllers
         }
 
         [HttpDelete("{categoryId}")]
-        public async Task<IActionResult> DeleteSellerCategory(int sellerId, int categoryId)
+        public async Task<IActionResult> DeleteSellerCategory(int categoryId)
         {
-            if (!IsAuthorizedToAccess(sellerId)) return Forbid();
+           int? sellerId = _getID.GetSellerId();
+    if (sellerId == null) throw new Exception("Bạn không có quyền");
 
             var category = await _context.SellerCategories
                                         .FirstOrDefaultAsync(sc => sc.SellerID == sellerId && sc.SellerCategoryID == categoryId);

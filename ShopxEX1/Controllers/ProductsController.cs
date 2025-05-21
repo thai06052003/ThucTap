@@ -7,6 +7,9 @@ using ShopxEX1.Dtos.Products;
 using ShopxEX1.Helpers;
 using ShopxEX1.Services;
 using System.Security.Claims;
+using ShopxEX1.Data;
+using Microsoft.Extensions.DependencyInjection;
+using ShopxEX1.Models;
 
 namespace ShopxEX1.Controllers
 {
@@ -24,6 +27,84 @@ namespace ShopxEX1.Controllers
             _getId = getId;
             _logger = logger;
         }
+        /// <summary>
+/// Lấy danh sách sản phẩm theo shop (có kiểm tra trạng thái shop).
+/// </summary>
+/// <param name="sellerId">ID của shop cần xem sản phẩm</param>
+/// <param name="filter">Tiêu chí lọc sản phẩm</param>
+/// <param name="pageNumber">Số trang (mặc định 1)</param>
+/// <param name="pageSize">Số lượng mục trên trang (mặc định 10)</param>
+/// <returns>Danh sách sản phẩm của shop và thông tin shop</returns>
+[HttpGet("shop/{sellerId}")]
+public async Task<IActionResult> GetProductsByShopId(int sellerId, 
+    [FromQuery] ProductFilterDto filter, [FromQuery] int pageNumber = 1, 
+    [FromQuery] string pageSizeInput = "10")
+{
+    const int MaxPageSize = 100;
+    int pageSize;
+
+    if (!int.TryParse(pageSizeInput, out pageSize))
+    {
+        pageSize = MaxPageSize; // Đặt về mặc định
+    }
+
+    // Đảm bảo pageNumber và pageSize hợp lệ
+    if (pageNumber < 1) pageNumber = 1;
+    if (pageSize < 1 || pageSize > MaxPageSize) pageSize = MaxPageSize;
+
+    try
+    {
+        // Lấy AppDbContext từ DI container
+        using var scope = HttpContext.RequestServices.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            
+        // Kiểm tra thông tin seller
+        var seller = await dbContext.Sellers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SellerID == sellerId);
+            
+        if (seller == null)
+        {
+            return NotFound(new { message = "Không tìm thấy cửa hàng" });
+        }
+        
+        // Nếu shop đang bảo trì (IsActive = false)
+        if (!seller.IsActive)
+        {
+            return Ok(new {
+                shop = new {
+                    sellerId = seller.SellerID,
+                    shopName = seller.ShopName,
+                    status = "maintenance",
+                    statusName = "Đang bảo trì",
+                    canOrder = false
+                },
+                products = new object[] { } // Không trả về sản phẩm khi đang bảo trì
+            });
+        }
+        
+        // Nếu shop đang hoạt động, lấy sản phẩm
+        var result = await _productService.GetProductsBySellerAsync(filter, pageNumber, pageSize, sellerId);
+        
+        var response = new {
+            shop = new {
+                sellerId = seller.SellerID,
+                shopName = seller.ShopName,
+                status = "active",
+                statusName = "Đang hoạt động",
+                canOrder = true
+            },
+            products = result
+        };
+        
+        return Ok(response);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Lỗi xảy ra khi lấy danh sách sản phẩm theo shop.");
+        return StatusCode(500, "Đã xảy ra lỗi trong quá trình xử lý yêu cầu.");
+    }
+}
 
         /// <summary>
         /// Lấy danh sách sản phẩm có phân trang và lọc (trang admin).
@@ -231,7 +312,7 @@ namespace ShopxEX1.Controllers
         /// <param name="updateDto">Thông tin cập nhật.</param>
         /// <returns>Không có nội dung nếu thành công.</returns>
         [HttpPut("{productId:int}")] // Endpoint: PUT /api/products/5
-        [Authorize(Roles = "Seller")] // Chỉ Seller mới được cập nhật
+        [Authorize(Roles = "Admin,Seller")] // Chỉ Seller mới được cập nhật
         public async Task<IActionResult> UpdateProduct(int productId, [FromBody] ProductUpdateDto updateDto)
         {
             int? sellerId = _getId.GetSellerId();

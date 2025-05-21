@@ -56,7 +56,20 @@ namespace ShopxEX1.Services.Implementations
 
             // Tạo Access Token
             var accessTokenResult = GenerateJwtToken(user);
-            return new AuthResultDto
+
+            // Không còn Refresh Token
+            // Không cần SaveChanges ở đây nếu không cập nhật gì khác trên User
+
+            // _logger?.LogInformation("User {UserId} logged in successfully.", user.UserID);
+             // Tạo DTO để trả về
+   var userDto= _mapper.Map<UserDto>(user);
+   if (user.Role == "Seller" && user.SellerProfile != null)
+    {
+        userDto.SellerID = user.SellerProfile.SellerID;
+        userDto.ShopName = user.SellerProfile.ShopName;
+        Console.WriteLine($"Updated DTO with seller info: {JsonSerializer.Serialize(userDto)}");
+    }
+    var result= new AuthResultDto
             {
                 Success = true,
                 Token = accessTokenResult.Token,
@@ -236,49 +249,112 @@ namespace ShopxEX1.Services.Implementations
         
 
         // --- Hàm Tạo Token JWT (Giữ nguyên) ---
-        private (string Token, DateTime Expiration) GenerateJwtToken(User user)
+       public (string Token, DateTime Expiration) GenerateJwtToken(User user)
+{
+    // Luôn truy vấn trực tiếp để đảm bảo dữ liệu mới nhất
+    string roleFromDb = "";
+    int? sellerIdFromDb = null;
+    bool isSellerActive = false;
+    
+    // Truy vấn SQL trực tiếp để lấy thông tin mới nhất
+    using (var connection = _context.Database.GetDbConnection())
+    {
+        try
         {
-            var jwtSettings = _configuration.GetSection("Jwt");
-            var jwtKey = jwtSettings["SecretKey"];
-            var issuer = jwtSettings["Issuer"];
-            var audience = jwtSettings["Audience"];
-            // Tăng thời gian hết hạn của Access Token vì không có Refresh Token
-            var expiryInMinutes = jwtSettings.GetValue<int>("ExpiryInMinutes", 1200); // Ví dụ: 60 phút
-
-            if (string.IsNullOrEmpty(jwtKey)) throw new InvalidOperationException("JWT Key chưa được cấu hình.");
-
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-            var claims = new List<Claim> {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserID.ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()), // Thường giống Sub
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role),
-                // Jti không còn cần thiết cho blacklist
-                // new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
-
-            if (user.Role == "Seller" && user.SellerProfile != null)
+            connection.Open();
+            using (var command = connection.CreateCommand())
             {
-                claims.Add(new Claim("SellerId", user.SellerProfile.SellerID.ToString()));
+                command.CommandText = @"
+                    SELECT u.UserID, u.Email, u.FullName, u.Role, 
+                           s.SellerID, s.IsActive as SellerIsActive 
+                    FROM Users u
+                    LEFT JOIN Sellers s ON u.UserID = s.UserID
+                    WHERE u.UserID = @UserId";
+                    
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = "@UserId";
+                parameter.Value = user.UserID;
+                command.Parameters.Add(parameter);
+                
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        // Lấy dữ liệu mới nhất từ database
+                        roleFromDb = reader["Role"].ToString();
+                        
+                        // Kiểm tra SellerProfile
+                        bool hasSellerProfile = !reader.IsDBNull(reader.GetOrdinal("SellerID"));
+                        
+                        if (hasSellerProfile)
+                        {
+                            sellerIdFromDb = Convert.ToInt32(reader["SellerID"]);
+                            isSellerActive = Convert.ToBoolean(reader["SellerIsActive"]);
+                        }
+                        
+                        Console.WriteLine($"[GenerateJwtToken] Dữ liệu từ DB: UserID={user.UserID}, Role={roleFromDb}, " +
+                            $"HasSellerProfile={hasSellerProfile}, SellerId={sellerIdFromDb}, IsActive={isSellerActive}");
+                    }
+                    else
+                    {
+                        // Không tìm thấy user trong DB - lỗi nghiêm trọng
+                        throw new InvalidOperationException($"Không tìm thấy user với ID {user.UserID} trong database");
+                    }
+                }
             }
-
-            var expires = DateTime.UtcNow.AddMinutes(expiryInMinutes); // Nên dùng UtcNow
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = expires,
-                Issuer = issuer,
-                Audience = audience,
-                SigningCredentials = credentials
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            var tokenString = tokenHandler.WriteToken(token);
-            return (tokenString, expires);
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Lỗi khi truy vấn database trong GenerateJwtToken: {ex.Message}");
+            // KHÔNG fallback - buộc phải lấy được dữ liệu mới nhất
+            throw;
+        }
+    }
+    
+    // Tạo claims sử dụng CHẮC CHẮN thông tin từ database
+    var claims = new List<Claim> {
+        new Claim(JwtRegisteredClaimNames.Sub, user.UserID.ToString()),
+        new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+        new Claim(JwtRegisteredClaimNames.Email, user.Email),
+        new Claim(ClaimTypes.Role, roleFromDb) // Sử dụng role từ database
+    };
+    
+    // Thêm SellerId vào claims nếu là seller active
+    if (roleFromDb == "Seller" && sellerIdFromDb.HasValue && isSellerActive)
+    {
+        claims.Add(new Claim("SellerId", sellerIdFromDb.ToString()));
+        Console.WriteLine($"[GenerateJwtToken] Đã thêm claim SellerId={sellerIdFromDb} vào token");
+    }
+    
+    var jwtSettings = _configuration.GetSection("Jwt");
+    var jwtKey = jwtSettings["SecretKey"];
+    var issuer = jwtSettings["Issuer"];
+    var audience = jwtSettings["Audience"];
+    var expiryInMinutes = jwtSettings.GetValue<int>("ExpiryInMinutes", 1200);
+    
+    if (string.IsNullOrEmpty(jwtKey))
+        throw new InvalidOperationException("JWT Key chưa được cấu hình.");
+    
+    var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+    var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+    
+    var expires = DateTime.UtcNow.AddMinutes(expiryInMinutes);
+    var tokenDescriptor = new SecurityTokenDescriptor
+    {
+        Subject = new ClaimsIdentity(claims),
+        Expires = expires,
+        Issuer = issuer,
+        Audience = audience,
+        SigningCredentials = credentials
+    };
+    
+    var tokenHandler = new JwtSecurityTokenHandler();
+    var token = tokenHandler.CreateToken(tokenDescriptor);
+    var tokenString = tokenHandler.WriteToken(token);
+    
+    Console.WriteLine($"[GenerateJwtToken] Token đã được tạo với role={roleFromDb} (100% từ database)");
+    return (tokenString, expires);
+}
 
         public Task<PasswordResetResultDto> RequestPasswordResetAsync(RequestPasswordResetDto resetRequestDto)
         {

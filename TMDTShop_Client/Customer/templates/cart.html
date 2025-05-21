@@ -16,12 +16,17 @@
             text-align: center;
             border: 1px solid #e5e7eb;
             /* gray-300 */
+            /* gray-300 */
         }
 
         .quantity-btn {
             border: 1px solid #e5e7eb;
             /* gray-300 */
+            border: 1px solid #e5e7eb;
+            /* gray-300 */
             background-color: #f9fafb;
+            /* gray-50 */
+            padding: 0.5rem 0.75rem;
             /* gray-50 */
             padding: 0.5rem 0.75rem;
             font-weight: bold;
@@ -129,6 +134,7 @@
 <body class="bg-gray-100">
     <div id="header-container"></div>
 
+    <main id="mainContent" class="container mx-auto px-4 py-8">
     <main id="mainContent" class="container mx-auto px-4 py-8">
         <section class="bg-white p-4 md:p-8 rounded-lg shadow-xl">
             <nav class="text-sm mb-6" aria-label="Breadcrumb">
@@ -281,7 +287,7 @@
                 const lineTotalFormatted = window.formatCurrency(item.price * item.quantity);
 
                 return `
-                    <div class="py-5 flex flex-col sm:flex-row items-start gap-4" data-cart-item-id="${item.cartItemID}" data-product-id="${item.productID}" data-price="${item.price}" data-stock="${item.availableStock}">
+                    <div class="py-4 flex flex-col sm:flex-row items-start gap-4" data-cart-item-id="${item.cartItemID}" data-product-id="${item.productID}" data-price="${item.price}" data-stock="${item.availableStock}">
                         <div class="flex items-center w-full sm:w-auto">
                             <input type="checkbox" class="cart-item-checkbox form-checkbox mr-4 flex-shrink-0" data-item-id="${item.cartItemID}">
                             <img src="${imageUrl}" alt="${item.productName}" class="cart-item-image">
@@ -364,6 +370,18 @@
 
                 cartItemsContainerEl.querySelectorAll('.decrease-quantity').forEach(button => {
                     button.addEventListener('click', handleQuantityChange);
+
+                cartItemsContainerEl.querySelectorAll('.decrease-quantity').forEach(button => {
+                    button.addEventListener('click', handleQuantityChange);
+                });
+                cartItemsContainerEl.querySelectorAll('.increase-quantity').forEach(button => {
+                    button.addEventListener('click', handleQuantityChange);
+                });
+                cartItemsContainerEl.querySelectorAll('.update-quantity-input').forEach(input => {
+                    input.addEventListener('change', handleQuantityChange);
+                });
+                cartItemsContainerEl.querySelectorAll('.remove-item').forEach(button => {
+                    button.addEventListener('click', handleRemoveItem);
                 });
                 cartItemsContainerEl.querySelectorAll('.increase-quantity').forEach(button => {
                     button.addEventListener('click', handleQuantityChange);
@@ -434,9 +452,19 @@
                     newQuantity = parseInt(quantityInput.value) + 1;
                 } else if (actionType === 'input') {
                     newQuantity = parseInt(quantityInput.value);
+                if (actionType === 'decrease') {
+                    newQuantity = parseInt(quantityInput.value) - 1;
+                } else if (actionType === 'increase') {
+                    newQuantity = parseInt(quantityInput.value) + 1;
+                } else if (actionType === 'input') {
+                    newQuantity = parseInt(quantityInput.value);
                 }
 
 
+
+                if (isNaN(newQuantity) || newQuantity < 1) {
+                    newQuantity = 1;
+                }
                 if (isNaN(newQuantity) || newQuantity < 1) {
                     newQuantity = 1;
                 }
@@ -451,6 +479,14 @@
                 if (currentItemData && currentItemData.quantity === newQuantity && actionType !== 'input') {
                     return;
                 }
+
+                quantityInput.value = newQuantity;
+
+                const currentItemData = currentCartData.cartItems.find(item => item.cartItemID == itemId);
+                if (currentItemData && currentItemData.quantity === newQuantity && actionType !== 'input') {
+                    return;
+                }
+
 
                 updateCartItemQuantity(itemId, newQuantity);
             }
@@ -517,6 +553,10 @@
                     if (response.ok) renderCart(await response.json());
                     else if (response.status === 401) { sessionStorage.removeItem('token'); window.location.href = 'login.html'; }
                     else renderCart({ cartItems: [], totalItems: 0, totalPrice: 0 }); // Xử lý lỗi khác như giỏ hàng trống
+                    const mainContentElement = document.getElementById('mainContent');
+                    if (mainContentElement) {
+                        mainContentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
                     const mainContentElement = document.getElementById('mainContent');
                     if (mainContentElement) {
                         mainContentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
