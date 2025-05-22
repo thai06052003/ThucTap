@@ -7,6 +7,7 @@ namespace ShopxEX1.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
         public DbSet<User> Users { get; set; } = null!;
+        public DbSet<Contact> Contacts { get; set; } = null!;
         public DbSet<Seller> Sellers { get; set; } = null!;
         public DbSet<Category> Categories { get; set; } = null!;
         public DbSet<Product> Products { get; set; } = null!;
@@ -43,6 +44,23 @@ namespace ShopxEX1.Data
                 // HasDefaultValue("Customer"); // Giá trị mặc định là "Customer"
 
                 // Các mối quan hệ được định nghĩa qua các thuộc tính điều hướng (navigation properties) bên dưới
+            });
+
+            // --- Cấu hình Contact ---
+            modelBuilder.Entity<Contact>(entity =>
+            {
+                entity.HasKey(e => e.ContactID); // Khóa Chính (Primary Key)
+                entity.HasOne(c => c.User) // Thuộc tính điều hướng đến User trong Contact
+                      .WithMany(u => u.Contacts) // Thuộc tính collection Contacts trong User
+                      .HasForeignKey(c => c.UserID) // Khóa ngoại trong bảng Contacts
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(e => e.Message).HasColumnType("nvarchar(MAX)"); // Khớp với sơ đồ
+
+                entity.Property(e => e.Status).HasMaxLength(50); // Khớp với sơ đồ
+
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETDATE()"); // Giá trị mặc định nếu là SQL Server
+                                                        // Hoặc .HasDefaultValue(DateTime.UtcNow) nếu muốn EF Core quản lý
             });
 
             // --- Cấu hình Seller ---

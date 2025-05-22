@@ -218,3 +218,8 @@
   /* Đặt chiều rộng tối đa. Điều chỉnh giá trị này! */
   /* Hoặc bạn có thể để nó chiếm hết chiều rộng của td và td sẽ co giãn theo table */
 }
+
+.no-event {
+  pointer-events: none;
+  cursor: not-allowed;
+}

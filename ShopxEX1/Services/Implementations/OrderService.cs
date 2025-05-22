@@ -268,18 +268,18 @@ namespace ShopxEX1.Services.Implementations
                 }
 
                 // Xóa các CartItem đã được đặt hàng (dùng EF Core)
-                /*var cartItemIdsToRemove = selectedCartItemsFromDb.Select(ci => ci.CartItemID).ToList();
+                var cartItemIdsToRemove = selectedCartItemsFromDb.Select(ci => ci.CartItemID).ToList();
                 if (cartItemIdsToRemove.Any())
                 {
-                    var efCartItemsToRemove = await _context.CartItems
-                                                    .Where(ci => cartItemIdsToRemove.Contains(ci.CartItemID) && ci.Cart.UserID == userId)
-                                                    .ToListAsync();
-                    if (efCartItemsToRemove.Any())
+                    foreach (var cartItem in cartItemIdsToRemove)
                     {
+                        var efCartItemsToRemove = await _context.CartItems.FirstOrDefaultAsync(ci => ci.CartItemID == cartItem);
                         _context.CartItems.RemoveRange(efCartItemsToRemove);
                         await _context.SaveChangesAsync();
-                    }
-                }*/
+                    }    
+                    
+
+                }
 
                 await transaction.CommitAsync();
                 return createdOrdersDtoList;

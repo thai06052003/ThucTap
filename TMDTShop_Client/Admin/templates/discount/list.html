@@ -9,13 +9,10 @@
     <link rel="stylesheet" href="/Admin/assets/css/index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
-        /* Các style cho status badge có thể copy từ các file HTML khác nếu cần */
         .status-badge {
             padding: 0.25em 0.6em;
             border-radius: 9999px;
-            /* pill shape */
             font-size: 0.75rem;
-            /* text-xs */
             font-weight: 600;
             line-height: 1;
             text-align: center;
@@ -28,29 +25,23 @@
             background-color: #dcfce7;
             color: #166534;
         }
-    
-        /* green-100, green-700 */
         .status-inactive {
             background-color: #fee2e2;
             color: #991b1b;
         }
     
-        /* red-100, red-700 */
         .status-expired {
             background-color: #f3f4f6;
             color: #4b5563;
         }
     
-        /* gray-100, gray-600 */
         .status-upcoming {
             background-color: #fef9c3;
             color: #854d0e;
         }
     
-        /* yellow-100, yellow-700 */
     
     
-        /* Nút hành động trong bảng */
         .action-icon {
             padding: 0.3rem;
             border-radius: 0.25rem;
@@ -59,7 +50,6 @@
     
         .action-icon:hover {
             background-color: #e5e7eb;
-            /* gray-200 */
         }
     </style>
 </head>
@@ -84,7 +74,6 @@
                         <div class="bg-gray-50 p-4 rounded-lg shadow-sm mb-6 border border-gray-200">
                             <form id="discountFilterForm"
                                 class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 items-end">
-                                <!-- ... (Các input filter giữ nguyên) ... -->
                                 <div>
                                     <label for="searchTermDiscount"
                                         class="block text-sm font-medium text-gray-700 mb-1">Tìm theo Mã</label>
@@ -144,7 +133,7 @@
                         </div>
                     </section>
 
-                    <!-- Pagination (giữ nguyên) -->
+                    <!-- Pagination -->
                     <div id="discountPaginationContainer"
                         class="hidden flex flex-col sm:flex-row justify-between items-center mt-6 text-sm text-gray-600">
                         <div id="discountPaginationInfo">
@@ -208,15 +197,15 @@
                 return;
             }
 
-            function getValidityStatus(discount) { /* ... (giữ nguyên) ... */
+            function getValidityStatus(discount) {
                 const now = new Date();
                 const startDate = new Date(discount.startDate);
                 const endDate = new Date(discount.endDate);
                 endDate.setHours(23, 59, 59, 999);
 
-                if (!discount.isActive) return { text: 'Không hoạt động', class: 'status-inactive' };
                 if (now < startDate) return { text: 'Sắp diễn ra', class: 'status-upcoming' };
                 if (now > endDate) return { text: 'Đã hết hạn', class: 'status-expired' };
+                if (!discount.isCurrentlyValid) return { text: 'Không hoạt động', class: 'status-inactive' };
                 return { text: 'Đang hoạt động', class: 'status-active' };
             }
 
@@ -240,16 +229,16 @@
                 const token = sessionStorage.getItem('token');
                 if (!token) { checkAuthToken(); return; }
                 const url = `${API_BASE_URL}/Discounts?${params.toString()}`;
+                console.log(url)
 
                 try {
                     const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
                     if (!response.ok) {
                         let errorDetail = `Lỗi ${response.status}.`;
                         try {
-                            const errorData = await response.json(); // Cố gắng parse lỗi từ server
+                            const errorData = await response.json(); // Cố gắng phân tích lỗi từ server
                             errorDetail = errorData.message || `Lỗi ${response.status}: ${response.statusText || "Không thể tải danh sách mã giảm giá."}`;
                         } catch (parseError) {
-                            // Nếu không parse được JSON, dùng statusText
                             errorDetail = `Lỗi ${response.status}: ${response.statusText || "Không thể tải danh sách mã giảm giá."}`;
                         }
 
@@ -257,7 +246,7 @@
                             alert('Phiên đăng nhập hết hạn hoặc bạn không có quyền truy cập. ' + errorDetail);
                             window.location.href = "/Admin/templates/auth/login.html";
                         } else {
-                            // Các lỗi khác, hiển thị message lỗi từ server nếu có
+                            // Hiển thị message lỗi
                             throw new Error(errorDetail);
                         }
                         return; // Dừng lại nếu có lỗi xác thực hoặc ủy quyền
@@ -283,7 +272,7 @@
                 }
             }
 
-            function renderDiscountsTable(discounts) { /* ... (giữ nguyên) ... */
+            function renderDiscountsTable(discounts) {
                 discountTableBody.innerHTML = '';
                 discounts.forEach((discount, index) => {
                     const row = discountTableBody.insertRow();
@@ -322,7 +311,7 @@
                 });
             }
 
-            function updateDiscountPaginationUI(data) { /* ... (giữ nguyên) ... */
+            function updateDiscountPaginationUI(data) {
                 if (data && data.items && data.items.length > 0) {
                     paginationContainer.classList.remove('hidden');
                     paginationInfoDiv.classList.remove('hidden');
@@ -395,7 +384,6 @@
                 }
             };
 
-            // ... (Event Listeners cho filter và pagination giữ nguyên) ...
             filterForm.addEventListener('submit', (e) => { e.preventDefault(); fetchDiscounts(1); });
             prevPageBtn.addEventListener('click', () => { if (currentPage > 1) fetchDiscounts(currentPage - 1); });
             nextPageBtn.addEventListener('click', () => { if (currentPage < parseInt(totalPagesSpan.textContent)) fetchDiscounts(currentPage + 1); });

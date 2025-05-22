@@ -359,6 +359,7 @@
                         throw new Error(`Lỗi ${response.status}: ${errorText || "Không thể tải đơn hàng."}`);
                     }
                     const data = await response.json();
+                    console.log(data)
 
                     if (data.items && data.items.length > 0) {
                         renderOrderList(data.items);
@@ -425,19 +426,23 @@
                             // Giá gốc và giá bán có thể cần thêm trường vào OrderDetailDto nếu API hỗ trợ
                             // Hiện tại chỉ có unitPrice (là giá bán)
                             itemsHtml += `
-                                <div class="flex items-start p-4 border-b border-gray-100 last:border-b-0">
-                                    <img src="${getImageUrl(item.productImageURL)}" alt="${item.productName}" class="w-16 h-16 object-cover rounded mr-4 flex-shrink-0">
-                                    <div class="flex-grow">
-                                        <a href="/Customer/templates/product-detail.html?productId=${item.productID}" class="text-lg text-gray-800 px-1 mb-1 leading-tight hover:bg-sky-200 rounded-full">${item.productName}</a>
-                                        <p class="text-sm text-gray-500">Phân loại hàng: ${item.categoryName}</p>
-                                        <p class="text-xs text-gray-500">Số lượng: x${item.quantity}</p>
-                                        ${item.shopName && item.shopName !== "N/A" && representativeShopName === "Nhiều người bán" ? `<p class="text-xs text-gray-500">Shop: ${item.shopName}</p>` : ''}
-                                    </div>
-                                    <div class="text-sm text-right ml-4 flex-shrink-0">
-                                        <span class="text-indigo-600 font-medium">${formatCurrency(item.unitPrice * item.quantity)}</span>
-                                    </div>
-                                </div>
-                            `;
+                                        <div class="flex items-start p-4 border-b border-gray-100 last:border-b-0">
+                                            <img src="${getImageUrl(item.productImageURL)}" alt="${item.productName}" class="w-16 h-16 object-cover rounded mr-4 flex-shrink-0">
+                                            <div class="flex-grow">
+                                                <a href="/Customer/templates/product-detail.html?productId=${item.productID}" 
+                                                class="mb-2 text-lg text-gray-800 leading-tight hover:text-indigo-600 rounded-full ${!item.isActive ? 'no-event' : ''}">
+                                                ${item.productName}
+                                                ${!item.isActive ? `<span class="text-xs font-medium px-3 py-1 ml-8 bg-gray-500 rounded-full w-24 text-center text-white">Đã ngừng bán</span>` : ''}
+                                                </a>
+                                                <p class="text-sm text-gray-500">Phân loại hàng: ${item.categoryName}</p>
+                                                <p class="text-xs text-gray-500">Số lượng: x${item.quantity}</p>
+                                                ${item.shopName && item.shopName !== "N/A" && representativeShopName === "Nhiều người bán" ? `<p class="text-xs text-gray-500">Shop: ${item.shopName}</p>` : ''}
+                                            </div>
+                                            <div class="text-sm text-right ml-4 flex-shrink-0">
+                                                <span class="text-indigo-600 font-medium">${formatCurrency(item.unitPrice * item.quantity)}</span>
+                                            </div>
+                                        </div>
+                                    `;
                         });
                     } else {
                         itemsHtml = '<p class="p-4 text-sm text-gray-500">Không có sản phẩm trong đơn hàng này.</p>';

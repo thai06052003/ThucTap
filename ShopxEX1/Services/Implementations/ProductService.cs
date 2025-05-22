@@ -240,6 +240,8 @@ namespace ShopxEX1.Services.Implementations
                 throw new KeyNotFoundException($"Không tìm thấy sản phẩm với ID {productId}.");
             }
 
+            // kiểm tra: nếu là admin -> bỏ qua
+            //           Nếu là seller -> sẽ kiểm tra sản phẩm đó có phải của seller ấy không
             if (!IsAdmin())
             {
                 if (existingProduct.SellerID != sellerId)
@@ -338,6 +340,41 @@ namespace ShopxEX1.Services.Implementations
                 query = query.Where(p => p.Price <= filter.MaxPrice.Value);
             }
 
+            Expression<Func<Product, object>> orderByExpression = p => p.ProductID;
+            bool ascending = true;
+
+            if (!string.IsNullOrWhiteSpace(filter?.SortBy))
+            {
+                switch (filter.SortBy.ToLowerInvariant())
+                {
+                    case "priceasc":
+                        orderByExpression = p => p.Price;
+                        ascending = true;
+                        break;
+                    case "pricedesc":
+                        orderByExpression = p => p.Price;
+                        ascending = false;
+                        break;
+                    case "nameasc":
+                        orderByExpression = p => p.ProductName;
+                        ascending = true;
+                        break;
+                    case "createdatdesc":
+                        orderByExpression = p => p.CreatedAt;
+                        ascending = false;
+                        break;
+                }
+            }
+
+            if (ascending)
+            {
+                query = query.OrderBy(orderByExpression);
+            }
+            else
+            {
+                query = query.OrderByDescending(orderByExpression);
+            }
+
             var totalCount = await query.CountAsync();
             var items = await query
                                 .Skip((pageNumber - 1) * pageSize)
@@ -347,6 +384,7 @@ namespace ShopxEX1.Services.Implementations
             var productDtos = _mapper.Map<IEnumerable<ProductSummaryDto>>(items);
             return new PagedResult<ProductSummaryDto>(productDtos, pageNumber, pageSize, totalCount);
         }
+
         public async Task<List<ProductSummaryDto>> GetBestSellingProductsAsync(int count = 5)
         {
             if (count <= 0)
@@ -355,100 +393,101 @@ namespace ShopxEX1.Services.Implementations
                 count = 5;
             }
 
-            _logger.LogInformation("Bắt đầu lấy {Count} sản phẩm bán chạy nhất.", count);
+            _logger.LogInformation("Bắt đầu lấy {Count} sản phẩm bán chạy nhất (dùng foreach cho ID), ưu tiên sản phẩm active và còn hàng.", count);
 
-            // Bước 1: Tính toán doanh số (giữ nguyên)
-            var productSales = await _context.OrderDetails
+            // Bước 1: Lấy thứ tự ưu tiên của TẤT CẢ các sản phẩm dựa trên số lượng bán.
+            var prioritizedProductSales = await _context.OrderDetails
                 .GroupBy(od => od.ProductID)
                 .Select(g => new
                 {
                     ProductID = g.Key,
                     TotalQuantitySold = g.Sum(od => od.Quantity)
                 })
-                .OrderByDescending(ps => ps.TotalQuantitySold) // Sắp xếp theo số lượng bán giảm dần
-                .Take(count) // Lấy top 'count' sản phẩm
+                .OrderByDescending(ps => ps.TotalQuantitySold)
                 .ToListAsync();
 
-            if (!productSales.Any())
+            if (!prioritizedProductSales.Any())
             {
-                _logger.LogInformation("Không tìm thấy sản phẩm nào được bán.");
+                _logger.LogInformation("Không tìm thấy sản phẩm nào được bán trong OrderDetails.");
                 return new List<ProductSummaryDto>();
             }
 
-            // Lấy thông tin chi tiết của các sản phẩm bán chạy này
-            var bestSellingProductIds = productSales.Select(ps => ps.ProductID).ToList();
-            _logger.LogDebug("Các ProductID bán chạy nhất được xác định: {ProductIds}", string.Join(", ", bestSellingProductIds));
+            var prioritizedProductIds = prioritizedProductSales.Select(ps => ps.ProductID).ToList();
+            _logger.LogDebug("Thứ tự ưu tiên của {TotalPrioritizedIds} ProductID dựa trên doanh số được xác định.", prioritizedProductIds.Count);
 
-            // Bước 2: Xây dựng Expression Tree cho mệnh đề WHERE động
-            ParameterExpression parameter = Expression.Parameter(typeof(Product), "p"); // Tham số đầu vào cho lambda: (Product p)
-            Expression? finalFilterExpression = null;
+            // Bước 2: Xây dựng Expression Tree hoàn chỉnh
+            ParameterExpression parameter = Expression.Parameter(typeof(Product), "p"); // Tham số: (Product p)
+            Expression? finalCombinedFilter = null;
 
-            if (bestSellingProductIds.Any())
+            // 2a. Xây dựng phần (p.ProductID == id1 || p.ProductID == id2 || ...) bằng foreach
+            MemberExpression productIdProperty = Expression.Property(parameter, nameof(Product.ProductID));
+            Expression? orChainExpressionForProductIds = null;
+
+            foreach (var id in prioritizedProductIds)
             {
-                // Xây dựng phần (p.ProductID == id1 || p.ProductID == id2 || ...)
-                MemberExpression productIdProperty = Expression.Property(parameter, nameof(Product.ProductID));
-                Expression? orChainExpression = null;
-
-                foreach (var id in bestSellingProductIds)
-                {
-                    ConstantExpression idConstant = Expression.Constant(id);
-                    BinaryExpression equalsExpression = Expression.Equal(productIdProperty, idConstant); // p.ProductID == id
-
-                    if (orChainExpression == null)
-                    {
-                        orChainExpression = equalsExpression;
-                    }
-                    else
-                    {
-                        orChainExpression = Expression.OrElse(orChainExpression, equalsExpression); // (prevExpression) OR (p.ProductID == id)
-                    }
-                }
-
-                // Xây dựng phần p.IsActive == true
-                MemberExpression isActiveProperty = Expression.Property(parameter, nameof(Product.IsActive));
-                ConstantExpression trueConstant = Expression.Constant(true);
-                BinaryExpression isActiveCheck = Expression.Equal(isActiveProperty, trueConstant); // p.IsActive == true
-
-                // Kết hợp hai phần: (orChainExpression) AND (isActiveCheck)
-                if (orChainExpression != null) // Đảm bảo có ít nhất một ID
-                {
-                    finalFilterExpression = Expression.AndAlso(orChainExpression, isActiveCheck);
-                }
-                else // Trường hợp list ID rỗng (mặc dù đã kiểm tra productSales.Any() ở trên)
-                {
-                    // Không nên xảy ra nếu productSales.Any() là true, nhưng để an toàn
-                    finalFilterExpression = Expression.Constant(false); // p => false
-                }
-            }
-            else
-            {
-                // Nếu không có ID nào (không nên xảy ra ở đây vì đã kiểm tra productSales.Any())
-                // Tạo một biểu thức luôn trả về false để không có sản phẩm nào được chọn
-                finalFilterExpression = Expression.Constant(false); // p => false
+                ConstantExpression idConstant = Expression.Constant(id);
+                BinaryExpression equalsExpression = Expression.Equal(productIdProperty, idConstant); // p.ProductID == id
+                orChainExpressionForProductIds = (orChainExpressionForProductIds == null)
+                    ? equalsExpression
+                    : Expression.OrElse(orChainExpressionForProductIds, equalsExpression);
             }
 
-            // Tạo Lambda Expression hoàn chỉnh: p => ( (p.ProductID == id1 || ...) AND p.IsActive )
-            Expression<Func<Product, bool>> productFilterLambda = Expression.Lambda<Func<Product, bool>>(finalFilterExpression ?? Expression.Constant(false), parameter);
-            _logger.LogDebug("Expression tree filter được tạo: {ExpressionTree}", productFilterLambda.ToString());
+            // Nếu prioritizedProductIds rỗng (đã được kiểm tra ở trên), orChainExpressionForProductIds sẽ là null.
+            // Trong trường hợp đó, không có sản phẩm nào cần được truy vấn dựa trên ID.
+            if (orChainExpressionForProductIds == null)
+            {
+                _logger.LogInformation("Không có ProductID nào trong danh sách ưu tiên để xây dựng bộ lọc ID.");
+                // Nếu không có ID nào từ bán hàng, không thể có sản phẩm bán chạy nào
+                return new List<ProductSummaryDto>();
+            }
 
+            // 2b. Xây dựng phần điều kiện tĩnh: p.IsActive == true AND p.StockQuantity > 0
+            MemberExpression isActiveProperty = Expression.Property(parameter, nameof(Product.IsActive));
+            ConstantExpression trueConstant = Expression.Constant(true);
+            BinaryExpression isActiveCheck = Expression.Equal(isActiveProperty, trueConstant); // p.IsActive == true
 
-            // Bước 3: Lấy thông tin sản phẩm với filter động
-            var productsQuery = _context.Products.Where(productFilterLambda);
+            MemberExpression stockQuantityProperty = Expression.Property(parameter, nameof(Product.StockQuantity));
+            ConstantExpression zeroConstant = Expression.Constant(0);
+            BinaryExpression stockQuantityCheck = Expression.GreaterThan(stockQuantityProperty, zeroConstant); // p.StockQuantity > 0
 
-            var products = await productsQuery
+            Expression staticConditions = Expression.AndAlso(isActiveCheck, stockQuantityCheck); // (p.IsActive == true) AND (p.StockQuantity > 0)
+
+            // 2c. Kết hợp chuỗi OR của ProductID với các điều kiện tĩnh bằng AND
+            // ( (p.ProductID == id1 || ...) AND (p.IsActive == true) AND (p.StockQuantity > 0) )
+            finalCombinedFilter = Expression.AndAlso(orChainExpressionForProductIds, staticConditions);
+
+            // Tạo Lambda Expression hoàn chỉnh
+            Expression<Func<Product, bool>> productFilterLambda = Expression.Lambda<Func<Product, bool>>(
+                finalCombinedFilter, // Biểu thức đã được kết hợp đầy đủ
+                parameter
+            );
+            _logger.LogDebug("Expression tree filter tổng hợp được tạo: {ExpressionTree}", productFilterLambda.ToString());
+
+            // Bước 3: Truy vấn các sản phẩm thỏa mãn toàn bộ điều kiện từ Expression Tree
+            var candidateProducts = await _context.Products
+                .Where(productFilterLambda) // Áp dụng bộ lọc động tổng hợp
                 .Include(p => p.Category)
                 .Include(p => p.Seller)
                 .AsNoTracking()
                 .ToListAsync();
-            _logger.LogInformation("Đã truy vấn được {ProductCount} sản phẩm chi tiết từ DB.", products.Count);
 
+            _logger.LogInformation("Đã truy vấn được {CandidateCount} sản phẩm ứng viên (active, còn hàng, và nằm trong danh sách bán chạy).", candidateProducts.Count);
 
-            // Bước 4: Sắp xếp lại danh sách products theo đúng thứ tự bán chạy và map sang DTO (giữ nguyên)
-            var sortedProducts = products
-                .OrderBy(p => bestSellingProductIds.IndexOf(p.ProductID))
+            if (!candidateProducts.Any())
+            {
+                _logger.LogInformation("Không có sản phẩm nào trong danh sách bán chạy thỏa mãn điều kiện active và còn hàng.");
+                return new List<ProductSummaryDto>();
+            }
+
+            // Bước 4: Sắp xếp lại các sản phẩm ứng viên này theo thứ tự ưu tiên ban đầu
+            // và sau đó Take(count) để lấy đúng số lượng yêu cầu.
+            var finalProducts = candidateProducts
+                .OrderBy(p => prioritizedProductIds.IndexOf(p.ProductID)) // Sắp xếp theo thứ tự bán chạy gốc
+                .Take(count) // Lấy đúng số lượng 'count' yêu cầu
                 .ToList();
 
-            return _mapper.Map<List<ProductSummaryDto>>(sortedProducts);
+            _logger.LogInformation("Hoàn tất. Trả về {FinalProductCount} sản phẩm bán chạy nhất (tối đa {RequestedCount} nếu có đủ).", finalProducts.Count, count);
+            return _mapper.Map<List<ProductSummaryDto>>(finalProducts);
         }
         public async Task<List<ProductSummaryDto>> GetNewestProductsAsync(int count = 20)
         {
@@ -459,6 +498,7 @@ namespace ShopxEX1.Services.Implementations
 
             var newestProducts = await _context.Products
                 .Where(p => p.IsActive) // Chỉ lấy sản phẩm còn active
+                .Where(p => p.StockQuantity > 0) // Chỉ lấy sản phẩm còn active
                 .OrderByDescending(p => p.CreatedAt) // Sắp xếp theo ngày tạo giảm dần (mới nhất lên đầu)
                 .Take(count) // Lấy top 'count' sản phẩm
                 .Include(p => p.Category) // Include thông tin cần thiết cho ProductSummaryDto

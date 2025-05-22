@@ -466,7 +466,11 @@
                         <div class="product-item">
                             <img src="${getImageUrl(item.productImageURL)}" alt="${item.productName}" class="product-image-detail">
                             <div class="product-details">
-                                <a href="/Customer/templates/product-detail.html?productId=${item.productID}" class="product-name-detail hover:text-indigo-600">${item.productName}</a>
+                                <a href="/Customer/templates/product-detail.html?productId=${item.productID}" 
+                                                class="mb-2 text-lg text-gray-800 leading-tight hover:text-indigo-600 rounded-full ${!item.isActive ? 'no-event' : ''}">
+                                                ${item.productName}
+                                                ${!item.isActive ? `<span class="text-xs font-medium px-3 py-1 ml-8 bg-gray-500 rounded-full w-24 text-center text-white">Đã ngừng bán</span>` : ''}
+                                                </a>
                                 <p class="product-category-detail">Phân loại: ${item.categoryName || 'Chưa phân loại'}</p>
                                 ${item.shopName && item.shopName !== "N/A" ? `<p class="product-shop-detail">Shop: ${item.shopName}</p>` : ''}
                                 <p class="product-quantity-detail">Số lượng: ${item.quantity}</p>

@@ -9,6 +9,7 @@ using ShopxEX1.Dtos.Carts;
 using ShopxEX1.Dtos.Orders;
 using ShopxEX1.Dtos.Discounts;
 using ShopxEX1.Dtos.SellerCategory;
+using ShopxEX1.Dtos.Contacts;
 
 namespace ShopxEX1.Mappings
 {
@@ -130,6 +131,26 @@ namespace ShopxEX1.Mappings
                 .ForMember(dest => dest.Seller, opt => opt.Ignore())
                 .ForMember(dest => dest.Products, opt => opt.Ignore());
 
+            // === Contact Mappings ===
+            CreateMap<Contact, ContactDto>()
+                .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : null))
+                .ForMember(dest => dest.UserNumberPhone, opt => opt.MapFrom(src => src.User != null ? src.User.Phone : null))
+                .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null));
+
+            CreateMap<ContactCreateDto, Contact>()
+                .ForMember(dest => dest.ContactID, opt => opt.Ignore()) // Không map ID khi tạo
+                .ForMember(dest => dest.UserID, opt => opt.Ignore())    // Sẽ được gán ở service
+                .ForMember(dest => dest.Status, opt => opt.Ignore())    // Sẽ được gán mặc định ở service
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore()) // Sẽ được gán ở service
+                .ForMember(dest => dest.User, opt => opt.Ignore());      // Không map navigation property
+
+            CreateMap<ContactUpdateDto, Contact>()
+                .ForMember(dest => dest.ContactID, opt => opt.Ignore())
+                .ForMember(dest => dest.UserID, opt => opt.Ignore())
+                .ForMember(dest => dest.Message, opt => opt.Ignore()) // Thường không cho sửa message
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.User, opt => opt.Ignore());
+
             // === Category Mappings ===
             CreateMap<Category, CategoryDto>();
 
@@ -172,6 +193,7 @@ namespace ShopxEX1.Mappings
             // === Cart & CartItem Mappings ===
             CreateMap<CartItem, CartItemDto>()
                 .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.ProductName : null))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.Product != null ? src.Product.IsActive : false))
                 .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.Product != null ? src.Product.Price : 0))
                 .ForMember(dest => dest.ImageURL, opt => opt.MapFrom(src => src.Product != null ? src.Product.ImageURL : null))
                 .ForMember(dest => dest.AvailableStock, opt => opt.MapFrom(src => src.Product != null ? src.Product.StockQuantity : 0));
@@ -197,6 +219,7 @@ namespace ShopxEX1.Mappings
             CreateMap<OrderDetail, OrderDetailDto>()
                 .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.ProductName : "N/A"))
                 .ForMember(dest => dest.ProductImageURL, opt => opt.MapFrom(src => src.Product != null ? src.Product.ImageURL : null))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.Product != null ? src.Product.IsActive : false))
                 .ForMember(dest => dest.CategoryID, opt => opt.MapFrom(src => src.Product != null && src.Product.Category != null ? src.Product.CategoryID : 0))
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Product != null && src.Product.Category != null ? src.Product.Category.CategoryName : "N/A"))
                 .ForMember(dest => dest.SellerID, opt => opt.MapFrom(src => src.Product != null && src.Product.Seller != null ? src.Product.SellerID : 0))

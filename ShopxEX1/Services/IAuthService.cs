@@ -16,12 +16,6 @@ namespace ShopxEX1.Services
         Task<bool> ChangePasswordAsync(int userId, ChangePasswordDto changePasswordDto);
         // Bắt đầu quy trình yêu cầu đặt lại mật khẩu (tạo token, gửi email)
         Task<PasswordResetResultDto> RequestPasswordResetAsync(RequestPasswordResetDto resetRequestDto);
-        // Thực hiện đặt lại mật khẩu bằng token đã nhận qua email
-        Task<PasswordResetResultDto> ResetPasswordAsync(PasswordResetDto resetDto);
-        // Làm mới Access Token bằng Refresh Token.
-        Task<RefreshTokenResultDto> RefreshTokenAsync(RefreshTokenRequestDto refreshTokenDto);
-        // Kiểm tra xem người dùng có Refresh Token còn hiệu lực hay không
-        Task<bool> CheckRefreshTokenValidityAsync(int userId);
         Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto updateDto);
     }
 }

@@ -10,5 +10,6 @@
         public string? ImageURL { get; set; } // Cần map từ Product
         public int Quantity { get; set; }
         public int AvailableStock { get; set; } // Cần map từ Product.StockQuantity
+        public bool IsActive { get; set; } // Map từ Product.Isactive
     }
 }

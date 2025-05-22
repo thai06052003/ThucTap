@@ -14,5 +14,6 @@
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; } // Giá lúc đặt hàng
         public decimal LineTotal => UnitPrice * Quantity;
+        public bool IsActive { get; set; }
     }
 }
