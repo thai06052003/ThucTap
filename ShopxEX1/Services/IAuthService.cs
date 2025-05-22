@@ -1,4 +1,5 @@
 ﻿using ShopxEX1.Dtos.Auth;
+using ShopxEX1.Models;
 
 namespace ShopxEX1.Services
 {
@@ -17,5 +18,7 @@ namespace ShopxEX1.Services
         // Bắt đầu quy trình yêu cầu đặt lại mật khẩu (tạo token, gửi email)
         Task<PasswordResetResultDto> RequestPasswordResetAsync(RequestPasswordResetDto resetRequestDto);
         Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto updateDto);
+        // Thêm phương thức public để tạo JWT token
+        (string Token, DateTime Expiration) GenerateJwtToken(User user);
     }
 }

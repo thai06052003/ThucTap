@@ -1,18 +1,26 @@
 // Hàm để kiểm tra và đặt vai trò người dùng (gọi từ HTML)
 async function checkRole() {
-    // Đọc thông tin từ sessionStorage
-    const userDataRaw = sessionStorage.getItem('userData');
-    console.log('Raw userData from sessionStorage:', userDataRaw);
+    // Lấy thông tin từ token
+    const token = sessionStorage.getItem('token');
+    if (!token) {
+        console.log('No token found, cannot check role');
+        return;
+    }
     
-    // Parse userData
-    const userData = JSON.parse(userDataRaw || '{}');
-    let role = userData.role || '';
-    let shopName = userData.shopName || '';
+    // Giải mã token để lấy thông tin người dùng
+    const userData = parseJwtToken(token);
+    console.log('userData from token in checkRole:', userData);
+    
+    // Kết hợp với dữ liệu từ sessionStorage
+    const storedUserData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+    const combinedData = { ...storedUserData, ...userData };
+    let role = combinedData.role || '';
+    let shopName = combinedData.shopName || '';
     
     // Hiển thị thông tin debug chi tiết
     console.log('checkRole function called:');
-    console.log('- userDataRaw exists:', !!userDataRaw);
-    console.log('- userData after parse:', userData);
+    console.log('- token exists:', !!token);
+    console.log('- userData after parse:', combinedData);
     console.log('- role value:', role);
     console.log('- role type:', typeof role);
     console.log('- shopName value:', shopName);
@@ -85,18 +93,114 @@ document.addEventListener('DOMContentLoaded', async function() {
     const CLOUDINARY_UPLOAD_PRESET = "ShopX_Images";
     const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
+    // Hàm đồng bộ userData trong sessionStorage với dữ liệu từ token
+    async function syncUserDataWithToken() {
+        const token = sessionStorage.getItem('token');
+        if (!token) return null;
+        
+        try {
+            // Giải mã token để lấy thông tin
+            const payloadBase64 = token.split('.')[1];
+            if (!payloadBase64) return null;
+
+            let payloadBase64Standard = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+            const padding = payloadBase64Standard.length % 4;
+            if (padding) {
+                payloadBase64Standard += '='.repeat(4 - padding);
+            }
+
+            const payloadJson = atob(payloadBase64Standard);
+            const payload = JSON.parse(payloadJson);
+            
+            // Lấy thông tin từ token
+            const tokenData = {
+                userId: payload.sub || payload.nameid,
+                email: payload.email,
+                role: payload.role || '',
+            };
+            
+            // Lấy thông tin chi tiết từ sessionStorage
+            const storedUserData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+            
+            // Cập nhật role trong userData theo token (ưu tiên token)
+            storedUserData.role = tokenData.role;
+            
+            // Lưu lại vào sessionStorage
+            sessionStorage.setItem('userData', JSON.stringify(storedUserData));
+            console.log('Đã đồng bộ userData với token, role =', tokenData.role);
+            
+            return storedUserData;
+        } catch (error) {
+            console.error('Lỗi khi đồng bộ userData:', error);
+            return null;
+        }
+    }
+
+    // Hàm giải mã token JWT để lấy thông tin người dùng
+    function parseJwtToken(token) {
+        if (!token) return null;
+        
+        try {
+            const payloadBase64 = token.split('.')[1];
+            if (!payloadBase64) {
+                throw new Error('Invalid token format: Missing payload');
+            }
+
+            let payloadBase64Standard = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+            const padding = payloadBase64Standard.length % 4;
+            if (padding) {
+                payloadBase64Standard += '='.repeat(4 - padding);
+            }
+
+            const payloadJson = atob(payloadBase64Standard);
+            const payload = JSON.parse(payloadJson);
+            console.log('Token payload:', payload);
+            
+            // Lấy thông tin từ claims trong token
+            const tokenData = {
+                userId: payload.sub || payload.nameid,
+                email: payload.email,
+                role: payload.role ? payload.role.toLowerCase() : '',
+                sellerId: payload.SellerId || 0
+            };
+            
+            // Lấy thông tin chi tiết từ sessionStorage
+            const storedUserData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+            
+            // Quan trọng: Đảm bảo role luôn được lấy từ token, KHÔNG từ sessionStorage
+            const combinedData = {
+                ...storedUserData,  // Dữ liệu chi tiết từ sessionStorage (fullName, phone, gender, address, avatar, shopName...)
+                userId: tokenData.userId,
+                email: tokenData.email,
+                role: tokenData.role, // Luôn lấy role từ token
+                sellerId: tokenData.sellerId
+            };
+            
+            // Đảm bảo giữ lại shopName từ sessionStorage nếu có 
+            if (storedUserData.shopName) {
+                combinedData.shopName = storedUserData.shopName;
+            }
+            
+            console.log('Combined userData from token and sessionStorage:', combinedData);
+            return combinedData;
+        } catch (error) {
+            console.error('Lỗi khi parse JWT token:', error);
+            return null;
+        }
+    }
+
     // Kiểm tra nếu là seller và cập nhật thông tin shop
     async function ensureSellerShopInfo() {
         try {
-            // Đọc userData từ sessionStorage
-            const userDataRaw = sessionStorage.getItem('userData');
-            if (!userDataRaw) return;
+            const token = sessionStorage.getItem('token');
+            if (!token) return;
             
-            const userData = JSON.parse(userDataRaw);
-            console.log('Initial userData on page load:', userData);
+            // Lấy thông tin người dùng từ token
+            const userData = parseJwtToken(token);
+            console.log('Initial userData from token on page load:', userData);
             
             // Nếu có sellerUtils và người dùng là seller, sử dụng nó để cập nhật thông tin shop
-            if (window.sellerUtils && userData.role?.toLowerCase() === 'seller') {
+            if (window.sellerUtils && userData.role === 'seller') {
                 console.log('User is a seller, calling sellerUtils.ensureShopInfo()');
                 const updatedData = await window.sellerUtils.ensureShopInfo();
                 console.log('After ensureShopInfo, userData:', updatedData);
@@ -104,6 +208,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Kiểm tra cập nhật UI nếu cần
                 if (updatedData && updatedData.shopName) {
                     console.log('Updated shop name available:', updatedData.shopName);
+                    
+                    // Cập nhật shopName vào sessionStorage
+                    const storedUserData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+                    storedUserData.shopName = updatedData.shopName;
+                    sessionStorage.setItem('userData', JSON.stringify(storedUserData));
+                    console.log('Updated sessionStorage with shopName:', updatedData.shopName);
                     
                     // Cập nhật trường shopName nếu có
                     const shopNameInput = document.getElementById('shopName');
@@ -158,31 +268,37 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.error('Lỗi khi cập nhật thông tin shop:', error);
         }
         
-        const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
-        console.log('userData from sessionStorage in updateUserInfo:', userData);
+        // Lấy thông tin người dùng từ token
+        const token = sessionStorage.getItem('token');
+        const userData = parseJwtToken(token);
+        console.log('userData from token in updateUserInfo:', userData);
+        
+        // Kết hợp với dữ liệu chi tiết từ sessionStorage nếu có
+        const storedUserData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+        const combinedUserData = { ...storedUserData, ...userData };
         
         const avatarImg = document.getElementById('avatarImg');
         if (avatarImg) {
-            avatarImg.src = userData.avatar || `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/v1/default-avatar.png`;
+            avatarImg.src = combinedUserData.avatar || `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/v1/default-avatar.png`;
         }
 
         const userName = document.getElementById('userName');
         const userEmail = document.getElementById('userEmail');
         if (userName && userEmail) {
-            userName.textContent = userData.fullName || 'Chưa cập nhật';
-            userEmail.textContent = userData.email || 'Chưa cập nhật';
+            userName.textContent = combinedUserData.fullName || 'Chưa cập nhật';
+            userEmail.textContent = combinedUserData.email || 'Chưa cập nhật';
         }
 
         const sidebarUserName = document.getElementById('sidebarUserName');
         const sidebarUserEmail = document.getElementById('sidebarUserEmail');
         if (sidebarUserName && sidebarUserEmail) {
-            sidebarUserName.textContent = userData.fullName || 'Chưa cập nhật';
-            sidebarUserEmail.textContent = userData.email || 'Chưa cập nhật';
+            sidebarUserName.textContent = combinedUserData.fullName || 'Chưa cập nhật';
+            sidebarUserEmail.textContent = combinedUserData.email || 'Chưa cập nhật';
         }
 
         const accountName = document.getElementById('accountName');
         if (accountName) {
-            accountName.textContent = userData.fullName || 'Chưa cập nhật';
+            accountName.textContent = combinedUserData.fullName || 'Chưa cập nhật';
         }
 
         const roleSelect = document.getElementById('role');
@@ -196,11 +312,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         const addressField = document.getElementById('address');
 
         if (roleSelect && shopNameContainer) {
-            // Kiểm tra và chuẩn hóa vai trò từ dữ liệu API
-            const role = userData.role || '';
-            const shopName = userData.shopName || '';
-            console.log('Role from userData (raw):', role); // Log để kiểm tra giá trị gốc
-            console.log('ShopName from userData:', shopName); // Log để kiểm tra giá trị shopName
+            // Kiểm tra và chuẩn hóa vai trò từ token
+            const role = combinedUserData.role || '';
+            const shopName = combinedUserData.shopName || '';
+            console.log('Role from token/userData (raw):', role);
+            console.log('ShopName from userData:', shopName);
             
             // Chuẩn hóa vai trò cho việc so sánh (chuyển thành chữ thường)
             const roleLower = typeof role === 'string' ? role.toLowerCase() : '';
@@ -229,16 +345,16 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             console.log('Final selected role:', roleSelect.value);
         }
-        if (fullNameField) fullNameField.value = userData.fullName || '';
-        if (emailField) emailField.value = userData.email || '';
-        if (phoneField) phoneField.value = userData.phone || '';
-        if (birthdateField) birthdateField.value = userData.birthday ? userData.birthday.split('T')[0] : '';
+        if (fullNameField) fullNameField.value = combinedUserData.fullName || '';
+        if (emailField) emailField.value = combinedUserData.email || '';
+        if (phoneField) phoneField.value = combinedUserData.phone || '';
+        if (birthdateField) birthdateField.value = combinedUserData.birthday ? combinedUserData.birthday.split('T')[0] : '';
         if (genderMale && genderFemale) {
-            const gender = userData.gender;
+            const gender = combinedUserData.gender;
             genderMale.checked = gender === true || gender === 'true' || gender === 1;
             genderFemale.checked = gender === false || gender === 'false' || gender === 0 || !gender;
         }
-        if (addressField) addressField.value = userData.address || '';
+        if (addressField) addressField.value = combinedUserData.address || '';
     }
 
     // Hàm kiểm tra token
@@ -253,6 +369,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
         try {
+            const userData = parseJwtToken(token);
+            if (!userData) {
+                throw new Error('Invalid token format or missing data');
+            }
+
             const payloadBase64 = token.split('.')[1];
             if (!payloadBase64) {
                 throw new Error('Invalid token format: Missing payload');
@@ -289,13 +410,20 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // Kiểm tra token và cập nhật thông tin, bao gồm thông tin shop
-    const tokenValid = await checkToken();
-    if (tokenValid) {
-        // Đảm bảo thông tin shop trước khi cập nhật UI
-        await ensureSellerShopInfo();
-        // Cập nhật UI với thông tin người dùng
-        updateUserInfo();
+    async function initUserData() {
+        const tokenValid = await checkToken();
+        if (tokenValid) {
+            // Đồng bộ userData trong sessionStorage với token
+            await syncUserDataWithToken();
+            // Đảm bảo thông tin shop trước khi cập nhật UI
+            await ensureSellerShopInfo();
+            // Cập nhật UI với thông tin người dùng
+            updateUserInfo();
+        }
     }
+
+    // Khởi tạo dữ liệu người dùng và UI
+    await initUserData();
 
     // Đăng xuất
     const logoutButton = document.getElementById('logoutButton');
@@ -446,28 +574,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
             try {
-                const payloadBase64 = token.split('.')[1];
-                if (!payloadBase64) {
-                    throw new Error('Invalid token format');
-                }
-
-                let payloadBase64Standard = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
-                const padding = payloadBase64Standard.length % 4;
-                if (padding) {
-                    payloadBase64Standard += '='.repeat(4 - padding);
-                }
-
-                const payloadJson = atob(payloadBase64Standard);
-                const payload = JSON.parse(payloadJson);
-                const userId = payload.sub; // Giả sử 'sub' là UserId
-
-                const now = Date.now() / 1000;
-                const bufferTime = 60;
-                if (payload.exp && now > payload.exp - bufferTime) {
-                    throw new Error('Token expired');
-                }
-                if (payload.nbf && now < payload.nbf) {
-                    throw new Error('Token not yet valid');
+                // Giải mã token để lấy userId
+                const userData = parseJwtToken(token);
+                const userId = userData.userId;
+                if (!userId) {
+                    throw new Error('Không thể xác định ID người dùng từ token');
                 }
 
                 const fullName = document.getElementById('fullName').value;
@@ -479,21 +590,24 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const address = document.getElementById('address').value;
                 const role = roleSelect.value;
                 
-                // Lấy giá trị shopName nếu có
+                // Lấy giá trị shopName
                 let shopName = '';
                 if (role === 'seller') {
                     const shopNameInput = document.getElementById('shopName');
                     if (shopNameInput) {
                         shopName = shopNameInput.value.trim();
                         console.log('Got shopName from form:', shopName);
+                        
+                        // Nếu không nhập tên shop mới và đã từng là seller trước đây, dùng lại tên shop cũ
+                        if (!shopName && userData.shopName) {
+                            shopName = userData.shopName;
+                            console.log('Using previous shop name:', shopName);
+                        }
                     }
-                } else {
-                    // If current role is not seller, check if there was previously a shopName in userData
-                    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
-                    if (userData.role?.toLowerCase() === 'seller' && userData.shopName) {
-                        shopName = userData.shopName;
-                        console.log('Preserved existing shopName from userData:', shopName);
-                    }
+                } else if (userData.shopName) {
+                    // Nếu chuyển từ seller sang customer, vẫn giữ lại shopName để sau này có thể quay lại vai trò seller
+                    shopName = userData.shopName;
+                    console.log('Preserved existing shopName from userData:', shopName);
                 }
 
                 if (birthdateInput) {
@@ -506,33 +620,44 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                 let body = { fullName, email, phone, birthday: birthdateInput, gender: genderValue, address };
                 if (role === 'seller' && shopName) {
-                    try {
-                        const convertResponse = await fetch(`${API_BASE}/seller/convert-to-seller`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ UserId: userId, ShopName: shopName })
-                        });
+                    // Kiểm tra xem người dùng đã từng là seller chưa bằng cách kiểm tra sellerId
+                    const hasSellerId = userData.sellerId != null && userData.sellerId !== undefined && userData.sellerId > 0;
+                    console.log('Checking sellerId:', userData.sellerId, 'hasSellerId:', hasSellerId);
+                    
+                    if (hasSellerId) {
+                        // Người dùng đã từng là seller
+                        console.log('Người dùng đã có sellerId, cập nhật profile với vai trò seller');
+                        body = { ...body, role: 'seller', shopName: shopName, sellerId: userData.sellerId };
+                        console.log('Body cho cập nhật hồ sơ với thông tin seller đã có:', body);
+                    } else {
+                        // Người dùng chưa từng là seller, tạo mới
+                        try {
+                            const convertResponse = await fetch(`${API_BASE}/seller/convert-to-seller`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ UserId: userId, ShopName: shopName })
+                            });
 
-                        if (!convertResponse.ok) {
-                            const errorData = await convertResponse.json();
-                            throw new Error(errorData.message || 'Chuyển đổi thành Seller thất bại');
+                            if (!convertResponse.ok) {
+                                const errorData = await convertResponse.json();
+                                throw new Error(errorData.message || 'Chuyển đổi thành Seller thất bại');
+                            }
+
+                            const result = await convertResponse.json();
+                            body = { ...body, role: 'seller', shopName: shopName, sellerId: result.SellerId };
+                            console.log('Body cho cập nhật hồ sơ với thông tin seller mới:', body);
+                        } catch (error) {
+                            console.error('Lỗi khi chuyển đổi thành seller:', error);
+                            alert('Lỗi khi chuyển đổi thành seller: ' + error.message);
+                            return;
                         }
-
-                        const result = await convertResponse.json();
-                        body = { ...body, role: 'seller', shopName: shopName, sellerId: result.SellerId };
-                        console.log('Body for profile update with seller info:', body);
-                        console.log('Explicitly checking if shopName is in body:', 'shopName' in body, body.shopName);
-                    } catch (error) {
-                        console.error('Lỗi khi chuyển đổi thành seller:', error);
-                        alert('Lỗi khi chuyển đổi thành seller: ' + error.message);
-                        return;
                     }
                 } else {
                     body = { ...body, role: role || 'customer' };
-                    // If we have a shopName but role is not seller, still include shopName in the request
+                    // Vẫn giữ lại shopName trong request để backend lưu giữ
                     if (shopName) {
                         body.shopName = shopName;
                         console.log('Including shopName in body even though role is not seller:', shopName);
@@ -557,6 +682,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Log kết quả từ API để kiểm tra
                 console.log('Profile update API response:', data);
                 
+                // Đảm bảo cập nhật token mới
+                if (data.token) {
+                    sessionStorage.setItem('token', data.token);
+                    console.log('Đã cập nhật token mới');
+                    
+                    // Đồng bộ userData với token mới
+                    await syncUserDataWithToken();
+                }
+                
                 // Đảm bảo giữ nguyên giá trị shopName khi cập nhật userData
                 const updatedUserData = data.user || data;
                 
@@ -564,18 +698,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (role === 'seller' && shopName && (!updatedUserData.shopName || updatedUserData.shopName === '')) {
                     updatedUserData.shopName = shopName;
                     console.log('Added missing shopName to userData:', shopName);
+                } else if (role === 'customer' && userData.shopName && (!updatedUserData.shopName || updatedUserData.shopName === '')) {
+                    // Nếu chuyển sang customer, vẫn giữ lại shopName
+                    updatedUserData.shopName = userData.shopName;
+                    console.log('Preserved shopName when switching to customer:', userData.shopName);
                 }
                 
                 // Log full userData to check all properties
                 console.log('Final userData before saving to sessionStorage:', updatedUserData);
                 console.log('shopName in final userData:', updatedUserData.shopName);
                 
-                // Cập nhật userData trong sessionStorage
+                // Cập nhật userData trong sessionStorage để lưu thông tin chi tiết người dùng
                 sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
-
-                if (data.token) {
-                    sessionStorage.setItem('token', data.token);
-                }
 
                 alert('Cập nhật thông tin thành công');
                 disableFields();
@@ -631,21 +765,24 @@ document.addEventListener('DOMContentLoaded', async function() {
                         throw new Error('Không thể upload ảnh lên Cloudinary');
                     }
 
-                    const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+                    // Lấy userData từ token và sessionStorage
+                    const userData = parseJwtToken(token);
+                    const storedUserData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+                    const combinedUserData = { ...storedUserData, ...userData };
                     
                     // Log shopName before creating payload
-                    console.log('Current shopName in userData:', userData.shopName);
+                    console.log('Current shopName in userData:', combinedUserData.shopName);
                     
                     const payload = {
-                        fullName: userData.fullName || '',
-                        email: userData.email || '',
-                        phone: userData.phone || '',
-                        birthday: userData.birthday || '',
-                        gender: userData.gender,
-                        address: userData.address || '',
+                        fullName: combinedUserData.fullName || '',
+                        email: combinedUserData.email || '',
+                        phone: combinedUserData.phone || '',
+                        birthday: combinedUserData.birthday || '',
+                        gender: combinedUserData.gender,
+                        address: combinedUserData.address || '',
                         avatar: imageUrl,
-                        role: userData.role || '',
-                        shopName: userData.shopName || ''
+                        role: combinedUserData.role || '',
+                        shopName: combinedUserData.shopName || ''
                     };
                     
                     console.log('Avatar update payload with role and shopName:', payload);
@@ -667,9 +804,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                     const result = await response.json();
                     
+                    // Cập nhật token mới nếu có
+                    if (result.token) {
+                        sessionStorage.setItem('token', result.token);
+                    }
+                    
                     // Đảm bảo giữ nguyên giá trị shopName
                     const updatedUserData = result.user || result;
-                    const originalShopName = userData.shopName;
+                    const originalShopName = combinedUserData.shopName;
                     
                     if (originalShopName && (!updatedUserData.shopName || updatedUserData.shopName === '')) {
                         updatedUserData.shopName = originalShopName;
@@ -693,37 +835,116 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // === SIDEBAR TAB SWITCH ===
     const sidebarAccount = document.getElementById('sidebarAccount');
-    const sidebarOrders = document.getElementById('sidebarOrders');
+    const sidebarChangePassword = document.getElementById('sidebarOrders');
     const accountInfoSection = document.getElementById('account-info-section');
-    const orderSection = document.getElementById('order-section');
+    const changePasswordSection = document.getElementById('order-section');
 
     function setActiveTab(tab) {
         if (tab === 'account') {
             sidebarAccount.classList.add('bg-blue-50', 'border-blue-600', 'text-blue-600', 'active');
             sidebarAccount.classList.remove('text-gray-700');
-            sidebarOrders.classList.remove('bg-blue-50', 'border-blue-600', 'text-blue-600', 'active');
-            sidebarOrders.classList.add('text-gray-700');
+            sidebarChangePassword.classList.remove('bg-blue-50', 'border-blue-600', 'text-blue-600', 'active');
+            sidebarChangePassword.classList.add('text-gray-700');
             accountInfoSection.classList.remove('hidden');
-            orderSection.classList.add('hidden');
+            changePasswordSection.classList.add('hidden');
         } else {
-            sidebarOrders.classList.add('bg-blue-50', 'border-blue-600', 'text-blue-600', 'active');
-            sidebarOrders.classList.remove('text-gray-700');
+            sidebarChangePassword.classList.add('bg-blue-50', 'border-blue-600', 'text-blue-600', 'active');
+            sidebarChangePassword.classList.remove('text-gray-700');
             sidebarAccount.classList.remove('bg-blue-50', 'border-blue-600', 'text-blue-600', 'active');
             sidebarAccount.classList.add('text-gray-700');
-            orderSection.classList.remove('hidden');
+            changePasswordSection.classList.remove('hidden');
             accountInfoSection.classList.add('hidden');
         }
     }
 
-    if (sidebarAccount && sidebarOrders && accountInfoSection && orderSection) {
+    if (sidebarAccount && sidebarChangePassword && accountInfoSection && changePasswordSection) {
         sidebarAccount.addEventListener('click', function (e) {
             e.preventDefault();
             setActiveTab('account');
         });
-        sidebarOrders.addEventListener('click', function (e) {
+        sidebarChangePassword.addEventListener('click', function (e) {
             e.preventDefault();
-            setActiveTab('orders');
+            setActiveTab('changePassword');
         });
+    }
+
+    // Xử lý form đổi mật khẩu
+    const changePasswordForm = document.getElementById('changePasswordForm');
+    const passwordError = document.getElementById('passwordError');
+
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Lấy giá trị từ form
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+            
+            // Kiểm tra mật khẩu
+            if (newPassword.length < 6) {
+                showPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự');
+                return;
+            }
+            
+            if (newPassword !== confirmNewPassword) {
+                showPasswordError('Mật khẩu mới và xác nhận mật khẩu không khớp');
+                return;
+            }
+            
+            // Ẩn thông báo lỗi nếu có
+            hidePasswordError();
+            
+            // Lấy token từ sessionStorage
+            const token = sessionStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            try {
+                // Gọi API đổi mật khẩu
+                const response = await fetch(`${API_BASE}/Auth/change-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        currentPassword,
+                        newPassword,
+                        confirmNewPassword
+                    })
+                });
+                
+                if (response.status === 204) {
+                    // Thành công - status 204 No Content
+                    alert('Đổi mật khẩu thành công');
+                    changePasswordForm.reset();
+                } else {
+                    // Xử lý lỗi
+                    const data = await response.json();
+                    showPasswordError(data.message || 'Đã xảy ra lỗi khi đổi mật khẩu');
+                }
+            } catch (error) {
+                console.error('Lỗi khi đổi mật khẩu:', error);
+                showPasswordError('Đã xảy ra lỗi khi gửi yêu cầu');
+            }
+        });
+    }
+
+    function showPasswordError(message) {
+        if (passwordError) {
+            passwordError.textContent = message;
+            passwordError.classList.remove('hidden');
+        }
+    }
+
+    function hidePasswordError() {
+        if (passwordError) {
+            passwordError.textContent = '';
+            passwordError.classList.add('hidden');
+        }
     }
 
     // Ngay khi trang tải xong, kiểm tra vai trò

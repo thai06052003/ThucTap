@@ -14,5 +14,6 @@
         public string? ShopName { get; set; }
         public int StockQuantity { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string Status { get; set; } = "active";
     }
 }
