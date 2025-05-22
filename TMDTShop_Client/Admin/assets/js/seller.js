@@ -886,15 +886,19 @@ function initializeUI() {
         
         // Xử lý nút đăng xuất
         const logoutBtn = document.getElementById("logout-btn");
-        if (logoutBtn) {
-            console.log('Đã tìm thấy nút đăng xuất, đang thiết lập sự kiện');
-            logoutBtn.addEventListener("click", function(e) {
-                e.preventDefault();
-                logout();
-            });
-        } else {
-            console.warn('Không tìm thấy nút đăng xuất (id="logout-btn")');
-        }
+            if (logoutBtn) {
+    // Xóa tất cả event listener cũ bằng cách clone node
+    const newLogoutBtn = logoutBtn.cloneNode(true);
+    logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
+    
+    // Thêm event listener mới
+    newLogoutBtn.addEventListener("click", function(e) {
+        e.preventDefault();
+        logout();
+    });
+} else {
+    console.warn('Không tìm thấy nút đăng xuất (id="logout-btn")');
+}
         
         // Lưu trữ section active hiện tại
         let currentActiveSection = "dashboard";
