@@ -4,7 +4,8 @@ using ShopxEX1.Helpers;
 namespace ShopxEX1.Services
 {
     public interface IOrderService
-    {
+    {// Kiểm tra trạng thái shop
+        Task<List<object>> GetInactiveShopsForCartItemsAsync(List<int> cartItemIds);
         /// <summary>
         /// Tạo một hoặc nhiều đơn hàng mới (đơn hàng con theo từng người bán) từ giỏ hàng của người dùng.
         /// </summary>
@@ -74,4 +75,5 @@ namespace ShopxEX1.Services
         /// <returns></returns>
         //Task<bool> CancelOrderAsync(int orderId, int userId);
     }
+    
 }

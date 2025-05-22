@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.Json;
 using Microsoft.IdentityModel.Tokens;
@@ -46,14 +47,6 @@ namespace ShopxEX1.Services.Implementations
                 return new AuthResultDto { Success = false, Message = "Email hoặc mật khẩu không chính xác, hoặc tài khoản đã bị khóa." };
             }
 
-            var userDto = _mapper.Map<UserDto>(user);
-            if (user.Role == "Seller" && user.SellerProfile != null)
-            {
-                userDto.SellerID = user.SellerProfile.SellerID;
-                userDto.ShopName = user.SellerProfile.ShopName;
-                Console.WriteLine($"Updated DTO with seller info: {JsonSerializer.Serialize(userDto)}");
-            }
-
             // Tạo Access Token
             var accessTokenResult = GenerateJwtToken(user);
 
@@ -77,6 +70,9 @@ namespace ShopxEX1.Services.Implementations
                 User = userDto,
                 Message = "Đăng nhập thành công."
             };
+
+
+            return result;
         }
 
         public async Task<AuthResultDto> SocialLoginAsync(SocialLoginRequestDto socialLoginDto)
@@ -485,16 +481,18 @@ public async Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto
                             _context.Entry(existingSellerProfile).Property(s => s.ShopName).IsModified = true;
                         }
                           // Cập nhật trực tiếp qua SQL để đảm bảo
-                        string updateSellerSql = $"UPDATE Sellers SET IsActive = 1";
-                        
-                        if (!string.IsNullOrEmpty(updateDto.ShopName))
-                        {
-                            updateSellerSql += $", ShopName = '{updateDto.ShopName}'";
-                        }
-                        
-                        updateSellerSql += $" WHERE UserID = {userId}";
-                        
-                        await _context.Database.ExecuteSqlRawAsync(updateSellerSql);
+                        // Sửa thành:
+                    string updateSellerSql = "UPDATE Sellers SET IsActive = 1";
+                    var parameters = new List<SqlParameter> { new SqlParameter("@UserId", userId) };
+
+                    if (!string.IsNullOrEmpty(updateDto.ShopName))
+                    {
+                        updateSellerSql += ", ShopName = @ShopName";
+                        parameters.Add(new SqlParameter("@ShopName", updateDto.ShopName));
+                    }
+
+                    updateSellerSql += " WHERE UserID = @UserId";
+                    await _context.Database.ExecuteSqlRawAsync(updateSellerSql, parameters.ToArray());
                         Console.WriteLine($"Đã cập nhật IsActive = 1 cho SellerProfile hiện có");
                     }
                     else if (user.SellerProfile == null)
@@ -505,12 +503,14 @@ public async Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto
                         // Sử dụng DbSet để tạo mới SellerProfile
                         var shopName = !string.IsNullOrEmpty(updateDto.ShopName) ? updateDto.ShopName : $"{user.FullName}'s Shop";
                           // Sử dụng câu lệnh SQL trực tiếp để tạo SellerProfile
-                        string sql = $@"
-                            INSERT INTO Sellers (UserID, ShopName, CreatedAt, IsActive) 
-                            VALUES ({userId}, '{shopName}', '{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")}', 1);
-                            SELECT SCOPE_IDENTITY();";
-                            
-                        var sellerId = await _context.Database.ExecuteSqlRawAsync(sql);
+                        // Sửa thành:
+                    string sql = "INSERT INTO Sellers (UserID, ShopName, CreatedAt, IsActive) VALUES (@UserId, @ShopName, @CreatedAt, 1); SELECT SCOPE_IDENTITY();";
+                    var parameters = new[] {
+                        new SqlParameter("@UserId", userId),
+                        new SqlParameter("@ShopName", shopName ?? (object)DBNull.Value),
+                        new SqlParameter("@CreatedAt", DateTime.UtcNow)
+                    };
+                    var sellerId = await _context.Database.ExecuteSqlRawAsync(sql, parameters);
                         Console.WriteLine($"Đã tạo mới SellerProfile với ID: {sellerId}, ShopName: {shopName}");
                         
                         // Refresh entity để lấy SellerProfile mới tạo
@@ -526,8 +526,9 @@ public async Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto
                         user.SellerProfile.IsActive = true;
                         _context.Entry(user.SellerProfile).State = EntityState.Modified;
                           // Đảm bảo IsActive được cập nhật bằng SQL trực tiếp
-                        string updateSellerSql = $"UPDATE Sellers SET IsActive = 1 WHERE UserID = {userId}";
-                        await _context.Database.ExecuteSqlRawAsync(updateSellerSql);
+                        // Sửa thành:
+                    string updateSellerSql = "UPDATE Sellers SET IsActive = 1 WHERE UserID = @UserId";
+                    await _context.Database.ExecuteSqlRawAsync(updateSellerSql, new SqlParameter("@UserId", userId));
                         Console.WriteLine($"Đã cập nhật IsActive = 1 cho SellerProfile hiện có");
                     }
                 }                else if (!string.IsNullOrEmpty(updateDto.ShopName))
@@ -545,8 +546,10 @@ public async Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto
                         _context.Entry(existingSellerProfile).Property(s => s.ShopName).IsModified = true;
                         _context.Entry(existingSellerProfile).Property(s => s.IsActive).IsModified = true;
                           // Cập nhật SQL trực tiếp
-                        string updateShopNameSql = $"UPDATE Sellers SET ShopName = '{updateDto.ShopName}', IsActive = 1 WHERE UserID = {userId}";
-                        await _context.Database.ExecuteSqlRawAsync(updateShopNameSql);
+                        string updateShopNameSql = "UPDATE Sellers SET ShopName = @ShopName, IsActive = 1 WHERE UserID = @UserId";
+                        await _context.Database.ExecuteSqlRawAsync(updateShopNameSql, 
+                            new SqlParameter("@ShopName", updateDto.ShopName),
+                            new SqlParameter("@UserId", userId));
                         
                         Console.WriteLine($"Đã cập nhật ShopName: {updateDto.ShopName} và IsActive = 1");
                     }
@@ -572,8 +575,9 @@ public async Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto
                     _context.Entry(existingSellerProfile).Property(s => s.IsActive).IsModified = true;
                     
                     // Thực hiện cập nhật SQL trực tiếp để đảm bảo
-                    string updateSellerSql = $"UPDATE Sellers SET IsActive = 0 WHERE UserID = {userId}";
-                    await _context.Database.ExecuteSqlRawAsync(updateSellerSql);
+                    // Sửa thành:
+string updateSellerSql = "UPDATE Sellers SET IsActive = 0 WHERE UserID = @UserId";
+await _context.Database.ExecuteSqlRawAsync(updateSellerSql, new SqlParameter("@UserId", userId));
                     Console.WriteLine($"Đã thực hiện SQL để cập nhật IsActive = 0 cho SellerProfile");
                     
                     // Cập nhật biến user.SellerProfile để phản ánh thay đổi nếu có
@@ -587,16 +591,21 @@ public async Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto
                 await _context.SaveChangesAsync();
                 
                 // Lưu role Customer trực tiếp qua SQL để đảm bảo
-                string updateRoleSql = $"UPDATE Users SET Role = 'Customer' WHERE UserID = {userId}";
-                await _context.Database.ExecuteSqlRawAsync(updateRoleSql);
+                // Sửa thành:
+string updateRoleSql = "UPDATE Users SET Role = @Role WHERE UserID = @UserId";
+await _context.Database.ExecuteSqlRawAsync(updateRoleSql, 
+    new SqlParameter("@Role", "Customer"),
+    new SqlParameter("@UserId", userId));
                 Console.WriteLine($"Đã cập nhật trực tiếp Role = Customer qua SQL");
             }
               // Thử cập nhật Role ngay lập tức bằng SQL nếu có thay đổi
             if (oldRole != user.Role)
             {
                 // Đảm bảo sử dụng giá trị đã chuẩn hóa
-                string updateRoleSql = $"UPDATE Users SET Role = '{user.Role}' WHERE UserID = {userId}";
-                var roleUpdateResult = await _context.Database.ExecuteSqlRawAsync(updateRoleSql);
+                string updateRoleSql = "UPDATE Users SET Role = @Role WHERE UserID = @UserId";
+                var roleUpdateResult = await _context.Database.ExecuteSqlRawAsync(updateRoleSql, 
+                    new SqlParameter("@Role", user.Role),
+                    new SqlParameter("@UserId", userId));
                 Console.WriteLine($"Cập nhật trực tiếp Role qua SQL: {roleUpdateResult} bản ghi bị ảnh hưởng");
             }
         }
@@ -619,8 +628,11 @@ public async Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto
                 Console.WriteLine("Role chưa được cập nhật đúng, thử sử dụng SQL trực tiếp");
                 // Sử dụng SQL trực tiếp nếu EntityFramework không thành công hoặc không cập nhật đúng Role
                 // Đảm bảo sử dụng giá trị chuẩn hóa cho update SQL
-                string updateRoleSql = $"UPDATE Users SET Role = '{updateDto.Role}' WHERE UserID = {userId}";
-                result = await _context.Database.ExecuteSqlRawAsync(updateRoleSql);
+                // Sửa thành:
+string updateRoleSql = "UPDATE Users SET Role = @Role WHERE UserID = @UserId";
+result = await _context.Database.ExecuteSqlRawAsync(updateRoleSql, 
+    new SqlParameter("@Role", updateDto.Role),
+    new SqlParameter("@UserId", userId));
                 Console.WriteLine($"Kết quả SQL update trực tiếp: {result}");
                 
                 if (result <= 0)

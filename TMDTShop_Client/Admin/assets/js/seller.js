@@ -1,7 +1,12 @@
 const API_BASE = "https://localhost:7088/api";
 let currentSellerId = 1;
 let sellerCategories = [];
-
+let categoryPagination = {
+    currentPage: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 0
+};
 // Thêm biến global để theo dõi thông tin shop
 let globalShopData = {
     shopName: '',
@@ -179,174 +184,195 @@ function findTokenInStorage() {
 })();
 
 document.addEventListener("DOMContentLoaded", () => {
+    console.group("=== DOM CONTENT LOADED - SELLER.JS ===");
     console.log("DOM Content Loaded - Initializing seller dashboard...");
     
-    // Apply critical styles to ensure correct layout immediately
-    const applyImmediateStyles = () => {
-        // Lấy trạng thái sidebar từ localStorage
-        const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
-        
-        // Áp dụng styles cho sidebar
-        const sidebar = document.getElementById("sidebar");
-        if (sidebar) {
-            sidebar.style.position = "fixed";
-            sidebar.style.top = "0";
-            sidebar.style.left = "0";
-            sidebar.style.height = "100vh";
-            sidebar.style.zIndex = "50";
-            sidebar.style.width = sidebarCollapsed ? "5rem" : "16rem";
-            sidebar.style.transition = "all 0.3s ease-in-out";
+    try {
+        // Apply critical styles to ensure correct layout immediately
+        const applyImmediateStyles = () => {
+            // Lấy trạng thái sidebar từ localStorage
+            const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
             
-            if (sidebarCollapsed) {
-                sidebar.classList.add("collapsed");
+            // Áp dụng styles cho sidebar
+            const sidebar = document.getElementById("sidebar");
+            if (sidebar) {
+                sidebar.style.position = "fixed";
+                sidebar.style.top = "0";
+                sidebar.style.left = "0";
+                sidebar.style.height = "100vh";
+                sidebar.style.zIndex = "50";
+                sidebar.style.width = sidebarCollapsed ? "5rem" : "16rem";
+                sidebar.style.transition = "all 0.3s ease-in-out";
+                
+                if (sidebarCollapsed) {
+                    sidebar.classList.add("collapsed");
+                }
             }
-        }
-        
-        // Áp dụng styles cho header
-        const header = document.querySelector("header");
-        if (header) {
-            header.style.position = "fixed";
-            header.style.top = "0";
-            header.style.left = sidebarCollapsed ? "5rem" : "16rem";
-            header.style.width = sidebarCollapsed ? "calc(100% - 5rem)" : "calc(100% - 16rem)";
-            header.style.zIndex = "40";
-            header.style.backgroundColor = "white";
-            header.style.transition = "all 0.3s ease-in-out";
             
-            if (sidebarCollapsed) {
-                header.classList.add("collapsed");
+            // Áp dụng styles cho header
+            const header = document.querySelector("header");
+            if (header) {
+                header.style.position = "fixed";
+                header.style.top = "0";
+                header.style.left = sidebarCollapsed ? "5rem" : "16rem";
+                header.style.width = sidebarCollapsed ? "calc(100% - 5rem)" : "calc(100% - 16rem)";
+                header.style.zIndex = "40";
+                header.style.backgroundColor = "white";
+                header.style.transition = "all 0.3s ease-in-out";
+                
+                if (sidebarCollapsed) {
+                    header.classList.add("collapsed");
+                }
             }
-        }
-        
-        // Áp dụng styles cho main content
-        const mainContent = document.getElementById("mainContent");
-        if (mainContent) {
-            mainContent.style.marginLeft = sidebarCollapsed ? "5rem" : "16rem";
-            mainContent.style.width = sidebarCollapsed ? "calc(100% - 5rem)" : "calc(100% - 16rem)";
-            mainContent.style.paddingTop = "4rem";
-            mainContent.style.transition = "all 0.3s ease-in-out";
             
-            if (sidebarCollapsed) {
-                mainContent.classList.add("collapsed");
+            // Áp dụng styles cho main content
+            const mainContent = document.getElementById("mainContent");
+            if (mainContent) {
+                mainContent.style.marginLeft = sidebarCollapsed ? "5rem" : "16rem";
+                mainContent.style.width = sidebarCollapsed ? "calc(100% - 5rem)" : "calc(100% - 16rem)";
+                mainContent.style.paddingTop = "4rem";
+                mainContent.style.transition = "all 0.3s ease-in-out";
+                
+                if (sidebarCollapsed) {
+                    mainContent.classList.add("collapsed");
+                }
             }
-        }
+            
+            console.log("Applied immediate styles - Sidebar collapsed:", sidebarCollapsed);
+        };
         
-        console.log("Applied immediate styles - Sidebar collapsed:", sidebarCollapsed);
-    };
-    
-    // Gọi ngay lập tức để áp dụng styles
-    applyImmediateStyles();
-    
-    // Thêm style để xử lý transition cho sidebar và content
-    const style = document.createElement('style');
-    style.textContent = `
-        .sidebar {
-            width: 16rem !important; /* 256px */
-            transition: all 0.3s ease-in-out !important;
-            position: fixed !important;
-            height: 100vh !important;
-            z-index: 50 !important;
-            top: 0 !important;
-            left: 0 !important;
-        }
-        .sidebar.collapsed {
-            width: 5rem !important; /* 80px */
-        }
-        /* Chỉnh content (không bao gồm header) */
-        .content {
-            margin-left: 16rem !important;
-            transition: all 0.3s ease-in-out !important;
-            width: calc(100% - 16rem) !important;
-            padding-top: 4rem !important; /* Đảm bảo content nằm dưới header */
-        }
-        .content.collapsed {
-            margin-left: 5rem !important;
-            width: calc(100% - 5rem) !important;
-        }
-        /* Xử lý riêng cho header để nó luôn sát với sidebar */
-        header {
-            transition: all 0.3s ease-in-out !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 16rem !important; /* Căn chỉnh chính xác với sidebar */
-            width: calc(100% - 16rem) !important;
-            z-index: 40 !important;
-            height: 4rem !important;
-            background-color: white !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-        }
-        header.collapsed {
-            left: 5rem !important; /* Căn chỉnh chính xác với sidebar thu gọn */
-            width: calc(100% - 5rem) !important;
-        }
-        /* Đảm bảo main section dưới header */
-        #mainContent {
-            margin-top: 4rem !important;
-        }
-        /* Media query cho mobile */
-        @media (max-width: 768px) {
+        // Gọi ngay lập tức để áp dụng styles
+        applyImmediateStyles();
+        
+        // Thêm style để xử lý transition cho sidebar và content
+        const style = document.createElement('style');
+        style.textContent = `
             .sidebar {
-                transform: translateX(-100%) !important;
-            }
-            .sidebar.mobile-visible {
-                transform: translateX(0) !important;
-            }
-            .content, .content.collapsed {
-                margin-left: 0 !important;
-                width: 100% !important;
-            }
-            header, header.collapsed {
+                width: 16rem !important; /* 256px */
+                transition: all 0.3s ease-in-out !important;
+                position: fixed !important;
+                height: 100vh !important;
+                z-index: 50 !important;
+                top: 0 !important;
                 left: 0 !important;
-                width: 100% !important;
             }
+            .sidebar.collapsed {
+                width: 5rem !important; /* 80px */
+            }
+            /* Chỉnh content (không bao gồm header) */
+            .content {
+                margin-left: 16rem !important;
+                transition: all 0.3s ease-in-out !important;
+                width: calc(100% - 16rem) !important;
+                padding-top: 4rem !important; /* Đảm bảo content nằm dưới header */
+            }
+            .content.collapsed {
+                margin-left: 5rem !important;
+                width: calc(100% - 5rem) !important;
+            }
+            /* Xử lý riêng cho header để nó luôn sát với sidebar */
+            header {
+                transition: all 0.3s ease-in-out !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 16rem !important; /* Căn chỉnh chính xác với sidebar */
+                width: calc(100% - 16rem) !important;
+                z-index: 40 !important;
+                height: 4rem !important;
+                background-color: white !important;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+            }
+            header.collapsed {
+                left: 5rem !important; /* Căn chỉnh chính xác với sidebar thu gọn */
+                width: calc(100% - 5rem) !important;
+            }
+            /* Đảm bảo main section dưới header */
+            #mainContent {
+                margin-top: 4rem !important;
+            }
+            /* Media query cho mobile */
+            @media (max-width: 768px) {
+                .sidebar {
+                    transform: translateX(-100%) !important;
+                }
+                .sidebar.mobile-visible {
+                    transform: translateX(0) !important;
+                }
+                .content, .content.collapsed {
+                    margin-left: 0 !important;
+                    width: 100% !important;
+                }
+                header, header.collapsed {
+                    left: 0 !important;
+                    width: 100% !important;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Đầu tiên, xóa class "nav-item" từ nút toggle sidebar
+        const toggleSidebarBtn = document.getElementById("toggleSidebar");
+        if (toggleSidebarBtn) {
+            toggleSidebarBtn.classList.remove("nav-item");
+            toggleSidebarBtn.classList.add("sidebar-toggle");
         }
-    `;
-    document.head.appendChild(style);
-    
-    // Đầu tiên, xóa class "nav-item" từ nút toggle sidebar
-    const toggleSidebarBtn = document.getElementById("toggleSidebar");
-    if (toggleSidebarBtn) {
-        toggleSidebarBtn.classList.remove("nav-item");
-        toggleSidebarBtn.classList.add("sidebar-toggle");
-    }
-    
-    // Debug: Kiểm tra token hiện tại và hiển thị thông tin
-    debugCheckToken();
-    
-    // Kiểm tra tính hợp lệ của token trước khi tải trang
-    if (!checkTokenValidity()) {
-        console.error('Token không hợp lệ! Chuyển hướng đến trang đăng nhập...');
+        
+        // Debug: Kiểm tra token hiện tại và hiển thị thông tin
+        debugCheckToken();
+        
+        // Kiểm tra tính hợp lệ của token trước khi tải trang
+        if (!checkTokenValidity()) {
+            console.error('Token không hợp lệ! Chuyển hướng đến trang đăng nhập...');
+            setTimeout(() => {
+                window.location.href = window.location.origin + '/Customer/templates/login.html';
+            }, 2000);
+            return;
+        }
+        const productPaginationContainer = document.getElementById('product-pagination');
+        const categoryPaginationContainer = document.getElementById('category-pagination');
+        
+        if (productPaginationContainer) {
+            console.log('Phần tử phân trang sản phẩm đã sẵn sàng');
+        } else {
+            console.warn('Không tìm thấy phần tử phân trang sản phẩm (product-pagination)');
+        }
+        
+        if (categoryPaginationContainer) {
+            console.log('Phần tử phân trang danh mục đã sẵn sàng');
+        } else {
+            console.warn('Không tìm thấy phần tử phân trang danh mục (category-pagination)');
+        }
+        
+        // Hiển thị tên shop ngay lập tức từ localStorage/sessionStorage nếu có
+        displayShopNameFromStorage();
+        
+        loadSellerInfo();
+        initializeUI();
+        loadShopCategories();
+        
+        // Tự động tải thông tin shop khi trang được tải
         setTimeout(() => {
-            window.location.href = window.location.origin + '/Customer/templates/login.html';
-        }, 2000);
-        return;
+            // Tải thông tin cửa hàng sau khi trang đã được khởi tạo
+            loadShopManagementData();
+            
+            // Đảm bảo tên người bán được hiển thị đúng
+            const shopItem = document.querySelector('.nav-item[data-section="shop"]');
+            if (shopItem) {
+                console.log('Adding click event to shop nav item to ensure data loads');
+                // Giả lập click nếu đang ở tab shop
+                if (window.location.hash === '#shop') {
+                    shopItem.click();
+                }
+            }
+            
+            // Đảm bảo bố cục chính xác
+            fixLayoutAfterLoad();
+        }, 500);
+    } catch (error) {
+        console.error("Lỗi trong DOM Content Loaded:", error);
     }
     
-    // Hiển thị tên shop ngay lập tức từ localStorage/sessionStorage nếu có
-    displayShopNameFromStorage();
-    
-    loadSellerInfo();
-    initializeUI();
-    loadShopCategories();
-    
-    // Tự động tải thông tin shop khi trang được tải
-    setTimeout(() => {
-        // Tải thông tin cửa hàng sau khi trang đã được khởi tạo
-        loadShopManagementData();
-        
-        // Đảm bảo tên người bán được hiển thị đúng
-        const shopItem = document.querySelector('.nav-item[data-section="shop"]');
-        if (shopItem) {
-            console.log('Adding click event to shop nav item to ensure data loads');
-            // Giả lập click nếu đang ở tab shop
-            if (window.location.hash === '#shop') {
-                shopItem.click();
-            }
-        }
-        
-        // Đảm bảo bố cục chính xác
-        fixLayoutAfterLoad();
-    }, 500);
+    console.groupEnd();
 });
 
 // Hàm debug để kiểm tra token
@@ -429,7 +455,7 @@ function displayShopNameFromStorage() {
 
 // Hàm riêng để cập nhật hiển thị tên shop
 function updateShopNameDisplay(shopName) {
-    if (!shopName) return;
+    if (!shopName) return false;
     
     // Cập nhật biến global
     globalShopData.shopName = shopName;
@@ -442,6 +468,8 @@ function updateShopNameDisplay(shopName) {
         usernameDisplay.classList.remove('hidden');
         console.log('Đã cập nhật shopName trong header:', shopName);
     }
+    
+    return true;
 }
 
 async function loadSellerInfo() {
@@ -662,9 +690,16 @@ async function loadSectionData(sectionId) {
             console.log(`Đã kích hoạt section: ${sectionId}-section`);
         } else {
             console.warn(`Không tìm thấy phần tử ${sectionId}-section trong DOM`);
+            
             // Kiểm tra xem có bị lỗi chính tả trong ID không
             const allSections = document.querySelectorAll('.section');
             console.log('Các sections có sẵn:', Array.from(allSections).map(sec => sec.id).join(', '));
+            
+            // In ra tất cả các phần tử có class section
+            console.log("Danh sách đầy đủ các sections:");
+            allSections.forEach((sec, index) => {
+                console.log(`${index + 1}. ID: "${sec.id}", Display: ${window.getComputedStyle(sec).display}`);
+            });
             
             // Trường hợp đặc biệt
             if (sectionId === 'shop-management') {
@@ -695,51 +730,88 @@ async function loadSectionData(sectionId) {
         
         // Tải dữ liệu dựa trên section
         console.log(`Đang tải dữ liệu cho section: ${sectionId}`);
-        switch (sectionId) {
-            case "dashboard":
-                console.log('Tải dữ liệu dashboard...');
-                await loadDashboardData();
-                break;
-                
-            case "shop":
-            case "shop-management":
-                console.log('Tải dữ liệu quản lý cửa hàng...');
-                await loadShopManagementData();
-                break;
-                
-            case "shop-categories":
-            case "categories":
-                console.log('Tải dữ liệu danh mục...');
-                await loadShopCategories();
-                break;
-                
-            case "products":
-                console.log('Tải dữ liệu sản phẩm...');
-                await loadProducts();
-                break;
-                
-            case "orders":
-                console.log('Tải dữ liệu đơn hàng...');
-                await loadOrders();
-                break;
-                
-            case "statistics":
-                console.log('Tải dữ liệu thống kê...');
-                await loadStatistics();
-                break;
-                
-            case "shipping":
-                console.log('Tải dữ liệu vận chuyển...');
-                await loadShipping();
-                break;
-                
-            case "revenue":
-                console.log('Tải dữ liệu doanh thu...');
-                await loadRevenue();
-                break;
-                
-            default:
-                console.warn(`Section ${sectionId} không được xử lý trong quá trình tải dữ liệu.`);
+        try {
+            switch (sectionId) {
+                case "dashboard":
+                    console.log('Tải dữ liệu dashboard...');
+                    if (typeof loadDashboardData === 'function') {
+                        await loadDashboardData();
+                    } else {
+                        console.warn('Hàm loadDashboardData không tồn tại!');
+                    }
+                    break;
+                    
+                case "shop":
+                case "shop-management":
+                    console.log('Tải dữ liệu quản lý cửa hàng...');
+                    if (typeof loadShopManagementData === 'function') {
+                        await loadShopManagementData();
+                    } else {
+                        console.warn('Hàm loadShopManagementData không tồn tại!');
+                    }
+                    break;
+                    
+                case "shop-categories":
+                case "categories":
+                    console.log('Tải dữ liệu danh mục...');
+                    if (typeof loadShopCategories === 'function') {
+                        await loadShopCategories(1);
+                    } else {
+                        console.warn('Hàm loadShopCategories không tồn tại!');
+                    }
+                    break;
+                    
+                case "products":
+                    console.log('Tải dữ liệu sản phẩm...');
+                    if (typeof loadProducts === 'function') {
+                        await loadProducts(1);
+                    } else {
+                        console.warn('Hàm loadProducts không tồn tại!');
+                    }
+                    break;
+                    
+                case "orders":
+                    console.log('Tải dữ liệu đơn hàng...');
+                    if (typeof loadOrders === 'function') {
+                        await loadOrders();
+                    } else {
+                        console.warn('Hàm loadOrders không tồn tại!');
+                    }
+                    break;
+                    
+                case "statistics":
+                    console.log('Tải dữ liệu thống kê...');
+                    if (typeof loadStatistics === 'function') {
+                        await loadStatistics();
+                    } else {
+                        console.warn('Hàm loadStatistics không tồn tại!');
+                    }
+                    break;
+                    
+                case "shipping":
+                    console.log('Tải dữ liệu vận chuyển...');
+                    if (typeof loadShipping === 'function') {
+                        await loadShipping();
+                    } else {
+                        console.warn('Hàm loadShipping không tồn tại!');
+                    }
+                    break;
+                    
+                case "revenue":
+                    console.log('Tải dữ liệu doanh thu...');
+                    if (typeof loadRevenue === 'function') {
+                        await loadRevenue();
+                    } else {
+                        console.warn('Hàm loadRevenue không tồn tại!');
+                    }
+                    break;
+                    
+                default:
+                    console.warn(`Section ${sectionId} không được xử lý trong quá trình tải dữ liệu.`);
+            }
+        } catch (sectionError) {
+            console.error(`Lỗi khi tải dữ liệu cho section ${sectionId}:`, sectionError);
+            showToast(`Không thể tải dữ liệu cho ${sectionId}: ${sectionError.message}`, "error");
         }
         
         console.log(`Hoàn thành tải dữ liệu cho section: ${sectionId}`);
@@ -793,147 +865,231 @@ function initProductFormHandlers() {
 
 // Thêm gọi hàm khởi tạo vào initializeUI
 function initializeUI() {
-    const navItems = document.querySelectorAll(".nav-item");
-    const sections = document.querySelectorAll(".section");
-    const sidebar = document.getElementById("sidebar");
-    const toggleSidebarBtn = document.getElementById("toggleSidebar");
+    console.group("=== INITIALIZE UI ===");
+    console.log("Initializing UI components...");
     
-    // Initialize product form handlers
-    initProductFormHandlers();
-    
-    // Xử lý nút đăng xuất
-    const logoutBtn = document.getElementById("logout-btn");
-    if (logoutBtn) {
-        console.log('Đã tìm thấy nút đăng xuất, đang thiết lập sự kiện');
-        logoutBtn.addEventListener("click", function(e) {
-            e.preventDefault();
-            logout();
+    try {
+        const navItems = document.querySelectorAll(".nav-item");
+        const sections = document.querySelectorAll(".section");
+        const sidebar = document.getElementById("sidebar");
+        const toggleSidebarBtn = document.getElementById("toggleSidebar");
+        
+        console.log("Found elements:", {
+            "nav items": navItems.length, 
+            "sections": sections.length, 
+            "sidebar": sidebar ? "yes" : "no", 
+            "toggle btn": toggleSidebarBtn ? "yes" : "no"
         });
-    } else {
-        console.warn('Không tìm thấy nút đăng xuất (id="logout-btn")');
-    }
-    
-    // Lưu trữ section active hiện tại
-    let currentActiveSection = "dashboard";
-    
-    navItems.forEach(item => {
-        item.addEventListener("click", (e) => {
-            e.preventDefault();
-            const sectionId = item.getAttribute("data-section");
-            currentActiveSection = sectionId; // Cập nhật section active
+        
+        // Initialize product form handlers
+        initProductFormHandlers();
+        
+        // Xử lý nút đăng xuất
+        const logoutBtn = document.getElementById("logout-btn");
+        if (logoutBtn) {
+            console.log('Đã tìm thấy nút đăng xuất, đang thiết lập sự kiện');
+            logoutBtn.addEventListener("click", function(e) {
+                e.preventDefault();
+                logout();
+            });
+        } else {
+            console.warn('Không tìm thấy nút đăng xuất (id="logout-btn")');
+        }
+        
+        // Lưu trữ section active hiện tại
+        let currentActiveSection = "dashboard";
+        
+        // Đảm bảo tất cả nav items có sự kiện click
+        if (navItems && navItems.length > 0) {
+            console.log(`Thiết lập sự kiện click cho ${navItems.length} nav items`);
             
-            sections.forEach(section => section.classList.remove("active"));
-            const targetSection = document.getElementById(`${sectionId}-section`);
-            if (targetSection) {
-                targetSection.classList.add("active");
+            navItems.forEach(item => {
+                // Xóa tất cả event listeners cũ nếu có
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                
+                // Thêm event listener mới
+                newItem.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    const sectionId = newItem.getAttribute("data-section");
+                    console.log(`Clicked on nav item: ${sectionId}`);
+                    
+                    if (!sectionId) {
+                        console.warn("Nav item không có thuộc tính data-section");
+                        return;
+                    }
+                    
+                    currentActiveSection = sectionId; // Cập nhật section active
+                    
+                    // Ẩn tất cả các sections
+                    sections.forEach(section => {
+                        section.classList.remove("active");
+                        section.style.display = "none";
+                    });
+                    
+                    // Hiển thị section mục tiêu
+                    const targetSection = document.getElementById(`${sectionId}-section`);
+                    if (targetSection) {
+                        targetSection.classList.add("active");
+                        targetSection.style.display = "block";
+                        console.log(`Đã kích hoạt section: ${sectionId}-section`);
+                    } else {
+                        console.warn(`Không tìm thấy section: ${sectionId}-section`);
+                    }
+                    
+                    // Cập nhật trạng thái active cho nav items
+                    navItems.forEach(nav => nav.classList.remove("bg-gray-200", "text-blue-600", "bg-blue-50"));
+                    newItem.classList.add("bg-gray-200");
+                    
+                    // Cập nhật tiêu đề trang
+                    const sidebarText = newItem.querySelector(".sidebar-text")?.textContent || newItem.textContent;
+                    const pageTitle = document.getElementById("pageTitle");
+                    if (pageTitle) {
+                        pageTitle.textContent = sidebarText;
+                        console.log(`Đã cập nhật tiêu đề trang: ${sidebarText}`);
+                    }
+                    
+                    // Tải dữ liệu cho section tương ứng
+                    if (typeof loadSectionData === 'function') {
+                        loadSectionData(sectionId);
+                    } else {
+                        console.error('Không tìm thấy hàm loadSectionData!');
+                    }
+                });
+            });
+        } else {
+            console.error('Không tìm thấy phần tử nav-item nào!');
+        }
+        
+        // Xử lý toggle sidebar - giữ nguyên tab active
+        if (toggleSidebarBtn) {
+            // Xóa event listener cũ
+            const newToggleBtn = toggleSidebarBtn.cloneNode(true);
+            toggleSidebarBtn.parentNode.replaceChild(newToggleBtn, toggleSidebarBtn);
+            
+            // Thêm event listener mới
+            newToggleBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log("Toggle sidebar clicked");
+                
+                // Lưu trạng thái active hiện tại
+                const activeNavItem = document.querySelector(".nav-item.bg-gray-200");
+                
+                // Toggle sidebar class
+                if (sidebar) {
+                    sidebar.classList.toggle("collapsed");
+                    const isCollapsed = sidebar.classList.contains("collapsed");
+                    
+                    // Cập nhật sidebar style trực tiếp
+                    sidebar.style.width = isCollapsed ? "5rem" : "16rem";
+                    
+                    // Cập nhật icon và text
+                    const icon = newToggleBtn.querySelector("i");
+                    if (icon) {
+                        if (isCollapsed) {
+                            icon.classList.replace("fa-chevron-left", "fa-chevron-right");
+                        } else {
+                            icon.classList.replace("fa-chevron-right", "fa-chevron-left");
+                        }
+                    }
+                    
+                    // Cập nhật text button
+                    const textElement = newToggleBtn.querySelector(".sidebar-text");
+                    if (textElement) {
+                        textElement.textContent = isCollapsed ? "Mở rộng" : "Thu gọn";
+                    }
+                    
+                    // Cập nhật tất cả các phần tử cần thiết đồng thời
+                    const mainContent = document.getElementById("mainContent");
+                    if (mainContent) {
+                        mainContent.classList.toggle("collapsed", isCollapsed);
+                        mainContent.style.marginLeft = isCollapsed ? "5rem" : "16rem";
+                        mainContent.style.width = isCollapsed ? "calc(100% - 5rem)" : "calc(100% - 16rem)";
+                    }
+                    
+                    // Cập nhật header style trực tiếp
+                    const header = document.querySelector("header");
+                    if (header) {
+                        header.classList.toggle("collapsed", isCollapsed);
+                        header.style.left = isCollapsed ? "5rem" : "16rem";
+                        header.style.width = isCollapsed ? "calc(100% - 5rem)" : "calc(100% - 16rem)";
+                        console.log("Header updated:", header.style.left, header.style.width);
+                    }
+                    
+                    // Lưu trạng thái thu gọn vào localStorage để nhớ giữa các lần tải trang
+                    localStorage.setItem("sidebarCollapsed", isCollapsed);
+                    
+                    // Debug thông tin layout
+                    console.log("Sidebar toggle:", isCollapsed ? "Thu gọn" : "Mở rộng");
+                    console.log("Sidebar width:", sidebar.style.width);
+                    console.log("Header left:", header?.style.left);
+                    
+                    // Kích hoạt fixLayoutAfterLoad để đảm bảo mọi thứ đúng
+                    setTimeout(fixLayoutAfterLoad, 100);
+                } else {
+                    console.error("Không tìm thấy phần tử sidebar!");
+                }
+            });
+            
+            console.log("Đã thiết lập sự kiện toggle sidebar");
+        } else {
+            console.warn("Không tìm thấy nút toggle sidebar");
+        }
+        
+        // Khôi phục trạng thái sidebar từ localStorage
+        const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
+        if (sidebarCollapsed && sidebar) {
+            sidebar.classList.add("collapsed");
+            
+            // Cập nhật tất cả phần tử liên quan
+            const contentElements = document.querySelectorAll(".content, #mainContent");
+            contentElements.forEach(element => {
+                if (element) element.classList.add("collapsed");
+            });
+            
+            const header = document.querySelector("header");
+            if (header) {
+                header.classList.add("collapsed");
             }
             
-            navItems.forEach(nav => nav.classList.remove("bg-gray-200"));
-            item.classList.add("bg-gray-200");
-            
-            const sidebarText = item.querySelector(".sidebar-text")?.textContent || item.textContent;
-            const pageTitle = document.getElementById("pageTitle");
-            if (pageTitle) pageTitle.textContent = sidebarText;
-
-            // Tải dữ liệu cho section tương ứng
-            loadSectionData(sectionId);
-        });
-    });
-
-    // Xử lý toggle sidebar - giữ nguyên tab active
-    if (toggleSidebarBtn) {
-        toggleSidebarBtn.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Lưu trạng thái active hiện tại
-            const activeNavItem = document.querySelector(".nav-item.bg-gray-200");
-            
-            // Toggle sidebar class
-            sidebar.classList.toggle("collapsed");
-            const isCollapsed = sidebar.classList.contains("collapsed");
-            
-            // Cập nhật sidebar style trực tiếp
-            sidebar.style.width = isCollapsed ? "5rem" : "16rem";
-            
             // Cập nhật icon và text
-            const icon = toggleSidebarBtn.querySelector("i");
-            if (icon) {
-                if (isCollapsed) {
+            if (toggleSidebarBtn) {
+                const icon = toggleSidebarBtn.querySelector("i");
+                if (icon) {
                     icon.classList.replace("fa-chevron-left", "fa-chevron-right");
-                } else {
-                    icon.classList.replace("fa-chevron-right", "fa-chevron-left");
+                }
+                
+                const textElement = toggleSidebarBtn.querySelector(".sidebar-text");
+                if (textElement) {
+                    textElement.textContent = "Mở rộng";
                 }
             }
             
-            // Cập nhật text button
-            const textElement = toggleSidebarBtn.querySelector(".sidebar-text");
-            if (textElement) {
-                textElement.textContent = isCollapsed ? "Mở rộng" : "Thu gọn";
-            }
-            
-            // Cập nhật tất cả các phần tử cần thiết đồng thời
-            const mainContent = document.getElementById("mainContent");
-            if (mainContent) {
-                mainContent.classList.toggle("collapsed", isCollapsed);
-                mainContent.style.marginLeft = isCollapsed ? "5rem" : "16rem";
-                mainContent.style.width = isCollapsed ? "calc(100% - 5rem)" : "calc(100% - 16rem)";
-            }
-            
-            // Cập nhật header style trực tiếp
-            const header = document.querySelector("header");
-            if (header) {
-                header.classList.toggle("collapsed", isCollapsed);
-                header.style.left = isCollapsed ? "5rem" : "16rem";
-                header.style.width = isCollapsed ? "calc(100% - 5rem)" : "calc(100% - 16rem)";
-                console.log("Header updated:", header.style.left, header.style.width);
-            }
-            
-            // Lưu trạng thái thu gọn vào localStorage để nhớ giữa các lần tải trang
-            localStorage.setItem("sidebarCollapsed", isCollapsed);
-            
-            // Debug thông tin layout
-            console.log("Sidebar toggle:", isCollapsed ? "Thu gọn" : "Mở rộng");
-            console.log("Sidebar width:", sidebar.style.width);
-            console.log("Header left:", header?.style.left);
-            
-            // Kích hoạt fixLayoutAfterLoad để đảm bảo mọi thứ đúng
-            setTimeout(fixLayoutAfterLoad, 100);
-        });
-    }
-    
-    // Khôi phục trạng thái sidebar từ localStorage
-    const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
-    if (sidebarCollapsed && sidebar) {
-        sidebar.classList.add("collapsed");
-        
-        // Cập nhật tất cả phần tử liên quan
-        const contentElements = document.querySelectorAll(".content, #mainContent");
-        contentElements.forEach(element => {
-            if (element) element.classList.add("collapsed");
-        });
-        
-        const header = document.querySelector("header");
-        if (header) {
-            header.classList.add("collapsed");
+            console.log("Đã khôi phục trạng thái sidebar từ localStorage:", sidebarCollapsed);
         }
         
-        // Cập nhật icon và text
-        if (toggleSidebarBtn) {
-            const icon = toggleSidebarBtn.querySelector("i");
-            if (icon) {
-                icon.classList.replace("fa-chevron-left", "fa-chevron-right");
-            }
-            
-            const textElement = toggleSidebarBtn.querySelector(".sidebar-text");
-            if (textElement) {
-                textElement.textContent = "Mở rộng";
+        // Xử lý URL hash để định hướng đến section tương ứng
+        const hash = window.location.hash.substring(1);
+        if (hash) {
+            console.log(`Phát hiện hash URL: ${hash}`);
+            const hashNavItem = document.querySelector(`.nav-item[data-section="${hash}"]`);
+            if (hashNavItem) {
+                console.log(`Tự động click vào nav item: ${hash}`);
+                setTimeout(() => hashNavItem.click(), 300);
             }
         }
         
         // Kích hoạt fixLayoutAfterLoad để đảm bảo mọi thứ đúng
         setTimeout(fixLayoutAfterLoad, 100);
+        
+        console.log("UI initialization completed successfully");
+    } catch (error) {
+        console.error("Lỗi khi khởi tạo UI:", error);
     }
+    
+    console.groupEnd();
 }
 
 // Hàm đồng bộ hóa dữ liệu với info.js
@@ -1435,11 +1591,18 @@ async function fetchAPI(endpoint, options = {}) {
         console.error('fetchAPI: Thiếu endpoint');
         throw new Error('Thiếu endpoint API');
     }
-    
+    if (options.queryParams) {
+        const queryString = new URLSearchParams();
+        for (const [key, value] of Object.entries(options.queryParams)) {
+            queryString.append(key, value);
+        }
+        endpoint = `${endpoint}?${queryString.toString()}`;
+        delete options.queryParams;
+    }
     // Lấy thông tin từ token để debug
     const tokenInfo = parseJwtToken(token);
     const currentSellerId = tokenInfo.SellerId || tokenInfo.sellerId;
-    
+
     const defaultHeaders = {
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -1465,21 +1628,21 @@ async function fetchAPI(endpoint, options = {}) {
     if (options.body) console.log('Body:', options.body);
     console.groupEnd();
     
-            try {
+    try {
             console.log('Đang gửi request đến:', fullUrl);
-            const response = await fetch(fullUrl, options);
-            
-            // Debug log chi tiết phản hồi
-            console.group(`=== API Response: ${response.status} ${response.statusText} ===`);
-            console.log('Status:', response.status);
-            console.log('Status Text:', response.statusText);
-            console.log('Headers:', Object.fromEntries([...response.headers.entries()]));
+        const response = await fetch(fullUrl, options);
+        
+        // Debug log chi tiết phản hồi
+        console.group(`=== API Response: ${response.status} ${response.statusText} ===`);
+        console.log('Status:', response.status);
+        console.log('Status Text:', response.statusText);
+        console.log('Headers:', Object.fromEntries([...response.headers.entries()]));
             
             // Bắt lỗi CORS nếu có
             if (!response.headers.get('content-type')) {
                 console.warn('Không có content-type header - có thể là lỗi CORS');
             }
-            console.groupEnd();
+        console.groupEnd();
         
         // Xử lý các mã trạng thái khác nhau
         if (response.status === 401) {
@@ -1832,12 +1995,13 @@ function removeImage(type) {
 }
 
 // Xử lý submit form
+// Xử lý submit form
 async function handleProductFormSubmit(e) {
     e.preventDefault();
     
     try {
         const form = e.target;
-        const mode = form.dataset.mode; // 'create' hoặc 'edit'
+        const mode = form.dataset.mode;
         const submitButton = document.getElementById('product-save-btn');
         
         // Vô hiệu hóa nút submit khi đang xử lý
@@ -1853,59 +2017,37 @@ async function handleProductFormSubmit(e) {
             price: parseFloat(document.getElementById('product-price').value),
             stockQuantity: parseInt(document.getElementById('product-quantity').value),
             categoryID: document.getElementById('product-category').value,
+            sellerCategoryID: document.getElementById('product-seller-category').value, // Thêm dòng này
             isActive: document.getElementById('product-is-active').checked
         };
         
         // Kiểm tra dữ liệu
         if (!productData.productName) {
-            showToast('Vui lòng nhập tên sản phẩm', 'error');
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.innerHTML = 'Lưu';
-            }
+            showToast('Tên sản phẩm không được để trống', 'error');
             return;
         }
         
         if (!productData.price || isNaN(productData.price)) {
-            showToast('Vui lòng nhập giá hợp lệ', 'error');
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.innerHTML = 'Lưu';
-            }
+            showToast('Giá sản phẩm không hợp lệ', 'error');
             return;
         }
         
         if (!productData.categoryID) {
-            showToast('Vui lòng chọn danh mục sản phẩm', 'error');
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.innerHTML = 'Lưu';
-            }
+            showToast('Vui lòng chọn danh mục chung', 'error');
+            return;
+        }
+        
+        if (!productData.sellerCategoryID) {
+            showToast('Vui lòng chọn danh mục shop', 'error');
             return;
         }
         
         // Xử lý upload ảnh nếu có
         const imageInput = document.getElementById('product-image');
         if (imageInput && imageInput.files.length > 0) {
-            // Upload từng ảnh lên Cloudinary
-            const imageUrls = [];
-            for (let i = 0; i < imageInput.files.length; i++) {
-                try {
-                    const imageUrl = await uploadImage(imageInput.files[i]);
-                    if (imageUrl) {
-                        imageUrls.push(imageUrl);
-                    }
-                } catch (uploadError) {
-                    console.error('Lỗi khi upload ảnh:', uploadError);
-                    showToast('Lỗi khi tải lên hình ảnh. Tiếp tục với các ảnh khác.', 'warning');
-                }
-            }
-            
-            // Thêm URLs vào dữ liệu gửi đi
-            if (imageUrls.length > 0) {
-                productData.images = imageUrls;
-                // Đặt ảnh đầu tiên làm thumbnail
-                productData.imageURL = imageUrls[0];
+            const imageUrl = await uploadImage(imageInput.files[0]);
+            if (imageUrl) {
+                productData.imageURL = imageUrl;
             }
         }
         
@@ -1913,29 +2055,28 @@ async function handleProductFormSubmit(e) {
         console.log('Dữ liệu sản phẩm gửi lên API:', productData);
         
         if (mode === 'edit') {
-            // Cập nhật sản phẩm
             const productId = form.dataset.productId;
-            response = await fetchAPI(`products/${productId}`, {
+            if (!productId) {
+                throw new Error('Thiếu ID sản phẩm');
+            }
+            response = await fetchAPI(`Products/${productId}`, {
                 method: 'PUT',
                 body: JSON.stringify(productData)
             });
-            
-            showToast('Cập nhật sản phẩm thành công', 'success');
+            showToast('Cập nhật sản phẩm thành công!', 'success');
         } else {
-            // Tạo sản phẩm mới
-            response = await fetchAPI('products', {
+            response = await fetchAPI('Products', {
                 method: 'POST',
                 body: JSON.stringify(productData)
             });
-            
-            showToast('Thêm sản phẩm thành công', 'success');
+            showToast('Thêm sản phẩm mới thành công!', 'success');
         }
         
         // Đóng modal
         document.getElementById('product-modal').classList.add('hidden');
         
         // Tải lại danh sách sản phẩm
-        await loadProducts();
+        await loadProducts(1);
         
     } catch (error) {
         console.error('Lỗi khi lưu sản phẩm:', error);
@@ -1945,7 +2086,7 @@ async function handleProductFormSubmit(e) {
         const submitButton = document.getElementById('product-save-btn');
         if (submitButton) {
             submitButton.disabled = false;
-            submitButton.innerHTML = 'Lưu';
+            submitButton.innerHTML = 'Lưu sản phẩm';
         }
     }
 }
@@ -1976,11 +2117,44 @@ async function uploadImage(file) {
         throw error;
     }
 }
-
-async function loadProducts() {
+let productPagination = {
+    currentPage: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 0
+};
+/**
+ * Tải dữ liệu sản phẩm theo trang và hiển thị danh sách cùng với phân trang
+ * @param {number} page - Số trang cần tải (bắt đầu từ 1)
+ * @returns {Promise<void>}
+ */
+/**
+ * Tải dữ liệu sản phẩm theo trang và hiển thị danh sách cùng với phân trang
+ * 
+ * Hàm này thực hiện các nhiệm vụ:
+ * 1. Lấy ID người bán từ token đăng nhập
+ * 2. Gọi API để lấy danh sách sản phẩm theo ID người bán và trang hiện tại
+ * 3. Xử lý phản hồi từ nhiều cấu trúc API khác nhau
+ * 4. Cập nhật dữ liệu sản phẩm global (sellerProducts)
+ * 5. Trích xuất thông tin phân trang từ phản hồi
+ * 6. Hiển thị sản phẩm và phân trang
+ * 
+ * @param {number} page - Số trang cần tải (bắt đầu từ 1)
+ * @returns {Promise<void>}
+ */
+async function loadProducts(page = 1) {
     try {
         console.group("=== LOAD PRODUCTS ===");
-        console.log('Đang tải sản phẩm của seller hiện tại...');
+        console.log('Đang tải sản phẩm của seller hiện tại - trang', page);
+         // Kiểm tra phần tử phân trang
+        const paginationContainer = document.getElementById('product-pagination');
+        if (!paginationContainer) {
+            console.warn('Không tìm thấy phần tử phân trang (id="product-pagination"). Phân trang sẽ không hiển thị.');
+        } else {
+            console.log('Đã tìm thấy phần tử phân trang, tiếp tục tải dữ liệu...');
+        }
+        // Cập nhật trạng thái phân trang hiện tại
+        productPagination.currentPage = page;
         
         // Lấy token và seller ID hiện tại
         const token = getTokenFromSession();
@@ -2006,7 +2180,7 @@ async function loadProducts() {
             // Vẫn tiếp tục với ID mặc định để hiển thị UI
         }
         
-        console.log(`Đang tải sản phẩm cho seller ID: ${currentSellerId || 'unknown'}`);
+        console.log(`Đang tải sản phẩm cho seller ID: ${currentSellerId || 'unknown'}, trang ${page}`);
         
         // Hiển thị loading trong bảng
         const productTableBody = document.getElementById('product-table-body');
@@ -2016,8 +2190,21 @@ async function loadProducts() {
             productTableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Đang tải sản phẩm...</td></tr>`;
         }
         
+        // Cập nhật trang hiện tại
+        productPagination.currentPage = page;
+        
+        // Tạo params cho API call
+        const params = new URLSearchParams();
+        params.append('includeInactive', 'true');
+        params.append('pageNumber', page.toString());
+        params.append('pageSizeInput', productPagination.pageSize.toString());
+        
         // Thay vì sử dụng 'seller/products', sử dụng trực tiếp API endpoint với seller ID
-        const apiEndpoint = currentSellerId ? `Products/shop/${currentSellerId}` : 'seller/Products';
+        const baseEndpoint = currentSellerId ? 
+            `Products/shop/${currentSellerId}` : 
+            'seller/Products';
+            
+        const apiEndpoint = `${baseEndpoint}?${params.toString()}`;
         console.log(`Gọi API với endpoint: ${apiEndpoint}`);
         
         // Gọi API an toàn với try/catch
@@ -2127,8 +2314,21 @@ async function loadProducts() {
             console.log(`Đã nhận ${products.length} sản phẩm thuộc về seller ID ${currentSellerId || 'unknown'}`);
             console.log('Mẫu sản phẩm đầu tiên:', products.length > 0 ? products[0] : 'không có sản phẩm');
             
+            // LƯU TRỮ DỮ LIỆU TRƯỚC KHI TRÍCH XUẤT THÔNG TIN PHÂN TRANG VÀ RENDER
             sellerProducts = products;
+            
+            // CẬP NHẬT THÔNG TIN PHÂN TRANG
+            extractPaginationInfo(response);
+            
+            // RENDER SẢN PHẨM
             renderProducts(sellerProducts);
+            
+            // RENDER PHÂN TRANG SAU KHI ĐÃ CÓ DỮ LIỆU VÀ THÔNG TIN PHÂN TRANG
+            renderProductPagination();
+            
+            // Đảm bảo hàm đổi trang được đăng ký vào window
+            window.changePage = changePage;
+            
         } else {
             console.warn('API không trả về dữ liệu hoặc có lỗi');
             
@@ -2145,6 +2345,13 @@ async function loadProducts() {
             renderProducts(sellerProducts);
             
             showToast(`API không trả về dữ liệu. Đang hiển thị dữ liệu mẫu.`, "warning");
+            productPagination.currentPage = page;
+            productPagination.totalItems = sellerProducts.length;
+            productPagination.totalPages = 1;
+            renderPagination();
+            
+            // Đảm bảo hàm đổi trang được đăng ký vào window
+            window.changePage = changePage;
         }
         console.groupEnd();
     } catch (error) {
@@ -2166,9 +2373,320 @@ async function loadProducts() {
         
         // Hiển thị giao diện với dữ liệu mẫu
         renderProducts(sellerProducts);
+        productPagination.currentPage = 1;
+        productPagination.totalItems = sellerProducts.length;
+        productPagination.totalPages = 1;
+        renderPagination();
+        
+        // Đảm bảo hàm đổi trang được đăng ký vào window
+        window.changePage = changePage;
+        
         console.groupEnd();
     }
 }
+/**
+ * Trích xuất thông tin phân trang từ response API
+ * 
+ * Hàm này xử lý nhiều cấu trúc phản hồi khác nhau để trích xuất thông tin phân trang như:
+ * - Tổng số phần tử (totalItems)
+ * - Tổng số trang (totalPages)
+ * - Số phần tử trên mỗi trang (pageSize)
+ * - Trang hiện tại (currentPage)
+ * 
+ * Hàm hỗ trợ nhiều định dạng phản hồi API khác nhau và tự động nhận diện cấu trúc.
+ * Có khả năng tính toán các giá trị còn thiếu (ví dụ: tính totalPages từ totalItems và pageSize).
+ * 
+ * @param {Object} response - Phản hồi từ API chứa thông tin phân trang
+ * @param {Object} paginationObj - Đối tượng phân trang để cập nhật (mặc định là productPagination)
+ * @returns {Object} Đối tượng phân trang đã được cập nhật
+ */
+function extractPaginationInfo(response, paginationObj = productPagination) {
+    console.group("=== EXTRACT PAGINATION INFO ===");
+    try {
+        // Đảm bảo response tồn tại
+        if (!response) {
+            console.warn('Response trống hoặc không hợp lệ');
+            console.groupEnd();
+            return paginationObj;
+        }
+        
+        // Sao chép đối tượng phân trang để không thay đổi trực tiếp
+        let pagination = {...paginationObj};
+        
+        // Đảm bảo các thuộc tính cơ bản luôn có giá trị mặc định
+        pagination.currentPage = pagination.currentPage || 1;
+        pagination.pageSize = pagination.pageSize || 10;
+        pagination.totalItems = pagination.totalItems || 0;
+        pagination.totalPages = pagination.totalPages || 0;
+        
+        console.log('Đang trích xuất thông tin phân trang từ response:', response);
+        
+        // Xác định cấu trúc của response để xử lý phù hợp
+        let paginationSource = null;
+        
+        // Kiểm tra nếu response chứa thông tin phân trang trực tiếp
+        if (response.totalItems !== undefined || response.totalPages !== undefined || 
+            response.pageSize !== undefined || response.pageNumber !== undefined) {
+            paginationSource = response;
+            console.log('Phát hiện thông tin phân trang ở cấp root của response');
+        } 
+        // Kiểm tra nếu response có thuộc tính pagination
+        else if (response.pagination) {
+            paginationSource = response.pagination;
+            console.log('Phát hiện thông tin phân trang trong thuộc tính pagination');
+        }
+        // Kiểm tra nếu response có thuộc tính meta
+        else if (response.meta) {
+            paginationSource = response.meta;
+            console.log('Phát hiện thông tin phân trang trong thuộc tính meta');
+        }
+        // Kiểm tra nếu response có thuộc tính data.products
+        else if (response.products) {
+            paginationSource = response.products;
+            console.log('Phát hiện thông tin phân trang trong thuộc tính products');
+        }
+        // Xử lý trường hợp response là mảng items
+        else if (Array.isArray(response)) {
+            console.log('Response là mảng, ước tính thông tin phân trang từ độ dài');
+            pagination.totalItems = response.length;
+            pagination.totalPages = Math.ceil(response.length / pagination.pageSize);
+        }
+        // Xử lý trường hợp response có thuộc tính items là mảng
+        else if (response.items && Array.isArray(response.items)) {
+            console.log('Ước tính thông tin phân trang từ thuộc tính items');
+            pagination.totalItems = response.items.length;
+        }
+        
+        // Trích xuất thông tin từ nguồn phân trang đã xác định
+        if (paginationSource) {
+            // Trích xuất totalItems (tổng số mục)
+            if (paginationSource.totalItems !== undefined) {
+                pagination.totalItems = paginationSource.totalItems;
+                console.log('totalItems:', pagination.totalItems);
+            } else if (paginationSource.total !== undefined) {
+                pagination.totalItems = paginationSource.total;
+                console.log('totalItems (từ total):', pagination.totalItems);
+            } else if (paginationSource.totalCount !== undefined) {
+                pagination.totalItems = paginationSource.totalCount;
+                console.log('totalItems (từ totalCount):', pagination.totalItems);
+            }
+            
+            // Trích xuất totalPages (tổng số trang)
+            if (paginationSource.totalPages !== undefined) {
+                pagination.totalPages = paginationSource.totalPages;
+                console.log('totalPages:', pagination.totalPages);
+            } else if (paginationSource.pages !== undefined) {
+                pagination.totalPages = paginationSource.pages;
+                console.log('totalPages (từ pages):', pagination.totalPages);
+            }
+            
+            // Trích xuất pageSize (kích thước trang)
+            if (paginationSource.pageSize !== undefined) {
+                pagination.pageSize = paginationSource.pageSize;
+                console.log('pageSize:', pagination.pageSize);
+            }
+            
+            // Trích xuất currentPage (trang hiện tại)
+            if (paginationSource.currentPage !== undefined) {
+                pagination.currentPage = paginationSource.currentPage;
+                console.log('currentPage:', pagination.currentPage);
+            } else if (paginationSource.pageNumber !== undefined) {
+                pagination.currentPage = paginationSource.pageNumber;
+                console.log('currentPage (từ pageNumber):', pagination.currentPage);
+            }
+        }
+        
+        // Tính toán các giá trị còn thiếu nếu có đủ thông tin
+        if (!pagination.totalPages && pagination.totalItems && pagination.pageSize) {
+            pagination.totalPages = Math.ceil(pagination.totalItems / pagination.pageSize);
+            console.log('Tính toán totalPages từ totalItems và pageSize:', pagination.totalPages);
+        }
+        
+        // Đảm bảo các giá trị phân trang hợp lệ
+        if (!pagination.totalPages || pagination.totalPages < 1) {
+            pagination.totalPages = 1;
+            console.log('Thiết lập totalPages = 1 (giá trị tối thiểu)');
+        }
+        
+        if (pagination.currentPage < 1) {
+            pagination.currentPage = 1;
+            console.log('Điều chỉnh currentPage = 1 (giá trị tối thiểu)');
+        }
+        
+        if (pagination.currentPage > pagination.totalPages) {
+            pagination.currentPage = pagination.totalPages;
+            console.log('Điều chỉnh currentPage bằng totalPages vì vượt quá giới hạn');
+        }
+        
+        // Cập nhật lại đối tượng phân trang gốc
+        Object.assign(paginationObj, pagination);
+        
+        console.log('Thông tin phân trang sau khi xử lý:', paginationObj);
+        console.groupEnd();
+        return paginationObj;
+    } catch (error) {
+        console.error('Lỗi khi trích xuất thông tin phân trang:', error);
+        console.error('Chi tiết lỗi:', error.message);
+        
+        // Đảm bảo đối tượng phân trang vẫn có giá trị mặc định hợp lệ
+        paginationObj.currentPage = paginationObj.currentPage || 1;
+        paginationObj.totalPages = paginationObj.totalPages || 1;
+        paginationObj.pageSize = paginationObj.pageSize || 10;
+        paginationObj.totalItems = paginationObj.totalItems || 0;
+        
+        console.groupEnd();
+        return paginationObj;
+    }
+}
+/**
+ * Hiển thị điều khiển phân trang trên giao diện
+ * 
+ * Hàm này tạo và hiển thị UI phân trang, bao gồm:
+ * - Nút điều hướng trước/sau
+ * - Các nút số trang với trạng thái hoạt động được đánh dấu 
+ * - Hiển thị tổng số mục nếu có
+ * 
+ * Sử dụng bên trong khi không có tệp pagination-helper.js
+ * 
+ * @param {string} containerId - ID của container chứa phân trang
+ * @param {Object} paginationObj - Đối tượng phân trang (productPagination hoặc categoryPagination)
+ * @param {string} changePageFuncName - Tên hàm JavaScript để đổi trang (ví dụ: "changePage" hoặc "changeCategoryPage")
+ * @param {string} [itemLabel="sản phẩm"] - Nhãn cho loại mục (để hiển thị "Tổng cộng X {itemLabel}")
+ * @returns {void}
+ */
+function renderPagination(containerId, paginationObj, changePageFuncName, itemLabel = "sản phẩm") {
+    // Kiểm tra nếu đã có pagination helper
+    if (typeof renderPaginationUI === 'function') {
+        // Sử dụng hàm generic từ pagination-helper.js thay vì dùng implementation này
+        renderPaginationUI(containerId, paginationObj, changePageFuncName, itemLabel);
+        return;
+    }
+
+    // Legacy implementation khi chưa có pagination-helper.js
+    console.group(`=== RENDER PAGINATION (${containerId}) ===`);
+    const paginationContainer = document.getElementById(containerId);
+    if (!paginationContainer) {
+        console.warn(`Không tìm thấy container ${containerId}`);
+        console.groupEnd();
+        return;
+    }
+    
+    // Nếu không có trang nào hoặc chỉ có 1 trang, không hiển thị phân trang
+    if (!paginationObj.totalPages || paginationObj.totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        console.log('Không hiển thị phân trang vì chỉ có 1 trang hoặc không có dữ liệu');
+        console.groupEnd();
+        return;
+    }
+    
+    console.log('Đang render phân trang với thông tin:', paginationObj);
+    
+    let paginationHTML = `<div class="flex justify-center my-4">
+        <nav class="flex items-center space-x-1">
+            <button class="pagination-btn px-3 py-1 rounded-l border ${paginationObj.currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-blue-600 hover:bg-blue-50'}" 
+                    onclick="${changePageFuncName}(${paginationObj.currentPage - 1})" ${paginationObj.currentPage === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i>
+            </button>`;
+    
+    // Giới hạn hiển thị số trang nếu có quá nhiều trang
+    const maxDisplayedPages = 5;
+    let startPage = Math.max(1, paginationObj.currentPage - Math.floor(maxDisplayedPages / 2));
+    let endPage = Math.min(paginationObj.totalPages, startPage + maxDisplayedPages - 1);
+    
+    // Điều chỉnh lại startPage nếu endPage đã đạt giới hạn
+    if (endPage - startPage + 1 < maxDisplayedPages) {
+        startPage = Math.max(1, endPage - maxDisplayedPages + 1);
+    }
+    
+    // Hiển thị nút đầu trang nếu cần
+    if (startPage > 1) {
+        paginationHTML += `<button class="pagination-btn px-3 py-1 border bg-white text-blue-600 hover:bg-blue-50" onclick="${changePageFuncName}(1)">1</button>`;
+        
+        if (startPage > 2) {
+            paginationHTML += `<span class="px-3 py-1 border-t border-b border-r bg-white text-gray-600">...</span>`;
+        }
+    }
+    
+    // Hiển thị các số trang chính
+    for (let i = startPage; i <= endPage; i++) {
+        if (i === paginationObj.currentPage) {
+            paginationHTML += `<button class="pagination-btn px-3 py-1 border bg-blue-500 text-white" onclick="${changePageFuncName}(${i})">${i}</button>`;
+        } else {
+            paginationHTML += `<button class="pagination-btn px-3 py-1 border bg-white text-blue-600 hover:bg-blue-50" onclick="${changePageFuncName}(${i})">${i}</button>`;
+        }
+    }
+    
+    // Hiển thị nút cuối trang nếu cần
+    if (endPage < paginationObj.totalPages) {
+        if (endPage < paginationObj.totalPages - 1) {
+            paginationHTML += `<span class="px-3 py-1 border bg-white text-gray-600">...</span>`;
+        }
+        paginationHTML += `<button class="pagination-btn px-3 py-1 border bg-white text-blue-600 hover:bg-blue-50" onclick="${changePageFuncName}(${paginationObj.totalPages})">${paginationObj.totalPages}</button>`;
+    }
+    
+    paginationHTML += `
+        <button class="pagination-btn px-3 py-1 rounded-r border ${paginationObj.currentPage === paginationObj.totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-blue-600 hover:bg-blue-50'}" 
+                onclick="${changePageFuncName}(${paginationObj.currentPage + 1})" ${paginationObj.currentPage === paginationObj.totalPages ? 'disabled' : ''}>
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </nav>`;
+    
+    // Thêm thông tin về tổng số mục
+    if (paginationObj.totalItems) {
+        paginationHTML += `
+            <div class="ml-4 text-sm text-gray-600 flex items-center">
+                Tổng cộng ${paginationObj.totalItems} ${itemLabel}
+            </div>
+        `;
+    }
+    
+    paginationHTML += `</div>`;
+    
+    paginationContainer.innerHTML = paginationHTML;
+    console.log(`Đã render phân trang cho ${containerId} thành công`);
+    console.groupEnd();
+}
+
+/**
+ * Hiển thị phân trang cho danh sách sản phẩm
+ * Hàm này sử dụng lại renderPaginationUI với các thiết lập phù hợp cho sản phẩm
+ * 
+ * @returns {void}
+ */
+function renderProductPagination() {
+    console.log("Rendering product pagination...");
+    renderPagination('product-pagination', productPagination, 'changePage', 'sản phẩm');
+    // Kiểm tra xem hàm helper đã được load chưa
+    if (typeof window.renderProductPaginationUI === 'function') {
+        console.log("Using helper function for product pagination");
+        // Sử dụng helper function
+        window.renderProductPaginationUI();
+    } else {
+        console.log("Using fallback pagination rendering for products");
+        // Fallback implementation nếu không có helper
+        renderPagination('product-pagination', productPagination, 'changePage', 'sản phẩm');
+    }
+    
+    // Đảm bảo hàm đổi trang được đăng ký vào window
+    window.changePage = changePage;
+}
+
+// Hàm đổi trang
+function changePage(page) {
+    console.log(`Chuyển đến trang ${page}`);
+    if (page < 1 || (productPagination.totalPages && page > productPagination.totalPages)) return;
+    
+    // Cuộn lên đầu phần sản phẩm
+    const productsSection = document.getElementById('products-section');
+    if (productsSection) {
+        productsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    loadProducts(page);
+}
+
+// Đảm bảo hàm này có thể được gọi từ DOM
+window.changePage = changePage;
 
 // Hàm tạo dữ liệu sản phẩm mẫu cho trường hợp API không trả về dữ liệu
 function createDummyProducts() {
@@ -2364,8 +2882,8 @@ function renderProducts(products) {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         ${isOwner ? `
-                            <button class="text-blue-600 hover:text-blue-900 mr-3 edit-product" data-id="${productData.productID}">Sửa</button>
-                            <button class="text-red-600 hover:text-red-900 delete-product" data-id="${productData.productID}">Xóa</button>
+                        <button class="text-blue-600 hover:text-blue-900 mr-3 edit-product" data-id="${productData.productID}">Sửa</button>
+                        <button class="text-red-600 hover:text-red-900 delete-product" data-id="${productData.productID}">Xóa</button>
                         ` : `<span class="text-gray-500">Không có quyền</span>`}
                     </td>
                 `;
@@ -2479,12 +2997,13 @@ async function openAddProductModal() {
 }
 
 // Mở modal chỉnh sửa sản phẩm
+// Mở modal chỉnh sửa sản phẩm
 async function openEditProductModal(productId) {
     try {
         console.log(`Mở modal chỉnh sửa sản phẩm ID: ${productId}`);
         
         // Lấy thông tin sản phẩm từ API
-        const product = await fetchAPI(`Products/${productId}`);
+        const product = await fetchAPI(`Products/${productId}?includeInactive=true`);
         
         if (!product) {
             showToast('Không thể tải thông tin sản phẩm', 'error');
@@ -2498,7 +3017,7 @@ async function openEditProductModal(productId) {
         const productForm = document.getElementById('product-form');
         
         if (!productModal || !productForm) {
-            console.error('Không tìm thấy product-modal hoặc product-form');
+            showToast('Không tìm thấy form chỉnh sửa sản phẩm', 'error');
             return;
         }
         
@@ -2521,6 +3040,7 @@ async function openEditProductModal(productId) {
             description: product.description || '',
             isActive: product.isActive === undefined ? true : product.isActive,
             categoryID: product.categoryID || product.categoryId || '',
+            sellerCategoryID: product.sellerCategoryID || product.sellerCategoryId || '',
             images: product.images || [],
             thumbnail: product.thumbnail || product.image || product.productImage || product.imageURL || ''
         };
@@ -2532,38 +3052,43 @@ async function openEditProductModal(productId) {
         document.getElementById('product-description').value = productData.description;
         document.getElementById('product-is-active').checked = productData.isActive;
         
-        // Chọn danh mục
+        // Chọn danh mục chung
         const categorySelect = document.getElementById('product-category');
         if (categorySelect && productData.categoryID) {
-            categorySelect.value = productData.categoryID;
+            [...categorySelect.options].some(option => {
+                if (option.value == productData.categoryID) {
+                    option.selected = true;
+                    return true;
+                }
+                return false;
+            });
+        }
+        
+        // Chọn danh mục shop
+        const sellerCategorySelect = document.getElementById('product-seller-category');
+        if (sellerCategorySelect && productData.sellerCategoryID) {
+            [...sellerCategorySelect.options].some(option => {
+                if (option.value == productData.sellerCategoryID) {
+                    option.selected = true;
+                    return true;
+                }
+                return false;
+            });
         }
         
         // Hiển thị hình ảnh hiện tại
         const imagePreview = document.getElementById('image-preview');
-        if (imagePreview) {
-            imagePreview.innerHTML = '';
-            
-            if (productData.images && productData.images.length > 0) {
-                productData.images.forEach(image => {
-                    const imgContainer = document.createElement('div');
-                    imgContainer.className = 'relative';
-                    const imgUrl = typeof image === 'string' ? image : (image.url || '');
-                    const imgId = typeof image === 'string' ? '' : (image.id || '');
-                    
-                    imgContainer.innerHTML = `
-                        <img src="${imgUrl}" class="w-20 h-20 object-cover rounded border">
-                        ${imgId ? `<input type="hidden" name="existing-images" value="${imgId}">` : ''}
-                    `;
-                    imagePreview.appendChild(imgContainer);
-                });
-            } else if (productData.thumbnail) {
-                const imgContainer = document.createElement('div');
-                imgContainer.className = 'relative';
-                imgContainer.innerHTML = `
-                    <img src="${productData.thumbnail}" class="w-20 h-20 object-cover rounded border">
-                `;
-                imagePreview.appendChild(imgContainer);
-            }
+        if (imagePreview && productData.thumbnail) {
+            imagePreview.innerHTML = `
+                <div class="relative">
+                    <img src="${productData.thumbnail}" alt="${productData.name}" class="w-full h-32 object-cover">
+                    <button type="button" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1" onclick="removeImagePreview()">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
         }
         
         // Hiển thị modal
@@ -2575,30 +3100,86 @@ async function openEditProductModal(productId) {
     }
 }
 
+// Hàm xóa xem trước ảnh
+function removeImagePreview() {
+    const imagePreview = document.getElementById('image-preview');
+    if (imagePreview) {
+        imagePreview.innerHTML = '';
+    }
+    const imageInput = document.getElementById('product-image');
+    if (imageInput) {
+        imageInput.value = '';
+    }
+}
+
+// Đảm bảo hàm có thể được gọi từ HTML
+window.removeImagePreview = removeImagePreview;
 // Tải danh mục sản phẩm vào form
 async function loadCategoriesToForm() {
     try {
-        // Lấy danh mục từ API
-        const categories = await fetchAPI('categories');
+        // Lấy token để trích xuất sellerId
+        const token = getTokenFromSession();
+        if (!token) {
+            showToast('Vui lòng đăng nhập để tải danh mục.', 'error');
+            return;
+        }
         
-        // Lấy select element
+        const tokenInfo = parseJwtToken(token);
+        const currentSellerId = tokenInfo.SellerId || tokenInfo.sellerId;
+        
+        // Lấy các select element
         const categorySelect = document.getElementById('product-category');
-        if (!categorySelect) return;
+        const sellerCategorySelect = document.getElementById('product-seller-category');
         
-        // Xóa các options cũ
-        categorySelect.innerHTML = '<option value="">-- Chọn danh mục --</option>';
+        if (!categorySelect && !sellerCategorySelect) {
+            console.error('Không tìm thấy dropdown danh mục trong form');
+            return;
+        }
         
-        // Thêm các options mới
-        if (categories && Array.isArray(categories)) {
-            categories.forEach(category => {
+        // 1. Tải danh mục chung
+        const categories = await fetchAPI('categories/all');
+        
+        // 2. Tải danh mục của seller
+        const sellerCategories = await fetchAPI('sellerCategories');
+        
+        console.log('Danh mục chung:', categories);
+        console.log('Danh mục seller:', sellerCategories);
+        
+        // Điền danh mục chung vào dropdown - PHẦN CODE MỚI THÊM VÀO
+        if (categorySelect) {
+            categorySelect.innerHTML = '<option value="">-- Chọn danh mục --</option>';
+            
+            if (categories && Array.isArray(categories)) {
+                categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.categoryID || category.categoryId || category.id;
+                    option.textContent = category.categoryName || category.name;
+                    categorySelect.appendChild(option);
+                });
+                console.log(`Đã thêm ${categories.length} danh mục chung vào dropdown`);
+            } else {
+                console.warn('Không có danh mục chung hoặc dữ liệu không phải mảng:', categories);
+            }
+        }
+        
+        // Điền danh mục của seller vào dropdown
+        if (sellerCategorySelect && sellerCategories && Array.isArray(sellerCategories)) {
+            sellerCategorySelect.innerHTML = '<option value="">-- Chọn danh mục shop --</option>';
+            
+            // Chỉ hiển thị danh mục đang hoạt động
+            const activeSellerCategories = sellerCategories.filter(cat => cat.isActive);
+            
+            activeSellerCategories.forEach(category => {
                 const option = document.createElement('option');
-                option.value = category.categoryID;
-                option.textContent = category.name;
-                categorySelect.appendChild(option);
+                option.value = category.sellerCategoryID || category.id;
+                option.textContent = category.categoryName || category.name;
+                sellerCategorySelect.appendChild(option);
             });
         }
+        
     } catch (error) {
         console.error('Lỗi khi tải danh mục:', error);
+        showToast('Không thể tải danh mục sản phẩm.', 'error');
     }
 }
 
@@ -2673,7 +3254,7 @@ async function deleteProduct(productId) {
             
             // Tải lại danh sách sản phẩm từ API sau 1 giây
             setTimeout(() => {
-                loadProducts();
+                loadProducts(1);
             }, 1000);
         } else {
             throw lastError || new Error('Không thể xóa sản phẩm');
@@ -2684,11 +3265,12 @@ async function deleteProduct(productId) {
             showToast('Bạn không có quyền xóa sản phẩm này', 'error');
             console.error('Lỗi quyền truy cập:', error.message);
         } else {
-            console.error('Lỗi khi xóa sản phẩm:', error);
-            showToast(`Không thể xóa sản phẩm: ${error.message}`, 'error');
+        console.error('Lỗi khi xóa sản phẩm:', error);
+        showToast(`Không thể xóa sản phẩm: ${error.message}`, 'error');
         }
     }
 }
+// xử lí phân trang
 
 // Xử lý hình ảnh sản phẩm
 function handleProductImageChange(e) {
@@ -3090,32 +3672,112 @@ function openAddCategoryModal() {
     modal.classList.remove('hidden');
     console.log('Đã mở modal thêm danh mục mới');
 }
+/**
+ * Hiển thị điều khiển phân trang cho danh mục cửa hàng
+ * 
+ * Hàm này sử dụng lại renderPaginationUI với các thiết lập phù hợp cho danh mục
+ * - Nút điều hướng trước/sau
+ * - Các nút số trang với trạng thái hoạt động được đánh dấu
+ * - Hiển thị tổng số danh mục nếu có
+ * 
+ * @returns {void}
+ */
+function renderCategoryPagination() {
+    // Kiểm tra xem hàm helper đã được load chưa
+    if (typeof renderCategoryPaginationUI === 'function') {
+        // Sử dụng helper function
+        renderCategoryPaginationUI();
+    } else {
+        // Fallback implementation nếu không có helper
+        renderPagination('category-pagination', categoryPagination, 'changeCategoryPage', 'danh mục');
+    }
+    
+    // Đảm bảo hàm đổi trang được đăng ký vào window
+    window.changeCategoryPage = changeCategoryPage;
+}
 
-// Hàm để tải danh mục cửa hàng
-async function loadShopCategories() {
+// Thêm hàm đổi trang cho danh mục
+function changeCategoryPage(page) {
+    console.log(`Chuyển đến trang danh mục ${page}`);
+    if (page < 1 || (categoryPagination.totalPages && page > categoryPagination.totalPages)) return;
+    
+    // Cuộn lên đầu phần danh mục
+    const categoriesSection = document.getElementById('categories-section');
+    if (categoriesSection) {
+        categoriesSection.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    loadShopCategories(page);
+}
+
+/**
+ * Tải danh mục cửa hàng theo trang và hiển thị danh sách cùng với phân trang
+ * 
+ * Hàm này thực hiện các nhiệm vụ:
+ * 1. Gọi API để lấy danh mục cửa hàng của người bán hiện tại và trang cụ thể
+ * 2. Xử lý phản hồi từ API và cập nhật dữ liệu danh mục toàn cục (sellerCategories)
+ * 3. Cập nhật thông tin phân trang từ phản hồi API hoặc ước tính từ số lượng danh mục
+ * 4. Hiển thị danh mục và phân trang trên giao diện
+ * 5. Thiết lập xử lý sự kiện cho các phần tử danh mục
+ * 
+ * @param {number} page - Số trang cần tải (bắt đầu từ 1)
+ * @returns {Promise<void>}
+ */
+async function loadShopCategories(page = 1) {
     try {
         console.group("=== LOAD SHOP CATEGORIES ===");
         console.log('Đang tải danh mục của shop...');
         
-        // Loại bỏ dấu / ở đầu
-        const categories = await fetchAPI('sellerCategories');
+        // Cập nhật trang hiện tại trong đối tượng phân trang
+        categoryPagination.currentPage = page;
+        
+        // Tạo params cho API call
+        const params = new URLSearchParams();
+        params.append('pageNumber', page.toString());
+        params.append('pageSize', categoryPagination.pageSize.toString());
+
+        // Loại bỏ dấu / ở đầu và thêm tham số phân trang
+        const categories = await fetchAPI(`sellerCategories?pageNumber=${page}&pageSize=${categoryPagination.pageSize}`);
         
         if (categories) {
-            console.log('Nhận được phản hồi API:', categories);
-            sellerCategories = Array.isArray(categories) ? categories : [];
-            console.log('Đã tìm thấy', sellerCategories.length, 'danh mục');
+            if (Array.isArray(categories)) {
+                // Lưu trữ dữ liệu danh mục trước khi xử lý phân trang
+                sellerCategories = categories;
+                
+                // Ước tính thông tin phân trang nếu API không trả về
+                categoryPagination.totalItems = categories.length;
+                categoryPagination.totalPages = Math.ceil(categories.length / categoryPagination.pageSize);
+            } else if (categories.data && Array.isArray(categories.data)) {
+                // Lưu trữ dữ liệu danh mục từ cấu trúc API có .data
+                sellerCategories = categories.data;
+                
+                // Lấy thông tin phân trang từ API
+                if (categories.pagination) {
+                    categoryPagination = {
+                        ...categoryPagination,
+                        ...categories.pagination
+                    };
+                }
+            }
         } else {
-            console.warn('API không trả về dữ liệu hoặc có lỗi');
+            // Tạo dữ liệu mẫu nếu không có dữ liệu từ API
             sellerCategories = createDummyCategories();
-            showToast(`API không trả về dữ liệu danh mục. Đang hiển thị dữ liệu mẫu.`, "warning");
+            categoryPagination.totalItems = sellerCategories.length;
+            categoryPagination.totalPages = 1;
         }
         
-        // Render danh mục
+        // Render dữ liệu danh mục trên giao diện
         renderShopCategories();
         renderCategoryList();
         
+        // Render phân trang sau khi đã có dữ liệu và thông tin phân trang
+        renderCategoryPagination();
+        
         // Thiết lập các xử lý sự kiện cho danh mục
         setupCategoryHandlers();
+        
+        // Đảm bảo hàm đổi trang được đăng ký vào window
+        window.changeCategoryPage = changeCategoryPage;
         
         console.groupEnd();
     } catch (error) {
@@ -3128,13 +3790,18 @@ async function loadShopCategories() {
         // Render với dữ liệu mẫu
         renderShopCategories();
         renderCategoryList();
+        renderCategoryPagination();
         
         // Thiết lập các xử lý sự kiện cho danh mục
         setupCategoryHandlers();
         
+        // Đảm bảo hàm đổi trang được đăng ký vào window
+        window.changeCategoryPage = changeCategoryPage;
+        
         console.groupEnd();
     }
 }
+
 
 // Hàm cũ đã được thay thế bởi phiên bản mới ở dưới
 
@@ -3153,7 +3820,7 @@ window.changeProductStatus = async function (productId, newIsActiveDesired) {
     // Kiểm tra sản phẩm có thuộc về seller hiện tại không
     try {
         // Trước khi thay đổi trạng thái, kiểm tra thông tin sản phẩm
-        const product = await fetchAPI(`Products/${productId}`);
+        const product = await fetchAPI(`Products/${productId}?includeInactive=true`);
         
         if (!product) {
             showToast('Không tìm thấy thông tin sản phẩm', 'error');
@@ -3180,7 +3847,7 @@ window.changeProductStatus = async function (productId, newIsActiveDesired) {
             
             showToast(`Đã ${actionDescription.toLowerCase()} sản phẩm thành công.`, 'success');
             // Reload the products list
-            await loadProducts();
+            await loadProducts(1);
         } catch (error) {
             // Xử lý lỗi Forbidden (403) đặc biệt
             if (error.message && error.message.includes('403')) {
@@ -3514,7 +4181,7 @@ async function uploadImage(file) {
 }
 
 // Hàm lấy sản phẩm theo ID của seller
-async function loadProductsBySellerId(sellerId, displayElementId = 'product-table-body', pageNumber = 1, pageSize = 10) {
+async function loadProductsBySellerId(sellerId, displayElementId = 'product-table-body', pageNumber = 1, pageSize = 20) {
     try {
         console.group("=== LOAD PRODUCTS BY SELLER ID ===");
         console.log(`Đang tải sản phẩm của seller ID: ${sellerId}...`);
@@ -3524,7 +4191,7 @@ async function loadProductsBySellerId(sellerId, displayElementId = 'product-tabl
         if (displayElement) {
             if (displayElement.tagName === 'TBODY') {
                 displayElement.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>Đang tải sản phẩm...</td></tr>`;
-            } else {
+        } else {
                 displayElement.innerHTML = `<div class="w-full text-center py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Đang tải sản phẩm...</div>`;
             }
         }
@@ -3532,7 +4199,7 @@ async function loadProductsBySellerId(sellerId, displayElementId = 'product-tabl
         // Gọi API chính xác từ ProductsController
         // Endpoint: GET /api/Products/shop/{sellerId}
         console.log(`Gọi API Products/shop/${sellerId} để lấy sản phẩm theo seller ID cụ thể`);
-        const response = await fetchAPI(`Products/shop/${sellerId}?pageNumber=${pageNumber}&pageSizeInput=${pageSize}`);
+        const response = await fetchAPI(`Products/shop/${sellerId}?pageNumber=${pageNumber}&pageSizeInput=${pageSize}&includeInactive=true`);
         
         if (response) {
             console.log('Nhận được phản hồi API:', response);
@@ -3669,63 +4336,71 @@ async function loadProductsBySellerId(sellerId, displayElementId = 'product-tabl
 
 // Hàm tạo hàng sản phẩm cho hiển thị dạng bảng
 function createProductRow(product) {
-    // Chuẩn hóa dữ liệu product để tránh undefined
-    const productData = {
-        productID: product.productID || product.id || 0,
-        name: product.productName || product.name || "Sản phẩm không tên",
-        categoryName: product.categoryName || product.category?.name || "Chưa phân loại",
-        price: product.price || 0,
-        stockQuantity: product.stockQuantity || product.quantity || 0,
-        isActive: product.isActive === undefined ? true : product.isActive,
-        thumbnail: product.thumbnail || product.image || product.productImage || product.imageURL || "https://via.placeholder.com/50?text=" + (product.productName || product.name || "Product")
-    };
-    
     const row = document.createElement('tr');
     
-    // Xác định trạng thái sản phẩm
-    let statusBadge = '';
-    if (productData.isActive) {
-        statusBadge = `<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Đang bán</span>`;
-    } else {
-        statusBadge = `<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Ngừng bán</span>`;
-    }
-    
-    // Hàm định dạng tiền tệ
+    // Format tiền tệ
     const formatCurrency = (amount) => {
-        if (typeof amount !== 'number') return 'N/A';
-        return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
-            .replace(/\s₫$/, 'đ');
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     };
-    
-    // Lấy URL hình ảnh
+
+    // Xử lý URL ảnh
     const getImageUrl = (imageURL) => {
-        if (!imageURL || imageURL === "/images/string") return '../assets/images/placeholder.png';
-        const isFullUrl = /^(https?:)?\/\//i.test(imageURL);
-        if (isFullUrl) return imageURL;
-        return imageURL;
+        return imageURL || '/images/default-product.jpg';
     };
-    
-    const imageUrl = getImageUrl(productData.thumbnail);
-    
+
+    // Xử lý trạng thái sản phẩm
+    const getStatusClass = (isActive) => {
+        return isActive ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100';
+    };
+
+    const getStatusText = (isActive) => {
+        return isActive ? 'Đang bán' : 'Ngừng bán';
+    };
+
     row.innerHTML = `
-        <td class="px-6 py-4 whitespace-nowrap">
-            <div class="flex items-center">
-                <img src="${imageUrl}" alt="${productData.name}" class="w-10 h-10 object-cover rounded-full">
+        <td class="px-4 py-3">
+            <div class="flex items-center text-sm">
+                <div class="relative hidden w-8 h-8 mr-3 rounded-full md:block">
+                    <img class="object-cover w-full h-full rounded" src="${getImageUrl(product.imageURL)}" alt="${product.name}" loading="lazy" />
+                </div>
+                <div>
+                    <p class="font-semibold">${product.name}</p>
+                </div>
             </div>
         </td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-            <div class="product-name-ellipsis">${productData.name}</div>
+        <td class="px-4 py-3 text-sm">${formatCurrency(product.price)}</td>
+        <td class="px-4 py-3 text-sm">${product.quantity}</td>
+        <td class="px-4 py-3 text-sm">${product.categoryName || 'Chưa phân loại'}</td>
+        <td class="px-4 py-3 text-sm">
+            <span class="px-2 py-1 font-semibold leading-tight ${getStatusClass(product.isActive)} rounded-full">
+                ${getStatusText(product.isActive)}
+            </span>
         </td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${productData.categoryName}</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatCurrency(productData.price)}</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${productData.stockQuantity}</td>
-        <td class="px-6 py-4 whitespace-nowrap">
-            ${statusBadge}
+        <td class="px-4 py-3 text-sm">${new Date(product.createdAt).toLocaleDateString('vi-VN')}</td>
+        <td class="px-4 py-3">
+            <div class="flex items-center space-x-4 text-sm">
+                <button class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 text-purple-600 rounded-lg focus:outline-none focus:shadow-outline-gray" 
+                        aria-label="Edit" 
+                        onclick="openEditProductModal(${product.productID})">
+                    <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path>
+                    </svg>
+                </button>
+                <button class="flex items-center justify-between px-2 py-2 text-sm font-medium leading-5 ${product.isActive ? 'text-red-600' : 'text-green-600'} rounded-lg focus:outline-none focus:shadow-outline-gray"
+                        aria-label="${product.isActive ? 'Disable' : 'Enable'}"
+                        onclick="changeProductStatus(${product.productID}, ${product.isActive})">
+                    <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+                        ${product.isActive ? 
+                            '<path d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"></path>' :
+                            '<path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>'}
+                    </svg>
+                </button>
+            </div>
         </td>
     `;
-    
+
     return row;
-}
+}   
 
 // Hàm tạo card sản phẩm cho hiển thị dạng grid
 function createProductCard(product) {
@@ -3770,6 +4445,179 @@ function createProductCard(product) {
     
     return card;
 }
+// Nếu bạn đang sử dụng Select2 (kiểm tra jQuery trước)
+function initializeSelects() {
+    // Kiểm tra xem jQuery có được tải không
+    if (typeof window.jQuery === 'undefined' || typeof $ === 'undefined') {
+        console.warn('jQuery không được tải. Không thể khởi tạo Select2.');
+        return;
+    }
+    
+    // Kiểm tra xem Select2 có tồn tại không
+    if (typeof $.fn.select2 === 'undefined') {
+        console.warn('Select2 plugin không được tải.');
+        return;
+    }
+    
+    try {
+        $('#product-category').select2({
+            dropdownParent: $('#product-modal'),
+            width: '100%'
+        });
+        
+        $('#product-seller-category').select2({
+            dropdownParent: $('#product-modal'),
+            width: '100%'
+        });
+        console.log('Select2 dropdowns đã được khởi tạo thành công');
+    } catch (error) {
+        console.error('Lỗi khi khởi tạo Select2:', error);
+    }
+}
 
+// Mở modal chỉnh sửa sản phẩm (đã sửa lỗi khi không có jQuery)
+async function openEditProductModal(productId) {
+    try {
+        console.log(`Mở modal chỉnh sửa sản phẩm ID: ${productId}`);
+        
+        // Lấy thông tin sản phẩm từ API
+        const product = await fetchAPI(`Products/${productId}?includeInactive=true`);
+        
+        if (!product) {
+            showToast('Không thể tải thông tin sản phẩm', 'error');
+            return;
+        }
+        
+        console.log('Thông tin sản phẩm:', product);
+        
+        // Lấy modal và form
+        const productModal = document.getElementById('product-modal');
+        const productForm = document.getElementById('product-form');
+        
+        if (!productModal || !productForm) {
+            showToast('Không tìm thấy form chỉnh sửa sản phẩm', 'error');
+            return;
+        }
+        
+        // Cập nhật tiêu đề modal
+        const modalTitle = document.getElementById('product-modal-title');
+        if (modalTitle) modalTitle.textContent = 'Chỉnh Sửa Sản Phẩm';
+        
+        // Đặt chế độ chỉnh sửa và lưu ID sản phẩm
+        productForm.dataset.mode = 'edit';
+        productForm.dataset.productId = productId;
+        
+        // Lấy danh mục sản phẩm
+        await loadCategoriesToForm();
+        
+        // Chuẩn hóa dữ liệu trước khi điền vào form
+        const productData = {
+            name: product.productName || product.name || '',
+            price: product.price || 0,
+            stockQuantity: product.stockQuantity || product.quantity || 0,
+            description: product.description || '',
+            isActive: product.isActive === undefined ? true : product.isActive,
+            categoryID: product.categoryID || product.categoryId || '',
+            sellerCategoryID: product.sellerCategoryID || product.sellerCategoryId || '',
+            images: product.images || [],
+            thumbnail: product.thumbnail || product.image || product.productImage || product.imageURL || ''
+        };
+        
+        // Điền thông tin sản phẩm vào form
+        document.getElementById('product-name').value = productData.name;
+        document.getElementById('product-price').value = productData.price;
+        document.getElementById('product-quantity').value = productData.stockQuantity;
+        document.getElementById('product-description').value = productData.description;
+        document.getElementById('product-is-active').checked = productData.isActive;
+        
+        // Chọn danh mục chung
+        const categorySelect = document.getElementById('product-category');
+        if (categorySelect && productData.categoryID) {
+            [...categorySelect.options].some(option => {
+                if (option.value == productData.categoryID) {
+                    option.selected = true;
+                    return true;
+                }
+                return false;
+            });
+        }
+        
+        // Chọn danh mục shop
+        const sellerCategorySelect = document.getElementById('product-seller-category');
+        if (sellerCategorySelect && productData.sellerCategoryID) {
+            [...sellerCategorySelect.options].some(option => {
+                if (option.value == productData.sellerCategoryID) {
+                    option.selected = true;
+                    return true;
+                }
+                return false;
+            });
+        }
+        
+        // Hiển thị hình ảnh hiện tại
+        const imagePreview = document.getElementById('image-preview');
+        if (imagePreview && productData.thumbnail) {
+            imagePreview.innerHTML = `
+                <div class="relative">
+                    <img src="${productData.thumbnail}" alt="${productData.name}" class="w-full h-32 object-cover rounded">
+                    <button type="button" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1" onclick="removeImagePreview()">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+        }
+        
+        // Thêm class để giới hạn chiều cao modal và thêm thanh cuộn
+        productModal.classList.add('max-h-screen');
+        
+        // Hiển thị modal
+        productModal.classList.remove('hidden');
+        
+        // Điều chỉnh kích thước modal dựa vào kích thước màn hình
+        adjustModalSize();
+        
+    } catch (error) {
+        console.error('Lỗi khi mở modal chỉnh sửa sản phẩm:', error);
+        showToast(`Không thể mở modal chỉnh sửa: ${error.message}`, 'error');
+    }
+}
+
+// Thêm hàm điều chỉnh kích thước modal
+function adjustModalSize() {
+    const productModal = document.getElementById('product-modal');
+    const modalContent = productModal.querySelector('.modal-content');
+    
+    if (!modalContent) return;
+    
+    // Lấy kích thước màn hình
+    const windowHeight = window.innerHeight;
+    
+    // Điều chỉnh kích thước modal tối đa là 90% chiều cao màn hình
+    const maxHeight = windowHeight * 0.9;
+    modalContent.style.maxHeight = `${maxHeight}px`;
+    
+    // Thêm thanh cuộn nếu nội dung vượt quá
+    modalContent.style.overflowY = 'auto';
+    
+    // Căn giữa modal theo chiều dọc
+    const modalHeight = modalContent.offsetHeight;
+    if (modalHeight < windowHeight) {
+        modalContent.style.marginTop = `${(windowHeight - modalHeight) / 2}px`;
+    } else {
+        modalContent.style.marginTop = '5vh';
+    }
+}
+
+// Thêm sự kiện resize để điều chỉnh kích thước modal khi thay đổi kích thước cửa sổ
+window.addEventListener('resize', function() {
+    // Chỉ điều chỉnh kích thước nếu modal đang hiển thị
+    const productModal = document.getElementById('product-modal');
+    if (productModal && !productModal.classList.contains('hidden')) {
+        adjustModalSize();
+    }
+});
+window.changeCategoryPage = changeCategoryPage;
 // Export hàm để sử dụng từ bên ngoài
 window.loadProductsBySellerId = loadProductsBySellerId;

@@ -15,7 +15,9 @@ namespace ShopxEX1.Dtos.Products
         // --- Thông tin cần JOIN từ Service ---
         public string? CategoryName { get; set; }
         public int CategoryID { get; set; }
+        public int SellerID { get; set; }
         public string? SellerStoreName { get; set; } // Tên cửa hàng bán
         public int SellerCategoryID { get; set; } // Cần ID để liên kết
+        public string Status { get; set; } = "active";
     }
 }

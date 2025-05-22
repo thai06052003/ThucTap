@@ -98,6 +98,86 @@
         }
         .section { display: none; }
         .section.active { display: block; }
+        /* CSS cho modal chỉnh sửa sản phẩm */
+#product-modal .modal-container {
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    margin: 0 auto;
+    padding: 12px;
+}
+
+#edit-shop-modal > div:nth-child(2) {
+    max-width: 450px;
+    max-height: 80vh;
+    overflow-y: auto;
+    margin: 0 auto;
+    padding: 12px;
+}
+
+#category-modal > div:nth-child(2) {
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    margin: 0 auto;
+    padding: 12px;
+}
+
+/* Làm cho các input field gọn hơn */
+.mb-4 {
+    margin-bottom: 0.75rem !important; /* Giảm khoảng cách giữa các trường */
+}
+
+input, select, textarea {
+    padding: 0.5rem !important; /* Giảm padding của các trường nhập */
+    line-height: 1.3 !important;
+}
+
+textarea {
+    max-height: 120px !important; /* Giới hạn chiều cao của textarea */
+}
+
+/* Làm nhỏ gọn phần preview ảnh */
+#image-preview img {
+    max-height: 80px !important;
+    width: auto !important;
+}
+/* CSS bổ sung cho modal sản phẩm */
+.modal-content {
+  transition: all 0.3s ease-out;
+}
+
+#product-modal {
+  transition: opacity 0.3s ease;
+}
+
+/* Custom scrollbar cho phần body của modal */
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Đảm bảo responsive cho grid trên thiết bị nhỏ */
+@media (max-width: 640px) {
+  .modal-content {
+    width: 95%;
+    margin: 0 auto;
+  }
+}
     </style>
 </head>
 <body class="bg-gray-100">
@@ -319,6 +399,7 @@
                             </table>
                         </div>
                     </div>
+                    <div id="category-pagination" class="mt-4"></div>
                 </section>
 
                 <!-- Products Section -->
@@ -347,6 +428,8 @@
                             </table>
                         </div>
                     </div>
+                    
+                        <div id="product-pagination" class="mt-4"></div>
                 </section>
 
                 <!-- Shop Section -->
@@ -457,108 +540,144 @@
     </div>
 
     <!-- Product Modal -->
-    <div id="product-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
-        <div class="modal-backdrop fixed inset-0 bg-black opacity-50"></div>
-        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl relative">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="product-modal-title" class="text-lg font-semibold"></h3>
-                <button type="button" id="close-product-modal-btn" class="text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <form id="product-form">
+    <!-- Modal chỉnh sửa sản phẩm -->
+<div id="product-modal" class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 hidden">
+    <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 relative">
+        <!-- Header của modal -->
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
+            <h3 id="product-modal-title" class="text-lg font-semibold text-gray-900">Thêm Sản Phẩm Mới</h3>
+            <button id="close-product-modal-btn" class="text-gray-400 hover:text-gray-500">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Body của modal -->
+        <div class="px-6 py-4 max-h-[70vh] overflow-y-auto">
+            <form id="product-form" class="space-y-4" data-mode="create">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="mb-4">
-                        <label for="product-name" class="block text-sm font-medium text-gray-700">Tên sản phẩm</label>
-                        <input type="text" id="product-name" name="product-name" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                    <!-- Cột 1 -->
+                    <div class="space-y-4">
+                        <!-- Tên sản phẩm -->
+                        <div>
+                            <label for="product-name" class="block text-sm font-medium text-gray-700">Tên sản phẩm <span class="text-red-500">*</span></label>
+                            <input type="text" id="product-name" name="productName" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                        </div>
+                        
+                        <!-- Giá sản phẩm -->
+                        <div>
+                            <label for="product-price" class="block text-sm font-medium text-gray-700">Giá sản phẩm <span class="text-red-500">*</span></label>
+                            <input type="number" id="product-price" name="price" min="0" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                        </div>
+                        
+                        <!-- Số lượng -->
+                        <div>
+                            <label for="product-quantity" class="block text-sm font-medium text-gray-700">Số lượng <span class="text-red-500">*</span></label>
+                            <input type="number" id="product-quantity" name="quantity" min="0" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                        </div>
+                        
+                        <!-- Trạng thái -->
+                        <div class="flex items-center">
+                            <input type="checkbox" id="product-is-active" name="isActive" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" checked>
+                            <label for="product-is-active" class="ml-2 block text-sm text-gray-700">Sản phẩm đang được bán</label>
+                        </div>
                     </div>
-                    <div class="mb-4">
-                        <label for="product-category" class="block text-sm font-medium text-gray-700">Danh mục</label>
-                        <select id="product-category" name="product-category" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                            <!-- Danh mục sẽ được thêm bằng JavaScript -->
-                        </select>
-                    </div>
-                    <div class="mb-4">
-                        <label for="product-price" class="block text-sm font-medium text-gray-700">Giá</label>
-                        <input type="number" id="product-price" name="product-price" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="product-quantity" class="block text-sm font-medium text-gray-700">Số lượng</label>
-                        <input type="number" id="product-quantity" name="product-quantity" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                    </div>
-                    <div class="mb-4 md:col-span-2">
-                        <label for="product-description" class="block text-sm font-medium text-gray-700">Mô tả</label>
-                        <textarea id="product-description" name="product-description" class="mt-1 block w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="3"></textarea>
-                    </div>
-                    <div class="mb-4 md:col-span-2">
-                        <label for="product-image" class="block text-sm font-medium text-gray-700">Hình ảnh</label>
-                        <input type="file" id="product-image" name="product-image" accept="image/*" class="mt-1 block w-full">
-                        <div id="image-preview" class="mt-2 grid grid-cols-4 gap-2"></div>
-                    </div>
-                    <div class="mb-4 md:col-span-2">
-                        <label class="flex items-center">
-                            <input type="checkbox" id="product-is-active" name="product-is-active" class="mr-2" checked>
-                            Hoạt động
-                        </label>
+                    
+                    <!-- Cột 2 -->
+                    <div class="space-y-4">
+                        <!-- Danh mục chung -->
+                        <div>
+                            <label for="product-category" class="block text-sm font-medium text-gray-700">Danh mục <span class="text-red-500">*</span></label>
+                            <select id="product-category" name="categoryID" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                                <option value="">-- Chọn danh mục --</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Danh mục shop -->
+                        <div>
+                            <label for="product-seller-category" class="block text-sm font-medium text-gray-700">Danh mục shop <span class="text-red-500">*</span></label>
+                            <select id="product-seller-category" name="sellerCategoryID" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                                <option value="">-- Chọn danh mục shop --</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Hình ảnh sản phẩm -->
+                        <div>
+                            <label for="product-image" class="block text-sm font-medium text-gray-700">Hình ảnh sản phẩm</label>
+                            <input type="file" id="product-image" name="image" accept="image/*" class="mt-1 block w-full text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-md file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-blue-50 file:text-blue-600
+                                hover:file:bg-blue-100">
+                            <div id="image-preview" class="mt-2"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" id="cancel-product-form-btn" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition action-btn">Hủy</button>
-                    <button type="submit" id="product-save-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">Lưu</button>
+                
+                <!-- Mô tả sản phẩm (full width) -->
+                <div>
+                    <label for="product-description" class="block text-sm font-medium text-gray-700">Mô tả sản phẩm</label>
+                    <textarea id="product-description" name="description" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
                 </div>
             </form>
         </div>
+        
+        <!-- Footer của modal -->
+        <div class="px-6 py-3 border-t border-gray-200 flex justify-end space-x-3 sticky bottom-0 bg-white">
+            <button id="cancel-product-form-btn" type="button" class="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Hủy
+            </button>
+            <button id="product-save-btn" type="button" onclick="document.getElementById('product-form').dispatchEvent(new Event('submit'))" class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Lưu sản phẩm
+            </button>
+        </div>
     </div>
-
-    <!-- Edit Shop Modal -->
+</div>    <!-- Edit Shop Modal -->
     <div id="edit-shop-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
         <div class="modal-backdrop fixed inset-0 bg-black opacity-50"></div>
-        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl relative">
-            <div class="flex justify-between items-center mb-6">
+        <div class="bg-white rounded-lg shadow-lg p-4 w-full max-w-xl relative">
+            <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Chỉnh sửa thông tin cửa hàng</h3>
                 <button type="button" id="close-shop-modal" class="text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times"></i>
                 </button>
-            </div>
-            <form id="edit-shop-form" class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            </div>            <form id="edit-shop-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Tên cửa hàng</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tên cửa hàng</label>
                         <input type="text" name="shopName" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
                         <select name="status" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             <option value="Active">Hoạt động</option>
                             <option value="Inactive">Bảo trì</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                </div>                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Email liên hệ</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email liên hệ</label>
                         <input type="email" name="contactEmail" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
                         <input type="tel" name="phoneNumber" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Địa chỉ</label>
+                </div>                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
                     <input type="text" name="address" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Logo cửa hàng</label>
+                </div>                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Logo cửa hàng</label>
                     <div class="mt-1 flex items-center space-x-4">
-                        <div class="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                        <div class="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
                             <img id="currentLogo" src="" alt="Logo hiện tại" class="w-full h-full object-cover rounded-lg hidden">
-                            <i class="fas fa-store text-gray-400 text-2xl" id="logoPlaceholder"></i>
+                            <i class="fas fa-store text-gray-400 text-xl" id="logoPlaceholder"></i>
                         </div>
                         <div class="flex-1">
                             <input type="file" name="logo" accept="image/*" class="hidden" id="logoInput">
-                            <button type="button" onclick="document.getElementById('logoInput').click()" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
+                            <button type="button" onclick="document.getElementById('logoInput').click()" class="bg-gray-100 text-gray-700 px-3 py-1 rounded-lg hover:bg-gray-200 transition text-sm">
                                 Chọn ảnh
                             </button>
                             <p class="text-xs text-gray-500 mt-1">PNG, JPG tối đa 2MB</p>
@@ -584,9 +703,11 @@
                 </div>
             </form>
         </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </div>    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../assets/js/script-loader.js"></script>
     <script src="../assets/js/seller.js"></script>
+    <script src="../assets/js/pagination-helper.js"></script>
+    <script src="../assets/js/pagination-debug.js"></script>
+    
 </body>
 </html>
