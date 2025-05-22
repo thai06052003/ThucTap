@@ -181,9 +181,6 @@ public async Task<IActionResult> GetProductsByShopId(int sellerId,
         /// <param name="pageNumber">Số trang (mặc định 1).</param>
         /// <param name="pageSize">Số lượng mục trên trang (mặc định 10).</param>
         /// <returns>Danh sách sản phẩm tóm tắt có phân trang.</returns>
-       [HttpGet]
-[Authorize(Roles = "Seller")]
-[Route("/api/seller/products")]
 [HttpGet]
 [Authorize(Roles = "Seller")]
 [Route("/api/seller/products")]

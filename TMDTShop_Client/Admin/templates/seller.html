@@ -210,7 +210,7 @@ textarea {
                     <i class="fas fa-box-open"></i>
                     <span class="sidebar-text">Sản phẩm</span>
                 </a>
-                <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100">
+                <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" data-section="orders">
                     <i class="fas fa-tags"></i>
                     <span class="sidebar-text">Đơn hàng</span>
                 </a>
@@ -487,7 +487,179 @@ textarea {
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="productList"></div>
                     </div>
                 </section>
+                <!-- Orders Section - Cập nhật cho seller.html -->
+<section id="orders-section" class="section">
+    <div class="bg-white rounded-lg shadow p-6">
+        <!-- Header với tiêu đề và thông tin tổng quan -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+            <div class="mb-4 md:mb-0">
+                <h2 class="text-lg font-semibold">Quản lý đơn hàng</h2>
+                <p class="text-sm text-gray-600 mt-1" id="orders-count-info">Đang tải thông tin đơn hàng...</p>
+            </div>
+            
+            <!-- Bộ sắp xếp đơn hàng -->
+            <div class="flex flex-wrap items-center gap-2">
+                <label for="sort-orders-by" class="text-sm text-gray-600 whitespace-nowrap">Sắp xếp:</label>
+                <select id="sort-orders-by" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:ring-blue-500 focus:border-blue-500">
+                    <option value="orderDate:desc">Ngày đặt (mới nhất)</option>
+                    <option value="orderDate:asc">Ngày đặt (cũ nhất)</option>
+                    <option value="orderId:desc">Mã đơn (giảm dần)</option>
+                    <option value="orderId:asc">Mã đơn (tăng dần)</option>
+                    <option value="totalAmount:desc">Tổng tiền (cao nhất)</option>
+                    <option value="totalAmount:asc">Tổng tiền (thấp nhất)</option>
+                    <option value="status:asc">Trạng thái (A-Z)</option>
+                    <option value="status:desc">Trạng thái (Z-A)</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Bộ lọc đơn hàng - Fix bộ lọc -->
+        <form id="order-filter-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            <select id="status-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Tất cả trạng thái</option>
+                <option value="Pending">Chờ xử lý</option>
+                <option value="Processing">Đang xử lý</option>
+                <option value="Shipped">Đang giao</option>
+                <option value="Delivered">Đã giao</option>
+                <option value="Completed">Hoàn thành</option>
+                <option value="Cancelled">Đã hủy</option>
+            </select>
+            
+            <div class="flex flex-col sm:flex-row gap-2">
+                <div class="relative flex-1">
+                    <input type="date" id="start-date-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full" placeholder="Từ ngày">
+                </div>
+                <div class="relative flex-1">
+                    <input type="date" id="end-date-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full" placeholder="Đến ngày">
+                </div>
+            </div>
+            
+            <div class="relative sm:col-span-2">
+                <input type="text" id="search-filter" class="border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-sm w-full" placeholder="Tìm theo mã đơn, tên khách hàng...">
+                <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            </div>
+            
+            <div class="flex gap-2 sm:col-span-2 lg:col-span-1">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex-1 flex items-center justify-center">
+                    <i class="fas fa-filter mr-1.5"></i> Lọc
+                </button>
+                <button type="button" id="reset-filter-btn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+                    <i class="fas fa-undo"></i>
+                </button>
+            </div>
+        </form>
+        
+        <!-- Bảng đơn hàng -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đặt</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng thanh toán</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền</th>
+                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="order-table-body" class="bg-white divide-y divide-gray-200">
+                    <tr>
+                        <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="animate-spin h-6 w-6 text-blue-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <p>Đang tải dữ liệu đơn hàng...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Placeholder cho trường hợp không có đơn hàng - Ẩn ban đầu -->
+        <div id="no-orders-message" class="hidden py-12 px-6 text-center">
+            <svg class="mx-auto h-16 w-16 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <h3 class="mt-4 text-lg font-medium text-gray-900">Chưa có đơn hàng nào</h3>
+            <p class="mt-1 text-sm text-gray-500">Hiện tại chưa có đơn hàng nào phù hợp với điều kiện tìm kiếm của bạn.</p>
+        </div>
+    </div>
+    
+    <!-- Phân trang -->
+    <div id="order-pagination" class="mt-4">
+        <!-- Phân trang sẽ được thêm vào đây bằng JavaScript -->
+    </div>
+</section>
 
+<!-- Order Detail Modal -->
+<div id="order-detail-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50" aria-hidden="true"></div>
+    <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto relative">
+        <!-- Header modal cố định -->
+        <div class="sticky top-0 flex justify-between items-center p-4 border-b border-gray-200 bg-white z-10">
+            <h3 class="text-lg font-semibold" id="order-detail-title">Chi tiết đơn hàng</h3>
+            <button type="button" onclick="closeOrderDetailModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Nội dung modal chi tiết đơn hàng -->
+        <div id="order-detail-content" class="p-4">
+            <!-- Placeholder loading -->
+            <div class="flex flex-col items-center justify-center py-12">
+                <svg class="animate-spin h-8 w-8 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-gray-600">Đang tải thông tin đơn hàng...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Status Modal -->
+<div id="update-status-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50" aria-hidden="true"></div>
+    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4 relative">
+        <div class="flex justify-between items-center mb-4 border-b pb-3">
+            <h3 class="text-lg font-semibold">Cập nhật trạng thái đơn hàng</h3>
+            <button type="button" onclick="closeUpdateStatusModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="update-status-form" data-order-id="">
+            <div class="mb-4">
+                <label for="new-status" class="block text-sm font-medium text-gray-700 mb-1">Trạng thái mới</label>
+                <select id="new-status" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                    <!-- Các trạng thái sẽ được thêm vào đây bằng JavaScript -->
+                </select>
+                <div id="status-error" class="mt-1 text-sm text-red-600 hidden">Vui lòng chọn trạng thái mới.</div>
+            </div>
+            
+            <div class="mb-4">
+                <label for="status-note" class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                <textarea id="status-note" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="Nhập ghi chú về lý do thay đổi trạng thái (không bắt buộc)"></textarea>
+            </div>
+            
+            <div class="flex justify-end space-x-3 pt-3 border-t">
+                <button type="button" onclick="closeUpdateStatusModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+                    Hủy
+                </button>
+                <button type="button" id="update-status-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                    <span id="update-status-btn-text">Cập nhật</span>
+                    <span id="update-status-btn-loading" class="hidden">
+                        <i class="fas fa-spinner fa-spin"></i> Đang xử lý...
+                    </span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
                 <!-- Statistics Section -->
                 <section id="statistics-section" class="section">
                     <!-- Nội dung sẽ được thêm vào bằng JavaScript -->
@@ -634,7 +806,8 @@ textarea {
             </button>
         </div>
     </div>
-</div>    <!-- Edit Shop Modal -->
+</div> 
+   <!-- Edit Shop Modal -->
     <div id="edit-shop-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
         <div class="modal-backdrop fixed inset-0 bg-black opacity-50"></div>
         <div class="bg-white rounded-lg shadow-lg p-4 w-full max-w-xl relative">
@@ -708,8 +881,6 @@ textarea {
     <script src="../assets/js/seller.js"></script>
     <script src="../assets/js/pagination-helper.js"></script>
     <script src="../assets/js/seller-orders.js"></script>
-   
-    
     
 </body>
 </html>

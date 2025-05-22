@@ -1278,23 +1278,7 @@ async function loadOrders() {
     }
 }
 
-function renderOrders(orders) {
-    const tbody = document.querySelector("#orders-section table tbody");
-    if (!tbody) return;
-    tbody.innerHTML = orders.map(order => `
-        <tr>
-            <td class="px-6 py-4">${order.orderId}</td>
-            <td class="px-6 py-4">${order.customerName}</td>
-            <td class="px-6 py-4">${order.date}</td>
-            <td class="px-6 py-4">${order.quantity}</td>
-            <td class="px-6 py-4">${order.total.toLocaleString("vi-VN")}đ</td>
-            <td class="px-6 py-4">${order.status}</td>
-            <td class="px-6 py-4">
-                <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
-            </td>
-        </tr>
-    `).join("");
-}
+
 // Hàm tạo dữ liệu danh mục mẫu
 function createDummyCategories() {
     console.log('Tạo dữ liệu danh mục mẫu...');
@@ -1898,14 +1882,36 @@ function updateShopUI(shopData) {
     }
 }
 
-// Định dạng tiền tệ
+/**
+ * Định dạng tiền tệ Việt Nam
+ * @param {number} amount - Số tiền cần định dạng
+ * @returns {string} Chuỗi tiền tệ đã định dạng
+ */
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('vi-VN', { 
-        style: 'currency', 
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
         currency: 'VND',
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
     }).format(amount);
+}
+
+/**
+ * Định dạng thời gian theo định dạng Việt Nam
+ * @param {string} dateString - Chuỗi thời gian cần định dạng
+ * @returns {string} Chuỗi thời gian đã định dạng
+ */
+function formatDateTime(dateString) {
+    if (!dateString) return 'N/A';
+    
+    const date = new Date(dateString);
+    return date.toLocaleString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 
 // Xử lý form chỉnh sửa thông tin cửa hàng
@@ -3807,8 +3813,6 @@ async function loadShopCategories(page = 1) {
 }
 
 
-// Hàm cũ đã được thay thế bởi phiên bản mới ở dưới
-
 // Add the changeProductStatus function
 window.changeProductStatus = async function (productId, newIsActiveDesired) {
     const token = getTokenFromSession();
@@ -4613,7 +4617,55 @@ function adjustModalSize() {
         modalContent.style.marginTop = '5vh';
     }
 }
+function adjustOrdersTableResponsive() {
+    const screenWidth = window.innerWidth;
+    const table = document.querySelector('#orders-section table');
+    
+    if (!table) return;
+    
+    const headers = table.querySelectorAll('thead th');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    // Reset trước
+    showAllTableColumns(headers, rows);
+    
+    // Điều chỉnh theo kích thước màn hình
+    if (screenWidth < 640) {
+        // Ẩn cột ngày và tổng tiền (giữ tổng thanh toán)
+        hideTableColumn(headers, rows, 2); // Ẩn cột ngày
+        hideTableColumn(headers, rows, 4); // Ẩn cột tổng tiền (vẫn giữ tổng thanh toán)
+    } else if (screenWidth < 768) {
+        // Ẩn cột tổng tiền
+        hideTableColumn(headers, rows, 4);
+    }
+}
+/**
+ * Lấy giá trị từ object theo tên trường, không phân biệt chữ hoa/thường
+ * @param {Object} obj - Đối tượng cần truy xuất
+ * @param {string} fieldName - Tên trường cần lấy
+ * @param {*} defaultValue - Giá trị mặc định nếu không tìm thấy
+ * @returns {*} - Giá trị tìm được hoặc giá trị mặc định
+ */
+function getFieldValueCaseInsensitive(obj, fieldName, defaultValue = null) {
+    if (!obj || typeof obj !== 'object') return defaultValue;
+    
+    // Tìm kiếm trường field thường
+    if (obj[fieldName] !== undefined) return obj[fieldName];
+    
+    // Tìm kiếm không phân biệt hoa thường
+    const fieldLower = fieldName.toLowerCase();
+    for (const key in obj) {
+        if (key.toLowerCase() === fieldLower) {
+            return obj[key];
+        }
+    }
+    
+    return defaultValue;
+}
 
+// Sử dụng:
+const orderId = getFieldValueCaseInsensitive(order, 'orderId', 'N/A');
+const totalPayment = parseFloat(getFieldValueCaseInsensitive(order, 'totalPayment', 0));
 // Thêm sự kiện resize để điều chỉnh kích thước modal khi thay đổi kích thước cửa sổ
 window.addEventListener('resize', function() {
     // Chỉ điều chỉnh kích thước nếu modal đang hiển thị
