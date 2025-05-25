@@ -20,5 +20,33 @@ namespace ShopxEX1.Services
         Task<AuthResultDto> UpdateProfileAsync(int userId, UpdateProfileDto updateDto);
         // Thêm phương thức public để tạo JWT token
         (string Token, DateTime Expiration) GenerateJwtToken(User user);
+
+         /// <summary>
+        /// 🔥 ĐẶT LẠI MẬT KHẨU
+        /// Validate token và cập nhật mật khẩu mới
+        /// </summary>
+        /// <param name="resetDto">Thông tin reset password</param>
+        /// <returns>Kết quả đặt lại mật khẩu</returns>
+        Task<PasswordResetResultDto> ResetPasswordAsync(PasswordResetDto resetDto);
+
+        /// <summary>
+        /// 🔥 VALIDATE RESET TOKEN
+        /// Kiểm tra tính hợp lệ của token trước khi reset
+        /// </summary>
+        /// <param name="token">JWT token</param>
+        /// <param name="email">Email tương ứng</param>
+        /// <returns>Kết quả validation</returns>
+        Task<PasswordResetResultDto> ValidateResetTokenAsync(string token, string email);
+
+        /// <summary>
+        /// 🔥 HỦY RESET TOKEN (OPTIONAL)
+        /// Blacklist token nếu cần
+        /// </summary>
+        /// <param name="token">Token cần hủy</param>
+        /// <param name="email">Email tương ứng</param>
+        /// <returns>Kết quả hủy</returns>
+        Task<PasswordResetResultDto> CancelPasswordResetAsync(string token, string email);
+
+
     }
 }

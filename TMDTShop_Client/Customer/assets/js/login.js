@@ -1,11 +1,6 @@
 // Import Firebase config
 import { firebaseConfig } from './config.js';
 
-// Đăng ký sự kiện click cho liên kết "Quên mật khẩu"
-document.getElementById('forgotPasswordForm')?.addEventListener('click', (e) => {
-  e.preventDefault();
-  showForm('forgotPasswordForm');
-});
 
 const API_BASE = "https://localhost:7088/api/Auth";
 let tempUser = null;
@@ -21,10 +16,17 @@ const facebookProvider = new FacebookAuthProvider();
 
 // === Helper Functions ===
 function showForm(formId) {
-  document.querySelectorAll('[id$="Form"]').forEach(form => form.classList.add('hidden'));
-  document.getElementById(formId)?.classList.remove('hidden');
-  document.getElementById('successMessage')?.classList.add('hidden');
-  document.getElementById('forgotSuccessMessage')?.classList.add('hidden');
+  const formIds = ['loginForm', 'registerForm', 'forgotPasswordForm', 'resetPasswordForm'];
+  
+  // Ẩn tất cả các form
+  formIds.forEach(id => {
+    const form = document.getElementById(id);
+    if (form) form.classList.add('hidden');
+  });
+
+  // Hiện form được yêu cầu
+  const activeForm = document.getElementById(formId);
+  if (activeForm) activeForm.classList.remove('hidden');
 }
 
 function showSuccessMessage() {
@@ -172,45 +174,167 @@ document.querySelector('#loginFormSubmit')?.addEventListener('submit', async (e)
 });
 
 // === Forgot Password ===
-document.querySelector('#forgotPasswordFormSubmit')?.addEventListener('submit', function(e) {
+document.querySelector('#forgotPasswordFormSubmit')?.addEventListener('submit', async function(e) {
   e.preventDefault();
-  document.getElementById('forgotPasswordForm').classList.add('hidden');
-  document.getElementById('forgotSuccessMessage').classList.remove('hidden');
+  
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  
+  // Show loading
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang gửi...';
+  submitBtn.disabled = true;
+
+  try {
+      const email = document.getElementById('forgotEmail').value.trim();
+
+      // Validate email
+      if (!email) {
+          alert('Vui lòng nhập email.');
+          return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+          alert('Định dạng email không hợp lệ.');
+          return;
+      }
+
+      console.log('📧 Sending password reset request...');
+
+      // 🔥 GỬI REQUEST ĐẾN API
+      const response = await fetch(`${API_BASE}/request-password-reset`, {
+          method: "POST",
+          headers: { 
+              "Content-Type": "application/json",
+              "Accept": "application/json"
+          },
+          body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+          console.log('✅ Password reset request successful');
+          
+          // Hiện success message
+          document.getElementById('forgotPasswordForm').classList.add('hidden');
+          document.getElementById('forgotSuccessMessage').classList.remove('hidden');
+      } else {
+          console.error('❌ Password reset request failed:', data.message);
+          alert(data.message || 'Có lỗi xảy ra khi gửi yêu cầu');
+      }
+  } catch (error) {
+      console.error('❌ Network error:', error);
+      alert('Lỗi kết nối. Vui lòng kiểm tra internet và thử lại.');
+  } finally {
+      // Reset button
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
+  }
 });
 
 // === Reset Password ===
-document.querySelector('#resetPasswordFormSubmit')?.addEventListener('submit', async (e) => {
+document.querySelector('#resetPasswordFormSubmit')?.addEventListener('submit', async function(e) {
   e.preventDefault();
-
+  
   const newPassword = document.getElementById('newPassword').value;
   const confirmNewPassword = document.getElementById('confirmNewPassword').value;
-  const token = sessionStorage.getItem("resetToken");
+  
+  // 🔥 LẤY TOKEN VÀ EMAIL TỪ URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const email = urlParams.get('email');
 
+  if (!token || !email) {
+      alert('Thiếu thông tin xác thực. Vui lòng thử lại từ email.');
+      return;
+  }
+
+  // Validate password
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-  if (!passwordRegex.test(newPassword)) return alert("Mật khẩu mới không đủ mạnh!");
-  if (newPassword !== confirmNewPassword) return alert("Mật khẩu nhập lại không khớp!");
+  if (!passwordRegex.test(newPassword)) {
+      alert("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số!");
+      return;
+  }
+  
+  if (newPassword !== confirmNewPassword) {
+      alert("Mật khẩu nhập lại không khớp!");
+      return;
+  }
 
-  if (!token) return alert("Không tìm thấy token. Vui lòng thử lại từ bước quên mật khẩu.");
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang xử lý...';
+  submitBtn.disabled = true;
 
   try {
-    const res = await fetch(`${API_BASE}/resetpassword`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, newPassword, confirmNewPassword })
-    });
+      console.log('🔑 Resetting password...');
 
-    const data = await res.json();
-    if (res.ok) {
-      sessionStorage.removeItem("resetToken");
-      alert("Mật khẩu đã được đặt lại thành công! Vui lòng đăng nhập lại.");
-      showForm("loginForm");
-    } else {
-      alert("Lỗi: " + (data.message || "Không thể đặt lại mật khẩu."));
-    }
-  } catch (err) {
-    alert("Lỗi khi đặt lại mật khẩu: " + err.message);
+      const response = await fetch(`${API_BASE}/reset-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+              token, 
+              email, 
+              newPassword, 
+              confirmNewPassword 
+          })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+          console.log('✅ Password reset successful');
+          alert("Mật khẩu đã được đặt lại thành công! Vui lòng đăng nhập.");
+          
+          // 🔥 REDIRECT VỀ LOGIN
+          window.location.href = 'login.html';
+      } else {
+          console.error('❌ Password reset failed:', data.message);
+          alert(data.message || "Lỗi khi đặt lại mật khẩu.");
+      }
+  } catch (error) {
+      console.error('❌ Password reset error:', error);
+      alert("Lỗi kết nối: " + error.message);
+  } finally {
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
   }
 });
+// 🔥 XỬ LÝ URL PARAMETERS KHI LOAD TRANG
+window.addEventListener('load', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const action = urlParams.get('action');
+  const token = urlParams.get('token');
+  const email = urlParams.get('email');
+  
+  if (action === 'reset' && token && email) {
+      console.log('🔑 Reset password mode activated');
+      
+      // Hiện form reset password
+      showForm('resetPasswordForm');
+      
+      // 🔥 VALIDATE TOKEN TRƯỚC KHI CHO NHẬP MẬT KHẨU (OPTIONAL)
+      validateResetToken(token, email);
+  }
+});
+
+// 🔥 VALIDATE TOKEN (OPTIONAL)
+async function validateResetToken(token, email) {
+  try {
+      const response = await fetch(`${API_BASE}/validate-reset-token?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`);
+      const data = await response.json();
+      
+      if (!response.ok || !data.success) {
+          alert('Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.');
+          window.location.href = 'login.html';
+      }
+  } catch (error) {
+      console.error('Token validation error:', error);
+      alert('Không thể xác thực link. Vui lòng thử lại.');
+      window.location.href = 'login.html';
+  }
+}
 
 // === Social Login Handlers ===
 document.getElementById('googleLogin')?.addEventListener('click', async () => {

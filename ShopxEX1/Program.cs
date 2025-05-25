@@ -138,7 +138,9 @@ namespace ShopxEX1 // Namespace gốc
                 // options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
                 // options.AddPolicy("SellerOnly", policy => policy.RequireRole("Seller"));
             });
-
+            //ĐĂNG KÝ SERVICES CHO PASSWORD RESET
+            builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
             // 9. Swagger/OpenAPI Configuration
             builder.Services.AddEndpointsApiExplorer();

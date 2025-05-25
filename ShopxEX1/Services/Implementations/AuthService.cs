@@ -22,14 +22,16 @@ namespace ShopxEX1.Services.Implementations
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly IConfiguration _configuration;
-        // private readonly ILogger<AuthService> _logger; // Nên thêm Logger
-
-        public AuthService(AppDbContext context, IMapper mapper, IConfiguration configuration /*, ILogger<AuthService> logger */)
+        private readonly ILogger<AuthService> _logger;
+        private readonly IEmailService _emailService; // Thêm IEmailService để gửi email
+        public AuthService(AppDbContext context, IMapper mapper, IConfiguration configuration, IEmailService emailService,ILogger<AuthService> logger)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            // _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
         }
 
         // Đăng nhập
@@ -352,21 +354,506 @@ namespace ShopxEX1.Services.Implementations
             return (tokenString, expires);
         }
 
-        public Task<PasswordResetResultDto> RequestPasswordResetAsync(RequestPasswordResetDto resetRequestDto)
+/// <summary>
+        /// 🔥 IMPLEMENT REQUEST PASSWORD RESET
+        /// Xử lý yêu cầu đặt lại mật khẩu với JWT token
+        /// </summary>
+        public async Task<PasswordResetResultDto> RequestPasswordResetAsync(RequestPasswordResetDto requestDto)
         {
-            throw new NotImplementedException();
+            try
+            {
+                _logger.LogInformation("Processing password reset request for email: {Email}", requestDto.Email);
+
+                // 🔥 BƯỚC 1: TÌM USER TRONG DATABASE
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == requestDto.Email && u.IsActive);
+
+                if (user == null)
+                {
+                    // 🔥 SECURITY: Không tiết lộ thông tin user có tồn tại hay không
+                    _logger.LogWarning("Password reset requested for non-existent email: {Email}", requestDto.Email);
+                    
+                    return new PasswordResetResultDto
+                    {
+                        Success = true, // Luôn return success để không leak thông tin
+                        Message = "Nếu email tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu."
+                    };
+                }
+
+                // 🔥 BƯỚC 2: TẠO JWT RESET TOKEN
+                var resetToken = GeneratePasswordResetJwtToken(user);
+                _logger.LogInformation("Generated reset token for user: {UserId}", user.UserID);
+
+                // 🔥 BƯỚC 3: TẠO RESET URL
+                 var isDevelopment = _configuration.GetValue<bool>("AppSettings:IsDevelopment", false);
+        string resetUrl;
+        
+        if (isDevelopment)
+        {
+            // 🔥 DEV MODE: Dùng Live Server URL (port 5500)
+            resetUrl = $"https://127.0.0.1:5500/Customer/templates/login.html?action=reset&token={resetToken}&email={Uri.EscapeDataString(user.Email)}";
+        }
+        else
+        {
+            // 🔥 PRODUCTION: Dùng domain thật
+            var baseUrl = _configuration.GetValue<string>("AppSettings:ClientUrl") ?? "https://your-domain.com";
+            resetUrl = $"{baseUrl}/Customer/templates/login.html?action=reset&token={resetToken}&email={Uri.EscapeDataString(user.Email)}";
         }
 
-        public Task<PasswordResetResultDto> ResetPasswordAsync(PasswordResetDto resetDto)
-        {
-            throw new NotImplementedException();
+
+                // 🔥 BƯỚC 4: GỬI EMAIL
+                var emailSent = await _emailService.SendPasswordResetEmailAsync(
+                    user.Email, 
+                    user.FullName ?? "User", 
+                    resetUrl);
+
+                if (!emailSent)
+                {
+                    _logger.LogError("Failed to send password reset email to: {Email}", user.Email);
+                    
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = "Không thể gửi email xác nhận. Vui lòng thử lại sau.",
+                        ErrorCode = "EMAIL_SEND_FAILED"
+                    };
+                }
+
+                // 🔥 BƯỚC 5: LOG SUCCESS CHO DEV (DEVELOPMENT ONLY)
+                if (_configuration.GetValue<bool>("AppSettings:IsDevelopment", false))
+                {
+                    Console.WriteLine("=".PadRight(50, '='));
+                    Console.WriteLine("🔥 DEV MODE: PASSWORD RESET DEBUG INFO");
+                    Console.WriteLine($"📧 Email: {user.Email}");
+                    Console.WriteLine($"🔗 Reset URL: {resetUrl}");
+                    Console.WriteLine($"🎫 Token: {resetToken}");
+                    Console.WriteLine($"⏰ Expires: {DateTime.UtcNow.AddMinutes(15):yyyy-MM-dd HH:mm:ss} UTC");
+                    Console.WriteLine("=".PadRight(50, '='));
+                }
+
+                _logger.LogInformation("Password reset email sent successfully to: {Email}", user.Email);
+
+                return new PasswordResetResultDto
+                {
+                    Success = true,
+                    Message = "Hướng dẫn đặt lại mật khẩu đã được gửi qua email. Vui lòng kiểm tra hộp thư (kể cả thư mục spam)."
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing password reset request for email: {Email}", requestDto.Email);
+                
+                return new PasswordResetResultDto
+                {
+                    Success = false,
+                    Message = "Đã xảy ra lỗi khi xử lý yêu cầu. Vui lòng thử lại sau.",
+                    ErrorCode = "INTERNAL_ERROR"
+                };
+            }
         }
 
-        public Task<RefreshTokenResultDto> RefreshTokenAsync(RefreshTokenRequestDto refreshTokenDto)
+        /// <summary>
+        /// 🔥 IMPLEMENT RESET PASSWORD
+        /// Validate token và cập nhật mật khẩu mới
+        /// </summary>
+        public async Task<PasswordResetResultDto> ResetPasswordAsync(PasswordResetDto resetDto)
         {
-            throw new NotImplementedException();
+            try
+            {
+                _logger.LogInformation("Processing password reset for email: {Email}", resetDto.Email);
+
+                // 🔥 BƯỚC 1: VALIDATE JWT TOKEN
+                var tokenValidation = ValidatePasswordResetJwtToken(resetDto.Token);
+                
+                if (!tokenValidation.IsValid)
+                {
+                    _logger.LogWarning("Invalid reset token for email: {Email}, Error: {Error}", 
+                        resetDto.Email, tokenValidation.ErrorMessage);
+                    
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = tokenValidation.ErrorMessage,
+                        ErrorCode = "INVALID_TOKEN"
+                    };
+                }
+
+                // 🔥 BƯỚC 2: VALIDATE EMAIL CONSISTENCY
+                if (tokenValidation.Email != resetDto.Email)
+                {
+                    _logger.LogWarning("Email mismatch in reset token. Token email: {TokenEmail}, Request email: {RequestEmail}",
+                        tokenValidation.Email, resetDto.Email);
+                    
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = "Email không khớp với token.",
+                        ErrorCode = "EMAIL_MISMATCH"
+                    };
+                }
+
+                // 🔥 BƯỚC 3: TÌM USER VÀ VALIDATE
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.UserID == tokenValidation.UserId && u.Email == resetDto.Email);
+
+                if (user == null)
+                {
+                    _logger.LogWarning("User not found for password reset. UserId: {UserId}, Email: {Email}",
+                        tokenValidation.UserId, resetDto.Email);
+                    
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = "Không tìm thấy tài khoản.",
+                        ErrorCode = "USER_NOT_FOUND"
+                    };
+                }
+
+                if (!user.IsActive)
+                {
+                    _logger.LogWarning("Inactive user attempted password reset: {Email}", resetDto.Email);
+                    
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = "Tài khoản này đã bị khóa.",
+                        ErrorCode = "ACCOUNT_INACTIVE"
+                    };
+                }
+
+                // 🔥 BƯỚC 4: VALIDATE PASSWORD STRENGTH
+                if (!IsPasswordStrong(resetDto.NewPassword))
+                {
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số.",
+                        ErrorCode = "WEAK_PASSWORD"
+                    };
+                }
+
+                // 🔥 BƯỚC 5: VALIDATE PASSWORD CONFIRMATION
+                if (resetDto.NewPassword != resetDto.ConfirmNewPassword)
+                {
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = "Mật khẩu mới và xác nhận mật khẩu không khớp.",
+                        ErrorCode = "PASSWORD_MISMATCH"
+                    };
+                }
+
+                // 🔥 BƯỚC 6: KIỂM TRA KHÔNG ĐƯỢC DÙNG MẬT KHẨU CŨ
+                if (BCrypt.Net.BCrypt.Verify(resetDto.NewPassword, user.PasswordHash))
+                {
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = "Mật khẩu mới không được giống mật khẩu cũ.",
+                        ErrorCode = "SAME_PASSWORD"
+                    };
+                }
+
+                // 🔥 BƯỚC 7: CẬP NHẬT MẬT KHẨU
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(resetDto.NewPassword);
+                user.CreatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Password reset successful for user: {UserId}, Email: {Email}", 
+                    user.UserID, user.Email);
+
+                return new PasswordResetResultDto
+                {
+                    Success = true,
+                    Message = "Mật khẩu đã được đặt lại thành công. Bạn có thể đăng nhập với mật khẩu mới."
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error resetting password for email: {Email}", resetDto.Email);
+                
+                return new PasswordResetResultDto
+                {
+                    Success = false,
+                    Message = "Đã xảy ra lỗi khi đặt lại mật khẩu.",
+                    ErrorCode = "INTERNAL_ERROR"
+                };
+            }
         }
 
+        /// <summary>
+        /// 🔥 IMPLEMENT VALIDATE RESET TOKENSendPasswordResetEmailAsync
+        /// Kiểm tra tính hợp lệ của token
+        /// </summary>
+        public async Task<PasswordResetResultDto> ValidateResetTokenAsync(string token, string email)
+        {
+            try
+            {
+                var validation = ValidatePasswordResetJwtToken(token);
+                
+                if (!validation.IsValid)
+                {
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = validation.ErrorMessage,
+                        ErrorCode = "INVALID_TOKEN"
+                    };
+                }
+
+                if (validation.Email != email)
+                {
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = "Email không khớp với token.",
+                        ErrorCode = "EMAIL_MISMATCH"
+                    };
+                }
+
+                // Kiểm tra user vẫn tồn tại và active
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.UserID == validation.UserId && u.IsActive);
+
+                if (user == null)
+                {
+                    return new PasswordResetResultDto
+                    {
+                        Success = false,
+                        Message = "Tài khoản không tồn tại hoặc đã bị khóa.",
+                        ErrorCode = "USER_NOT_FOUND"
+                    };
+                }
+
+                return new PasswordResetResultDto
+                {
+                    Success = true,
+                    Message = "Token hợp lệ."
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating reset token for email: {Email}", email);
+                
+                return new PasswordResetResultDto
+                {
+                    Success = false,
+                    Message = "Không thể xác thực token.",
+                    ErrorCode = "VALIDATION_ERROR"
+                };
+            }
+        }
+
+
+
+        /// <summary>
+        /// 🔥 IMPLEMENT CANCEL PASSWORD RESET (OPTIONAL)
+        /// </summary>
+        public async Task<PasswordResetResultDto> CancelPasswordResetAsync(string token, string email)
+        {
+            // Implementation for token blacklisting if needed
+            // For JWT tokens, we can't really "cancel" them, but we can log the cancellation
+
+            _logger.LogInformation("Password reset cancellation requested for email: {Email}", email);
+
+            return new PasswordResetResultDto
+            {
+                Success = true,
+                Message = "Yêu cầu đặt lại mật khẩu đã được hủy."
+            };
+        }
+
+        // 🔥 HELPER METHODS
+
+        /// <summary>
+        /// Tạo JWT token cho password reset
+        /// </summary>
+      private string GeneratePasswordResetJwtToken(User user)
+{
+    try
+    {
+        // 🔥 KIỂM TRA USER DATA TRƯỚC KHI TẠO TOKEN
+        if (string.IsNullOrEmpty(user.Email))
+        {
+            throw new InvalidOperationException($"User email is null or empty for UserID: {user.UserID}");
+        }
+
+        var secretKey = _configuration["Jwt:SecretKey"] 
+                     ?? _configuration["Jwt:Key"] 
+                     ?? throw new InvalidOperationException("JWT SecretKey not found in configuration");
+
+        if (string.IsNullOrEmpty(secretKey) || secretKey.Length < 32)
+        {
+            throw new InvalidOperationException("JWT SecretKey is invalid");
+        }
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        
+        var issuer = _configuration["Jwt:Issuer"] ?? "ShopX";
+        var audience = _configuration["Jwt:Audience"] ?? "ShopXUsers";
+
+        // DÙNG STANDARD JWT CLAIMS + CUSTOM CLAIMS
+        var claims = new[]
+        {
+            // Standard JWT claims
+            new Claim(JwtRegisteredClaimNames.Sub, user.UserID.ToString()),           // Subject (User ID)
+            new Claim(JwtRegisteredClaimNames.Email, user.Email),                     // Standard email claim
+            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            
+            // Custom claims
+            new Claim("userId", user.UserID.ToString()),                             // Backup user ID
+            new Claim("email", user.Email),                                          // Backup email
+            new Claim("type", "password_reset"),                                     // Token type
+            new Claim("userName", user.FullName ?? "User")                           // User name for display
+        };
+        
+        _logger?.LogDebug("🔑 Creating token with claims: UserId={UserId}, Email={Email}", user.UserID, user.Email);
+
+        var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(15),
+            signingCredentials: credentials
+        );
+        
+        var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+        
+        _logger?.LogDebug("✅ JWT token generated successfully for user {UserId}", user.UserID);
+        
+        return tokenString;
+    }
+    catch (Exception ex)
+    {
+        _logger?.LogError(ex, "❌ Error generating JWT token for user {UserId}: {Message}", user.UserID, ex.Message);
+        throw;
+    }
+}
+        /// <summary>
+        /// Validate JWT token cho password reset
+        /// </summary>
+        private (bool IsValid, string ErrorMessage, int UserId, string Email, DateTime IssuedAt) ValidatePasswordResetJwtToken(string token)
+{
+    try
+    {
+        var secretKey = _configuration["Jwt:SecretKey"] 
+                     ?? _configuration["Jwt:Key"] 
+                     ?? throw new InvalidOperationException("JWT SecretKey not found in configuration");
+
+        if (string.IsNullOrEmpty(secretKey))
+        {
+            _logger?.LogError("❌ JWT SecretKey is null or empty");
+            return (false, "Lỗi cấu hình JWT SecretKey.", 0, "", DateTime.MinValue);
+        }
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var tokenHandler = new JwtSecurityTokenHandler();
+        
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = key,
+            ValidateIssuer = true,
+            ValidIssuer = _configuration["Jwt:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = _configuration["Jwt:Audience"],
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+        
+        var principal = tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
+        
+        // 🔥 DEBUG: LOG ALL CLAIMS
+        if (_configuration.GetValue<bool>("AppSettings:IsDevelopment", false))
+        {
+            _logger?.LogDebug("🔍 All token claims:");
+            foreach (var claim in principal.Claims)
+            {
+                _logger?.LogDebug("  - {Type}: {Value}", claim.Type, claim.Value);
+            }
+        }
+        
+        // Validate token type
+        var tokenType = principal.FindFirst("type")?.Value;
+        if (tokenType != "password_reset")
+        {
+            _logger?.LogWarning("❌ Token type mismatch. Expected: password_reset, Got: {TokenType}", tokenType);
+            return (false, "Token không phải là reset token.", 0, "", DateTime.MinValue);
+        }
+        
+        // 🔥 SỬA: TÌM CLAIMS VỚI MULTIPLE SOURCES
+        var userIdClaim = principal.FindFirst("userId")?.Value 
+                       ?? principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                       ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        var emailClaim = principal.FindFirst("email")?.Value 
+                      ?? principal.FindFirst(JwtRegisteredClaimNames.Email)?.Value
+                      ?? principal.FindFirst(ClaimTypes.Email)?.Value;
+
+        var iatClaim = principal.FindFirst(JwtRegisteredClaimNames.Iat)?.Value;
+        
+        // 🔥 DETAILED LOGGING CHO DEBUG
+        _logger?.LogDebug("🔍 Claim extraction results:");
+        _logger?.LogDebug("  - UserId from claims: {UserId}", userIdClaim);
+        _logger?.LogDebug("  - Email from claims: {Email}", emailClaim);
+        _logger?.LogDebug("  - Iat from claims: {Iat}", iatClaim);
+        
+        if (!int.TryParse(userIdClaim, out int userId))
+        {
+            _logger?.LogWarning("❌ Invalid or missing userId claim: {UserIdClaim}", userIdClaim);
+            return (false, "Token không chứa thông tin user hợp lệ.", 0, "", DateTime.MinValue);
+        }
+        
+        if (string.IsNullOrEmpty(emailClaim))
+        {
+            _logger?.LogWarning("❌ Missing email claim in token for userId: {UserId}", userId);
+            return (false, "Token không chứa thông tin email.", 0, "", DateTime.MinValue);
+        }
+        
+        if (string.IsNullOrEmpty(iatClaim))
+        {
+            _logger?.LogWarning("❌ Missing iat claim in token");
+            return (false, "Token không hợp lệ (thiếu thông tin thời gian).", 0, "", DateTime.MinValue);
+        }
+        
+        var issuedAt = DateTimeOffset.FromUnixTimeSeconds(long.Parse(iatClaim)).DateTime;
+        
+        _logger?.LogDebug("✅ Token validation successful. UserId: {UserId}, Email: {Email}", userId, emailClaim);
+        return (true, "", userId, emailClaim, issuedAt);
+    }
+    catch (SecurityTokenExpiredException ex)
+    {
+        _logger?.LogWarning("❌ Token expired: {Message}", ex.Message);
+        return (false, "Token đã hết hạn. Vui lòng yêu cầu đặt lại mật khẩu mới.", 0, "", DateTime.MinValue);
+    }
+    catch (SecurityTokenInvalidSignatureException ex)
+    {
+        _logger?.LogWarning("❌ Token signature invalid: {Message}", ex.Message);
+        return (false, "Token không hợp lệ (chữ ký sai).", 0, "", DateTime.MinValue);
+    }
+    catch (Exception ex)
+    {
+        _logger?.LogError(ex, "❌ Token validation error: {Message}", ex.Message);
+        return (false, "Token không hợp lệ.", 0, "", DateTime.MinValue);
+    }
+}
+        /// <summary>
+        /// Kiểm tra độ mạnh của mật khẩu
+        /// </summary>
+        private bool IsPasswordStrong(string password)
+        {
+            if (string.IsNullOrEmpty(password) || password.Length < 8)
+                return false;
+
+            bool hasUpper = password.Any(char.IsUpper);
+            bool hasLower = password.Any(char.IsLower);
+            bool hasDigit = password.Any(char.IsDigit);
+
+            return hasUpper && hasLower && hasDigit;
+        }
 
         public Task<bool> CheckRefreshTokenValidityAsync(int userId)
         {
