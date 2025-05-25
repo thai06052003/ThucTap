@@ -7,6 +7,53 @@ let categoryPagination = {
     totalItems: 0,
     totalPages: 0
 };
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default active section
+    setActiveSection('shop');
+    
+    // Set default page title
+    document.getElementById('pageTitle').textContent = 'Quản lý cửa hàng';
+    
+    // Load shop data immediately
+    loadShopData();
+});
+
+// Hàm helper để set active section
+function setActiveSection(sectionName) {
+    // Remove active class from all sections
+    document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    // Remove active class from all nav items
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Add active class to target section
+    const targetSection = document.getElementById(sectionName + '-section');
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
+    
+    // Add active class to corresponding nav item
+    const targetNavItem = document.querySelector(`[data-section="${sectionName}"]`);
+    if (targetNavItem) {
+        targetNavItem.classList.add('active');
+    }
+    
+    // Update page title
+    const titles = {
+        'shop': 'Quản lý cửa hàng',
+        'categories': 'Quản lý danh mục', 
+        'products': 'Quản lý sản phẩm',
+        'orders': 'Quản lý đơn hàng',
+        'statistics': 'Thống kê'
+    };
+    
+    document.getElementById('pageTitle').textContent = titles[sectionName] || 'Trang quản lý';
+}
 // Thêm biến global để theo dõi thông tin shop
 let globalShopData = {
     shopName: '',
@@ -95,6 +142,8 @@ function findTokenInStorage() {
     
     return result;
 }
+
+
 
 // Script debug đăng nhập trước khi tải file chính
 (function() {
@@ -1824,11 +1873,20 @@ function updateShopUI(shopData) {
     
     // Xử lý hiển thị trạng thái của shop
     if (shopStatus) {
-        const statusText = shopData.isActive ? 'Đang hoạt động' : 'Đang bảo trì';
-        shopStatus.textContent = statusText;
-        shopStatus.className = 'text-sm ' + (shopData.isActive ? 
-                              'text-green-600' : 'text-red-600');
-        shopStatus.style.display = 'block'; // Đảm bảo trạng thái hiển thị
+        const isActive = shopData.isActive; // Dựa trên Seller.IsActive
+        const statusText = isActive ? 'Đang hoạt động' : 'Đang bảo trì';
+        const dotColor = isActive ? 'bg-green-500' : 'bg-red-500';
+        
+        // Tạo HTML với chấm + text
+        shopStatus.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <div class="w-3 h-3 ${dotColor} rounded-full animate-pulse"></div>
+                <span>${statusText}</span>
+            </div>
+        `;
+        
+        shopStatus.className = 'text-sm ' + (isActive ? 'text-green-600' : 'text-red-600');
+        shopStatus.style.display = 'block';
     }
     
     if (shopDescription) shopDescription.textContent = shopData.description || 'Chưa có mô tả';
@@ -2135,11 +2193,6 @@ let productPagination = {
 };
 /**
  * Tải dữ liệu sản phẩm theo trang và hiển thị danh sách cùng với phân trang
- * @param {number} page - Số trang cần tải (bắt đầu từ 1)
- * @returns {Promise<void>}
- */
-/**
- * Tải dữ liệu sản phẩm theo trang và hiển thị danh sách cùng với phân trang
  * 
  * Hàm này thực hiện các nhiệm vụ:
  * 1. Lấy ID người bán từ token đăng nhập
@@ -2394,6 +2447,298 @@ async function loadProducts(page = 1) {
         console.groupEnd();
     }
 }
+
+/**
+ * Load featured products for shop dashboard - SỬ DỤNG ĐÚNG API NHƯ STATISTICS
+ */
+async function loadFeaturedProducts() {
+    console.group("=== LOAD FEATURED PRODUCTS ===");
+    
+    try {
+        // Lấy token và validate
+        const token = getTokenFromSession();
+        if (!token) {
+            console.error('Không tìm thấy token để tải sản phẩm nổi bật');
+            renderFeaturedProductsError('Không tìm thấy token xác thực');
+            return;
+        }
+
+        console.log(`✅ Token found, loading featured products...`);
+        
+        // 🔥 SỬA: Sử dụng cùng format params như trong seller-statistics.js
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30); // Lấy 30 ngày gần đây
+        const endDate = new Date();
+
+        const params = new URLSearchParams({
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate.toISOString().split('T')[0],
+            limit: '5' // Giới hạn 5 sản phẩm nổi bật
+        });
+
+        // 🔥 SỬA: Sử dụng đúng endpoint như statistics
+        const endpoint = `/Statistics/top-products?${params}`;
+        console.log(`📡 Calling endpoint: ${API_BASE}${endpoint}`);
+        
+        // 🔥 SỬA: Sử dụng makeRequest với auth header như statistics
+        const response = await makeRequestWithAuth(endpoint);
+        
+        console.log('📊 API response cho featured products:', response);
+        
+        // Xử lý response giống như trong statistics
+        let products = [];
+        
+        if (response) {
+            if (Array.isArray(response)) {
+                products = response;
+            } else if (response.data && Array.isArray(response.data)) {
+                products = response.data;
+            } else if (response.items && Array.isArray(response.items)) {
+                products = response.items;
+            } else if (response.products && Array.isArray(response.products)) {
+                products = response.products;
+            }
+        }
+        
+        console.log(`✅ Đã xử lý ${products.length} sản phẩm nổi bật`);
+        
+        // Hiển thị sản phẩm nổi bật
+        renderFeaturedProducts(products);
+        
+    } catch (error) {
+        console.error('❌ Lỗi khi tải sản phẩm nổi bật:', error);
+        renderFeaturedProductsError(error.message);
+    }
+    
+    console.groupEnd();
+}
+
+/**
+ * Make request with authentication - CÙNG LOGIC VỚI STATISTICS
+ */
+async function makeRequestWithAuth(endpoint, method = 'GET', data = null) {
+    const token = getTokenFromSession();
+    
+    if (!token) {
+        throw new Error('Không tìm thấy token xác thực');
+    }
+
+    // Validate token format
+    if (!isValidJWTFormat(token)) {
+        throw new Error('Token không hợp lệ');
+    }
+
+    const config = {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        }
+    };
+
+    if (data && method !== 'GET') {
+        config.body = JSON.stringify(data);
+    }
+
+    const fullUrl = `${API_BASE}${endpoint}`;
+    console.log(`🌐 Making ${method} request to: ${fullUrl}`);
+
+    try {
+        const response = await fetch(fullUrl, config);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Token không hợp lệ hoặc đã hết hạn');
+            } else if (response.status === 403) {
+                throw new Error('Không có quyền truy cập');
+            } else if (response.status === 404) {
+                throw new Error('Không tìm thấy dữ liệu');
+            } else {
+                throw new Error(`Lỗi server: ${response.status} - ${response.statusText}`);
+            }
+        }
+
+        const result = await response.json();
+        console.log(`✅ API response:`, result);
+        return result;
+        
+    } catch (error) {
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            throw new Error('Không thể kết nối tới server. Vui lòng kiểm tra kết nối mạng.');
+        } else {
+            throw error;
+        }
+    }
+}
+
+/**
+ * Validate JWT format - HELPER FUNCTION
+ */
+function isValidJWTFormat(token) {
+    if (!token || typeof token !== 'string') return false;
+    
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    
+    try {
+        // Thử decode phần header và payload
+        JSON.parse(atob(parts[0]));
+        JSON.parse(atob(parts[1]));
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+/**
+ * Render featured products với kích thước hình ảnh cố định
+ */
+function renderFeaturedProducts(products) {
+   const container = document.getElementById('featured-products');
+   if (!container) {
+       console.warn('❌ Không tìm thấy container featured-products');
+       return;
+   }
+
+   if (!products || products.length === 0) {
+       container.innerHTML = `
+           <div class="text-center text-gray-500 py-8">
+               <i class="fas fa-box-open text-4xl mb-4 opacity-50"></i>
+               <p class="font-semibold mb-1">Chưa có sản phẩm nổi bật</p>
+               <p class="text-sm">Hãy thêm sản phẩm và bán hàng để hiển thị ở đây</p>
+           </div>
+       `;
+       return;
+   }
+
+   // Giới hạn 5 sản phẩm đầu tiên cho featured products
+   const featuredProducts = products.slice(0, 5);
+   
+   container.innerHTML = featuredProducts.map((product, index) => {
+       // 🔥 CHUẨN HÓA: Sử dụng cùng field mapping như statistics
+       const productData = {
+           id: product.productID || product.id || 0,
+           name: product.productName || product.name || 'Sản phẩm',
+           price: product.unitPrice || product.price || 0,
+           soldQuantity: product.totalQuantitySold || product.quantitySold || 0,
+           revenue: product.totalRevenue || product.revenue || 0,
+           isActive: product.isActive !== false,
+           image: product.imageUrl || product.imageURL || product.thumbnail || product.image || 
+                  `https://via.placeholder.com/60x60/3B82F6/FFFFFF?text=SP${index+1}`
+       };
+
+       // Badge thứ hạng với màu sắc
+       const rankBadge = index < 3 ? `
+           <div class="absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg z-10
+               ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' : 
+                 index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-600' : 
+                 'bg-gradient-to-br from-orange-400 to-orange-600'}">
+               ${index + 1}
+           </div>
+       ` : '';
+
+       return `
+           <div class="featured-product-item flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:shadow-md transition-all duration-200 relative">
+               ${rankBadge}
+               
+               <!-- 🔥 SỬA: Container hình ảnh với kích thước cố định -->
+               <div class="flex-shrink-0 mr-4">
+                   <img src="${productData.image}" 
+                        alt="${productData.name}" 
+                        class="featured-product-image"
+                        onerror="this.src='https://via.placeholder.com/60x60/3B82F6/FFFFFF?text=SP'"
+                        loading="lazy">
+               </div>
+               
+               <!-- 🔥 SỬA: Content với flex layout cải thiện -->
+               <div class="featured-product-content">
+                   <h4 class="font-medium text-gray-900 truncate mb-1 text-sm" title="${productData.name}">
+                       ${productData.name}
+                   </h4>
+                   <p class="text-sm font-semibold text-blue-600 mb-2">
+                       ${formatCurrency(productData.price)}
+                   </p>
+                   <div class="flex items-center space-x-2 flex-wrap">
+                       <span class="px-2 py-1 text-xs rounded-full font-medium ${
+                           productData.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                       }">
+                           ${productData.isActive ? 'Còn hàng' : 'Hết hàng'}
+                       </span>
+                       <span class="text-xs text-gray-500">
+                           <i class="fas fa-shopping-cart mr-1"></i>${productData.soldQuantity} đã bán
+                       </span>
+                   </div>
+               </div>
+               
+               <!-- 🔥 SỬA: Price section với layout cố định -->
+               <div class="featured-product-price">
+                   <div class="text-sm font-semibold text-green-600">
+                       ${formatCurrency(productData.revenue)}
+                   </div>
+                   <div class="text-xs text-gray-500">doanh thu</div>
+               </div>
+           </div>
+       `;
+   }).join('');
+
+   console.log(`✅ Đã render ${featuredProducts.length} sản phẩm nổi bật với hình ảnh tối ưu`);
+}
+/**
+ * Format currency - HELPER FUNCTION
+ */
+function formatCurrency(amount) {
+    if (typeof amount !== 'number') {
+        amount = parseFloat(amount) || 0;
+    }
+    
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+        maximumFractionDigits: 0
+    }).format(amount);
+}
+/**
+ * Render lỗi cho featured products
+ */
+function renderFeaturedProductsError(errorMessage) {
+    const container = document.getElementById('featured-products');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="text-center text-red-500 py-8">
+            <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+            <p class="font-semibold mb-1">Lỗi tải sản phẩm nổi bật</p>
+            <p class="text-sm text-gray-600 mb-4">${errorMessage}</p>
+            <button onclick="loadFeaturedProducts()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition text-sm">
+                <i class="fas fa-retry mr-1"></i>Thử lại
+            </button>
+        </div>
+    `;
+}
+
+async function loadShopData() {
+    try {
+        console.group("=== LOAD SHOP DATA ===");
+        console.log("Đang tải dữ liệu shop...");
+        
+        // Tải thông tin seller
+        await loadSellerInfo();
+        
+        // Tải danh mục shop
+        await loadShopCategories();
+        
+        // 🔥 THÊM: Tải sản phẩm nổi bật
+        await loadFeaturedProducts();
+        
+        console.log("Hoàn thành tải dữ liệu shop");
+        console.groupEnd();
+        
+    } catch (error) {
+        console.error('Lỗi khi tải dữ liệu shop:', error);
+        showToast('Không thể tải đầy đủ dữ liệu shop', 'warning');
+        console.groupEnd();
+    }
+}
+
 /**
  * Trích xuất thông tin phân trang từ response API
  * 
@@ -4123,6 +4468,7 @@ async function handleShopFormSubmit(event) {
         await loadShopManagementData();
         await loadSellerInfo();
         
+        
         // Hiển thị thông báo thành công
         if (statusChanged) {
             showToast(`Đã cập nhật thông tin và chuyển trạng thái cửa hàng thành công`, 'success');
@@ -4591,6 +4937,8 @@ async function openEditProductModal(productId) {
         showToast(`Không thể mở modal chỉnh sửa: ${error.message}`, 'error');
     }
 }
+//load sp bán chạy
+
 
 // Thêm hàm điều chỉnh kích thước modal
 function adjustModalSize() {

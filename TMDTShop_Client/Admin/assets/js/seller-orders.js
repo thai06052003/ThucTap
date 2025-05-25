@@ -13,8 +13,11 @@ let orderFilter = {
     endDate: null,
     status: null,
     searchTerm: '',
-    sortBy: 'orderDate', // Thêm trường sắp xếp mặc định
-    sortDirection: 'desc' // Thêm hướng sắp xếp mặc định (mới nhất trước)
+    minPrice: null,
+    maxPrice: null,
+    sortBy: 'OrderDate',
+    sortDirection: 'desc',
+    pageSize: 10
 };
 
 // Cờ để theo dõi quá trình tải
@@ -51,24 +54,445 @@ document.addEventListener('DOMContentLoaded', () => {
     // Thêm xử lý responsive cho bảng đơn hàng
     window.addEventListener('resize', adjustOrdersTableResponsive);
 });
-// Chuyển đổi trạng thái người dùng sang giá trị API
-const statusMapping = {
-    'Chờ xử lý': 'Pending',
-    'Đang xử lý': 'Processing',
-    'Đang giao': 'Shipped',
-    'Đã giao': 'Delivered',
-    'Hoàn thành': 'Completed',
-    'Đã hủy': 'Cancelled'
-};
-// Ngược lại nếu cần
-const reverseStatusMapping = {
-    'Pending': 'Chờ xử lý',
-    'Processing': 'Đang xử lý',
-    'Shipped': 'Đang giao',
-    'Delivered': 'Đã giao',
-    'Completed': 'Hoàn thành',
-    'Cancelled': 'Đã hủy'
-};
+
+// Các hằng số định nghĩa trạng thái đơn hàng
+const ORDER_STATUSES = Object.freeze({
+    CHO_XAC_NHAN: "Chờ xác nhận",
+    DANG_XU_LY: "Đang xử lý",
+    DANG_GIAO: "Đang giao",
+    DA_GIAO: "Đã giao",
+    YEU_CAU_TRA_HANG_HOAN_TIEN: "Yêu cầu trả hàng/ hoàn tiền",
+    DA_HOAN_TIEN: "Đã hoàn tiền",
+    DA_HUY: "Đã hủy"
+});
+
+/**
+ * Lấy class CSS tương ứng với trạng thái
+ * @param {string} status - Trạng thái đơn hàng
+ * @returns {string} - Tên class CSS
+ */
+function getStatusClass(status) {
+    // Chuẩn hóa status để so sánh dễ dàng hơn
+    const normalizedStatus = status.toLowerCase().trim();
+    
+    switch (true) {
+        case normalizedStatus.includes('chờ xác nhận') || normalizedStatus.includes('pending'):
+            return 'status-cho-xac-nhan';
+            
+        case normalizedStatus.includes('đang xử lý') || normalizedStatus.includes('dang xu ly') || normalizedStatus.includes('processing'):
+            return 'status-dang-xu-ly';
+            
+        case normalizedStatus.includes('đang giao') || normalizedStatus.includes('dang giao') || normalizedStatus.includes('shipped'):
+            return 'status-dang-giao';
+            
+        case normalizedStatus.includes('đã giao') || normalizedStatus.includes('da giao') || normalizedStatus.includes('delivered'):
+            return 'status-da-giao';
+            
+        case normalizedStatus.includes('yêu cầu trả') || normalizedStatus.includes('hoàn tiền') || normalizedStatus.includes('refund'):
+            return 'status-yeu-cau-tra-hang-hoan-tien';
+            
+        case normalizedStatus.includes('đã hoàn tiền') || normalizedStatus.includes('da hoan tien') || normalizedStatus.includes('refunded'):
+            return 'status-da-hoan-tien';
+            
+        case normalizedStatus.includes('đã hủy') || normalizedStatus.includes('da huy') || normalizedStatus.includes('cancelled'):
+            return 'status-da-huy';
+            
+        default:
+            return 'status-default';
+    }
+}
+
+/**
+ * Lấy trạng thái tiếp theo trong luồng xử lý đơn hàng
+ * @param {string} currentStatus - Trạng thái hiện tại
+ * @returns {string|null} - Trạng thái tiếp theo hoặc null nếu không có
+ */
+function getNextStatusInFlow(currentStatus) {
+    const normalizedStatus = currentStatus.toLowerCase().trim();
+    
+    switch (true) {
+        case normalizedStatus.includes('chờ xác nhận') || normalizedStatus.includes('pending'):
+            return ORDER_STATUSES.DANG_XU_LY;
+            
+        case normalizedStatus.includes('đang xử lý') || normalizedStatus.includes('dang xu ly') || normalizedStatus.includes('processing'):
+            return ORDER_STATUSES.DANG_GIAO;
+            
+        case normalizedStatus.includes('đang giao') || normalizedStatus.includes('dang giao') || normalizedStatus.includes('shipped'):
+            return ORDER_STATUSES.DA_GIAO;
+            
+        default:
+            return null;
+    }
+}
+
+/**
+ * Lấy thông tin hiển thị cho trạng thái đơn hàng
+ * @param {string} status - Trạng thái đơn hàng
+ * @param {number} orderId - ID của đơn hàng
+ * @returns {Object} - Thông tin trạng thái
+ */
+function getOrderStatusInfo(status, orderId) {
+    // Xác định class CSS
+    const statusClass = getStatusClass(status);
+    
+    // Xác định trạng thái tiếp theo
+    const nextStatus = getNextStatusInFlow(status);
+    const isInteractive = !!nextStatus;
+    
+    // Hiển thị text phù hợp
+    let displayText = status;
+    
+    switch (statusClass) {
+        case 'status-cho-xac-nhan':
+            displayText = ORDER_STATUSES.CHO_XAC_NHAN;
+            break;
+        case 'status-dang-xu-ly':
+            displayText = ORDER_STATUSES.DANG_XU_LY;
+            break;
+        case 'status-dang-giao':
+            displayText = ORDER_STATUSES.DANG_GIAO;
+            break;
+        case 'status-da-giao':
+            displayText = ORDER_STATUSES.DA_GIAO;
+            break;
+        case 'status-da-huy':
+            displayText = ORDER_STATUSES.DA_HUY;
+            break;
+        case 'status-yeu-cau-tra-hang-hoan-tien':
+            displayText = ORDER_STATUSES.YEU_CAU_TRA_HANG_HOAN_TIEN;
+            break;
+        case 'status-da-hoan-tien':
+            displayText = ORDER_STATUSES.DA_HOAN_TIEN;
+            break;
+    }
+    
+    // Tạo HTML tương ứng
+    let html = '';
+    if (isInteractive) {
+        html = `
+            <button class="status-badge interactive ${statusClass}" 
+                   onclick="handleStatusButtonClick(${orderId}, '${status}')"
+                   title="Nhấp để chuyển sang '${nextStatus}'">
+                ${displayText}
+                <i class="fas fa-arrow-right fa-xs ml-2"></i>
+            </button>
+        `;
+    } else {
+        html = `<span class="status-badge ${statusClass}">${displayText}</span>`;
+    }
+    
+    return {
+        class: statusClass,
+        text: displayText,
+        html: html,
+        isInteractive: isInteractive
+    };
+}
+
+/**
+ * Tạo HTML cho các nút hành động dựa trên trạng thái đơn hàng
+ * @param {number} orderId - ID đơn hàng
+ * @param {string} status - Trạng thái đơn hàng
+ * @returns {string} - HTML cho các nút hành động
+ */
+function getOrderActions(orderId, status) {
+    const statusClass = getStatusClass(status);
+    
+    // Luôn có nút Xem
+    let actions = `
+        <button onclick="viewOrderDetails(${orderId})" class="action-button action-button-view" title="Xem chi tiết">
+            <i class="fas fa-eye"></i> Xem
+        </button>
+    `;
+    
+    // Hiển thị nút Hủy nếu đơn hàng chưa giao và chưa hủy
+    if (status === ORDER_STATUSES.CHO_XAC_NHAN || 
+        status === ORDER_STATUSES.DANG_XU_LY || 
+        statusClass === 'status-default' || 
+        statusClass === 'status-cho-xac-nhan' || 
+        statusClass === 'status-dang-xu-ly') {
+        
+        actions += `
+            <button onclick="handleCancelOrder(${orderId})" class="action-button action-button-cancel ml-2" title="Hủy đơn hàng">
+                <i class="fas fa-times-circle"></i> Hủy
+            </button>
+        `;
+    }
+    
+    // Thêm nút xác nhận hoàn tiền nếu có yêu cầu
+    if (status === ORDER_STATUSES.YEU_CAU_TRA_HANG_HOAN_TIEN || statusClass === 'status-yeu-cau-tra-hang-hoan-tien') {
+        actions += `
+            <button onclick="handleConfirmRefundRequest(${orderId})" class="action-button action-button-refund ml-2" title="Xác nhận yêu cầu & hoàn tiền">
+                <i class="fas fa-check-circle"></i> XN Hoàn tiền
+            </button>
+        `;
+    }
+    
+    return actions;
+}
+
+/**
+ * Xử lý sự kiện khi người dùng click vào nút trạng thái
+ * @param {number} orderId - ID đơn hàng
+ * @param {string} currentStatus - Trạng thái hiện tại
+ */
+async function handleStatusButtonClick(orderId, currentStatus) {
+    const nextStatus = getNextStatusInFlow(currentStatus);
+    if (!nextStatus) return;
+    
+    if (confirm(`Bạn có chắc muốn chuyển đơn hàng #${orderId} từ "${currentStatus}" sang "${nextStatus}"?`)) {
+        const result = await updateOrderStatus(orderId, nextStatus);
+        if (result.success) {
+            displayToastMessage(`Đã chuyển đơn hàng #${orderId} sang trạng thái "${nextStatus}"`, 'success');
+            // Tải lại danh sách đơn hàng
+            loadSellerOrders(orderPagination.currentPage);
+        } else {
+            displayToastMessage(`Không thể cập nhật trạng thái: ${result.message}`, 'error');
+        }
+    }
+}
+
+/**
+ * Xử lý sự kiện khi người dùng click vào nút hủy đơn hàng
+ * @param {number} orderId - ID đơn hàng
+ */
+async function handleCancelOrder(orderId) {
+    if (confirm(`Bạn có chắc chắn muốn HỦY đơn hàng #${orderId} không?`)) {
+        const result = await updateOrderStatus(orderId, ORDER_STATUSES.DA_HUY);
+        if (result.success) {
+            displayToastMessage(`Đơn hàng #${orderId} đã được hủy thành công`, 'success');
+            // Tải lại danh sách đơn hàng
+            loadSellerOrders(orderPagination.currentPage);
+        } else {
+            displayToastMessage(`Không thể hủy đơn hàng: ${result.message}`, 'error');
+        }
+    }
+}
+
+/**
+ * Xử lý sự kiện khi người dùng click vào nút xác nhận hoàn tiền
+ * @param {number} orderId - ID đơn hàng
+ */
+async function handleConfirmRefundRequest(orderId) {
+    if (confirm(`Xác nhận yêu cầu trả hàng và hoàn tiền cho đơn hàng #${orderId}? \nĐơn hàng sẽ được chuyển sang "Đã hoàn tiền".`)) {
+        const result = await updateOrderStatus(orderId, ORDER_STATUSES.DA_HOAN_TIEN);
+        if (result.success) {
+            displayToastMessage(`Đơn hàng #${orderId} đã được xác nhận hoàn tiền thành công`, 'success');
+            // Tải lại danh sách đơn hàng
+            loadSellerOrders(orderPagination.currentPage);
+        } else {
+            displayToastMessage(`Không thể xác nhận hoàn tiền: ${result.message}`, 'error');
+        }
+    }
+}
+
+/**
+ * Gửi yêu cầu API để cập nhật trạng thái đơn hàng
+ * @param {number} orderId - ID đơn hàng
+ * @param {string} newStatus - Trạng thái mới
+ * @returns {Object} - Kết quả cập nhật
+ */
+// SỬA HÀM updateOrderStatus() - DÒNG 280-320
+
+/**
+ * Gửi yêu cầu API để cập nhật trạng thái đơn hàng - FIXED VERSION
+ */
+async function updateOrderStatus(orderId, newStatus) {
+    try {
+        console.log(`🚀 Updating order ${orderId} to status: ${newStatus}`);
+        
+        const token = getTokenFromStorage();
+        if (!token) {
+            return {
+                success: false,
+                message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+            };
+        }
+        
+        // ✅ FIX 1: Đảm bảo gửi đúng format DTO mà backend expect
+        const requestBody = {
+            newStatus: newStatus,  // Có thể cần đổi thành 'status'
+            reason: 'Cập nhật bởi người bán',
+            // Thêm các field khác nếu DTO yêu cầu
+            updatedBy: 'Seller',
+            updateTime: new Date().toISOString()
+        };
+        
+        console.log(`📤 Request body:`, requestBody);
+        
+        const response = await fetch(`${API_BASE}/Orders/${orderId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        console.log(`📡 Response status: ${response.status}`);
+        
+        if (!response.ok) {
+            let errorMessage = `Lỗi cập nhật trạng thái (${response.status})`;
+            try {
+                const errorData = await response.json();
+                console.error(`❌ API Error Response:`, errorData);
+                
+                // Xử lý lỗi validation cụ thể
+                if (response.status === 400) {
+                    if (errorData.errors) {
+                        // ASP.NET Core ModelState errors
+                        const validationErrors = Object.values(errorData.errors).flat();
+                        errorMessage = `Lỗi validation: ${validationErrors.join(', ')}`;
+                    } else if (errorData.message) {
+                        errorMessage = `Lỗi: ${errorData.message}`;
+                    } else {
+                        errorMessage = `Lỗi 400: Dữ liệu không hợp lệ - ${JSON.stringify(errorData)}`;
+                    }
+                }
+            } catch (e) {
+                const textError = await response.text();
+                console.error(`❌ Raw error response:`, textError);
+                errorMessage = `Lỗi ${response.status}: ${textError || response.statusText}`;
+            }
+            return {
+                success: false,
+                message: errorMessage
+            };
+        }
+        
+        console.log(`✅ Order ${orderId} status updated successfully to ${newStatus}`);
+        return { success: true };
+        
+    } catch (error) {
+        console.error(`❌ Network/Exception error updating order ${orderId}:`, error);
+        return {
+            success: false,
+            message: `Lỗi kết nối: ${error.message}`
+        };
+    }
+}
+
+/**
+ * Cập nhật hàm renderOrders để sử dụng các hàm mới
+ * @param {Array} orders - Danh sách đơn hàng
+ */
+function renderOrders(orders) {
+    const orderTableBody = document.getElementById('order-table-body');
+    if (!orderTableBody) {
+        console.error('Không tìm thấy phần tử #order-table-body');
+        return;
+    }
+    
+    if (!orders || !Array.isArray(orders)) {
+        console.error('Dữ liệu đơn hàng không hợp lệ:', orders);
+        orderTableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="px-6 py-4 text-center">
+                    <div class="text-gray-500">Không có dữ liệu đơn hàng hợp lệ</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    if (orders.length > 0) {
+        try {
+            orderTableBody.innerHTML = orders.map((order, index) => {
+                // Lấy thông tin đơn hàng
+                const orderId = order.orderID || order.orderId || order.id || 'N/A';
+                const customerName = order.customerName || (order.customerInfo && order.customerInfo.fullName) || 'Khách hàng';
+                const orderDate = formatDateTime(order.orderDate || order.createdAt);
+                const totalPayment = parseFloat(order.totalPayment) || 0;
+                const totalAmount = parseFloat(order.totalAmount) || 0;
+                const status = order.status || 'Không xác định';
+                const itemCount = order.numberOfItems || order.totalItems || order.items?.length || 0;
+                
+                // Xác định thông tin trạng thái và khả năng tương tác
+                let statusInfo = getOrderStatusInfo(status, orderId);
+                
+                // Xác định hành động có thể thực hiện
+                let actions = getOrderActions(orderId, status);
+                
+                return `
+                    <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 transition-colors duration-150">
+                        <td class="px-3 py-2 whitespace-nowrap">
+                            <div class="text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium">
+                                <a href="#" onclick="viewOrderDetails(${orderId}); return false;" title="Xem chi tiết đơn hàng">#${orderId}</a>
+                            </div>
+                        </td>
+                        <td class="px-3 py-2">
+                            <div class="text-sm text-gray-900">${customerName}</div>
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap">
+                            <div class="text-sm text-gray-500">${orderDate}</div>
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 font-medium text-right">
+                            ${formatCurrency(totalAmount)}
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 font-medium text-right">
+                            ${formatCurrency(totalPayment)}
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap text-center">
+                            <span class="text-sm">${itemCount}</span>
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap text-center">
+                            ${statusInfo.html}
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap text-center">
+                            <div class="action-btn-container">
+                                ${actions}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } catch (error) {
+            console.error('Lỗi khi render danh sách đơn hàng:', error);
+            orderTableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-6 py-4 text-center">
+                        <div class="text-red-500">Xảy ra lỗi khi hiển thị danh sách: ${error.message}</div>
+                    </td>
+                </tr>
+            `;
+        }
+    } else {
+        // Nếu không có đơn hàng nào
+        orderTableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="px-6 py-4 text-center">
+                    <div class="text-gray-500">Không có đơn hàng nào</div>
+                </td>
+            </tr>
+        `;
+    }
+    
+    // Cập nhật số lượng đơn hàng hiển thị
+    updateOrderCountDisplay(orders.length);
+}
+
+/**
+ * Cập nhật hiển thị số lượng đơn hàng
+ * @param {number} count - Số lượng đơn hàng
+ */
+function updateOrderCountDisplay(count) {
+    const ordersCountElement = document.getElementById('orders-count');
+    const ordersCountInfoElement = document.getElementById('orders-count-info');
+    
+    if (ordersCountElement) {
+        ordersCountElement.textContent = `${count} đơn hàng`;
+    }
+    
+    if (ordersCountInfoElement) {
+        ordersCountInfoElement.textContent = `Hiển thị ${count} đơn hàng`;
+    }
+}
+
+// Đảm bảo các hàm được hiển thị ra ngoài để có thể gọi từ HTML
+window.handleStatusButtonClick = handleStatusButtonClick;
+window.handleCancelOrder = handleCancelOrder;
+window.handleConfirmRefundRequest = handleConfirmRefundRequest;
+
 /**
  * Kiểm tra và khởi tạo phần orders nếu đang hiển thị
  */
@@ -156,127 +580,58 @@ function showAllTableColumns(headers, rows) {
  * Tải đơn hàng của người bán từ API
  * @param {number} page - Số trang cần tải (bắt đầu từ 1)
  */
+/**
+ * Tải danh sách đơn hàng của người bán với phân trang và lọc
+ * @param {number} page - Số trang cần tải
+ */
 async function loadSellerOrders(page = 1) {
     try {
-        // Tránh gọi API nhiều lần nếu đang tải
-        if (ordersLoading) return;
+        const tempDebug = debugMode;
+        
+        // Đánh dấu đang tải
         ordersLoading = true;
         
-        // Bật chế độ debug tạm thời
-        const tempDebug = true;
-        
-        if (tempDebug) {
-            console.group('LoadSellerOrders');
-            console.log('Trang yêu cầu:', page);
-            console.log('Bộ lọc:', JSON.stringify(orderFilter));
-        }
-        
-        // Cập nhật trang hiện tại
-        orderPagination.currentPage = page;
-        
-        // Hiển thị loading
+        // Hiển thị trạng thái đang tải
         const orderTableBody = document.getElementById('order-table-body');
         if (orderTableBody) {
             orderTableBody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="px-6 py-8 text-center">
-                        <div class="flex flex-col items-center justify-center">
-                            <svg class="animate-spin h-6 w-6 text-blue-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <p>Đang tải dữ liệu đơn hàng...</p>
+                    <td colspan="8" class="px-6 py-4 text-center">
+                        <div class="animate-pulse flex justify-center items-center">
+                            <div class="h-6 w-6 bg-blue-200 rounded-full mr-2"></div>
+                            <div class="h-4 bg-blue-100 rounded w-1/3"></div>
                         </div>
                     </td>
                 </tr>
             `;
         }
         
-        // Ẩn thông báo không có đơn hàng
-        const noOrdersMessage = document.getElementById('no-orders-message');
-        if (noOrdersMessage) {
-            noOrdersMessage.classList.add('hidden');
+        const token = getTokenFromStorage();
+        if (!token) {
+            displayToastMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
+            window.location.href = '/Admin/login.html';
+            return;
         }
         
-        // Tạo tham số query cho API call
+        // Cập nhật trang hiện tại trong phân trang
+        orderPagination.currentPage = page;
+        
+        // Xây dựng tham số cho API
         const params = new URLSearchParams();
-        
-        // Tham số phân trang
         params.append('pageNumber', page.toString());
-        params.append('pageSize', orderPagination.pageSize.toString());
+        params.append('pageSize', orderFilter.pageSize.toString());
         
-        // ===== PHẦN XỬ LÝ NGÀY THÁNG =====
-        if (orderFilter.startDate) {
-            try {
-                // Chuyển đổi ngày về định dạng yyyy-MM-dd 
-                // (format phổ biến cho .NET API)
-                const startDate = new Date(orderFilter.startDate);
-                if (!isNaN(startDate.getTime())) {
-                    const year = startDate.getFullYear();
-                    const month = String(startDate.getMonth() + 1).padStart(2, '0');
-                    const day = String(startDate.getDate()).padStart(2, '0');
-                    const formattedDate = `${year}-${month}-${day}`;
-                    
-                    params.append('StartDate', formattedDate);
-                    
-                    if (tempDebug) {
-                        console.log('StartDate param:', formattedDate);
-                    }
-                }
-            } catch (e) {
-                console.error('Lỗi xử lý ngày bắt đầu:', e);
+        // Thêm các tham số tìm kiếm và lọc
+        if (orderFilter.searchTerm && orderFilter.searchTerm.trim() !== '') {
+            params.append('SearchTerm', orderFilter.searchTerm.trim());
+            if (tempDebug) {
+                console.log('Search term param:', orderFilter.searchTerm.trim());
             }
         }
         
-        if (orderFilter.endDate) {
-            try {
-                const endDate = new Date(orderFilter.endDate);
-                if (!isNaN(endDate.getTime())) {
-                    const year = endDate.getFullYear();
-                    const month = String(endDate.getMonth() + 1).padStart(2, '0');
-                    const day = String(endDate.getDate()).padStart(2, '0');
-                    const formattedDate = `${year}-${month}-${day}`;
-                    
-                    params.append('EndDate', formattedDate);
-                    
-                    if (tempDebug) {
-                        console.log('EndDate param:', formattedDate);
-                    }
-                }
-            } catch (e) {
-                console.error('Lỗi xử lý ngày kết thúc:', e);
-            }
-        }
-        
-        // ===== PHẦN XỬ LÝ TRẠNG THÁI =====
-        if (orderFilter.status && orderFilter.status !== 'all' && orderFilter.status.trim() !== '') {
+        if (orderFilter.status && orderFilter.status.trim() !== '') {
+            // Đảm bảo status có định dạng đúng cho API
             let statusValue = orderFilter.status.trim();
-            
-            // Kiểm tra và chuyển đổi tên trạng thái nếu cần
-            // Ví dụ: nếu select box lưu giá trị theo tiếng Việt mà API cần tiếng Anh
-            const statusMappingToApi = {
-                'Chờ xử lý': 'Pending',
-                'Đang xử lý': 'Processing',
-                'Đang giao': 'Shipped',
-                'Đã giao': 'Delivered',
-                'Hoàn thành': 'Completed',
-                'Đã hủy': 'Cancelled'
-            };
-            
-            if (statusMappingToApi[statusValue]) {
-                statusValue = statusMappingToApi[statusValue];
-            }else {
-                // Xử lý trường hợp ngược lại (nếu đã là tiếng Anh)
-                const lowerStatus = statusValue.toLowerCase();
-                for (const [key, value] of Object.entries(statusMapping)) {
-                    if (value.toLowerCase() === lowerStatus) {
-                        statusValue = value; // Đảm bảo đúng format chữ hoa/thường
-                        break;
-                    }
-                }
-            }
-            
-            
             params.append('Status', statusValue);
             
             if (tempDebug) {
@@ -284,428 +639,251 @@ async function loadSellerOrders(page = 1) {
             }
         }
         
-        // ===== PHẦN XỬ LÝ TÌM KIẾM =====
-        if (orderFilter.searchTerm && orderFilter.searchTerm.trim() !== '') {
-            const searchTerm = orderFilter.searchTerm.trim();
-            
-            // Gửi tham số tìm kiếm
-            params.append('SearchTerm', searchTerm);
-            
-            // Nếu API hỗ trợ tìm kiếm theo trường cụ thể
-            // Có thể thêm tham số SearchField để chỉ tìm theo tên khách hàng
-            // params.append('SearchField', 'CustomerName');
-            
+        if (orderFilter.startDate) {
+            params.append('StartDate', orderFilter.startDate);
             if (tempDebug) {
-                console.log('SearchTerm param:', searchTerm);
+                console.log('StartDate param:', orderFilter.startDate);
             }
         }
         
-        // ===== PHẦN XỬ LÝ SẮP XẾP =====
+        if (orderFilter.endDate) {
+            params.append('EndDate', orderFilter.endDate);
+            if (tempDebug) {
+                console.log('EndDate param:', orderFilter.endDate);
+            }
+        }
+        
+        // Thêm tham số lọc giá
+        if (orderFilter.minPrice) {
+            params.append('MinPrice', orderFilter.minPrice.toString());
+            if (tempDebug) {
+                console.log('MinPrice param:', orderFilter.minPrice);
+            }
+        }
+        
+        if (orderFilter.maxPrice) {
+            params.append('MaxPrice', orderFilter.maxPrice.toString());
+            if (tempDebug) {
+                console.log('MaxPrice param:', orderFilter.maxPrice);
+            }
+        }
+        
+        // Thêm tham số sắp xếp
         if (orderFilter.sortBy) {
-            // Xây dựng bảng ánh xạ tên trường từ JS sang API (nếu có sự khác biệt)
-            // Nếu API sử dụng PascalCase nhưng JS dùng camelCase
-            const sortFieldMapping = {
-                'orderDate': 'OrderDate',
-                'orderId': 'OrderId',
-                'totalAmount': 'TotalAmount',
-                'totalPayment': 'TotalPayment',
-                'status': 'Status'
-            };
-            
-            // Lấy tên trường phù hợp với API
-            const apiSortField = sortFieldMapping[orderFilter.sortBy] || orderFilter.sortBy;
-            
-            params.append('SortBy', apiSortField);
-            params.append('SortDirection', orderFilter.sortDirection || 'desc');
+            params.append('SortBy', orderFilter.sortBy);
+            params.append('SortDirection', orderFilter.sortDirection);
             
             if (tempDebug) {
-                console.log('Sort params:', apiSortField, orderFilter.sortDirection || 'desc');
+                console.log('Sort params:', orderFilter.sortBy, orderFilter.sortDirection);
             }
-        }
-        
-        // In ra URL cuối cùng
-        const apiUrl = `${API_BASE}/Orders/seller-orders`;
-        
-        if (tempDebug) {
-            console.log('API URL:', apiUrl);
-            console.log('Final query string:', params.toString());
-            console.log('Full URL:', `${apiUrl}?${params.toString()}`);
-        }
-        
-        // Lấy token
-        const token = getTokenFromStorage();
-        if (!token) {
-            displayToastMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
-            if (tempDebug) console.error('Không tìm thấy token đăng nhập');
-            ordersLoading = false;
-            return;
         }
         
         // Gọi API lấy danh sách đơn hàng
+        const apiUrl = `${API_BASE}/Orders/seller-orders`;
+        
+        if (tempDebug) {
+            console.log('Calling API:', apiUrl);
+            console.log('With params:', Object.fromEntries(params.entries()));
+        }
+        
         const response = await fetch(`${apiUrl}?${params.toString()}`, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
         });
         
         if (!response.ok) {
-            const errorText = await response.text().catch(() => 'Unknown error');
-            if (tempDebug) {
-                console.error('API Response Error:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    body: errorText
-                });
-            }
-            throw new Error(`API trả về mã lỗi: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`API trả về mã lỗi: ${response.status} - ${errorText}`);
         }
         
         const data = await response.json();
         
-        
-        // Xử lý phản hồi API
-        if (data) {
-            if (data.items !== undefined) {
-                // Lưu trữ đơn hàng vào biến toàn cục
-                sellerOrders = data.items || [];
-                
-                // Trích xuất thông tin phân trang
-                orderPagination.totalItems = data.totalCount || 0;
-                orderPagination.totalPages = data.totalPages || 1;
-                orderPagination.pageSize = data.pageSize || 10;
-                orderPagination.currentPage = data.pageNumber || 1;
-                
-                if (tempDebug) {
-                    console.log('Phân trang:', {
-                        totalItems: orderPagination.totalItems,
-                        totalPages: orderPagination.totalPages,
-                        pageSize: orderPagination.pageSize,
-                        currentPage: orderPagination.currentPage
-                    });
-                }
-                
-                // QUAN TRỌNG: Render với mảng đơn hàng (items)
-                renderOrders(sellerOrders);
-            } else if (Array.isArray(data)) {
-                // Trường hợp API trả về trực tiếp mảng đơn hàng
-                sellerOrders = data;
-                
-                // Ước tính thông tin phân trang
-                orderPagination.totalItems = data.length;
-                orderPagination.totalPages = 1;
-                
-                // Render mảng đơn hàng
-                renderOrders(sellerOrders);
-            } else {
-                if (tempDebug) console.error('Cấu trúc phản hồi API không đúng định dạng:', data);
-                displayToastMessage('Dữ liệu đơn hàng không đúng định dạng', 'error');
-                sellerOrders = [];
-                renderOrders(sellerOrders);
-            }
-            
-            // Hiển thị phân trang
-            renderOrderPagination();
-            
-            // Cập nhật lại thông tin số lượng
-            updateOrderCountInfo();
-            
-            // Hiển thị thông báo không có đơn hàng nếu cần
-            if (sellerOrders.length === 0 && noOrdersMessage) {
-                noOrdersMessage.classList.remove('hidden');
-            }
-        } else {
-            if (tempDebug) console.warn('API không trả về dữ liệu');
-            sellerOrders = [];
-            renderOrders(sellerOrders);
-            renderOrderPagination();
-            
-            // Hiển thị thông báo không có đơn hàng nếu API không trả về dữ liệu
-            if (noOrdersMessage) {
-                noOrdersMessage.classList.remove('hidden');
-            }
+        if (tempDebug) {
+            console.group('API Response');
+            console.log('Status:', response.status);
+            console.log('Data:', data);
+            console.groupEnd();
         }
         
-        if (tempDebug) console.groupEnd();
-    } catch (error) {
-        console.error('Lỗi khi tải đơn hàng:', error);
-        displayToastMessage(`Không thể tải đơn hàng: ${error.message}`, 'error');
+        // Cập nhật dữ liệu đơn hàng và phân trang
+        sellerOrders = data.items || [];
+        orderPagination.totalItems = data.totalCount || 0;
+        orderPagination.totalPages = data.totalPages || 1;
         
-        // Xử lý khi có lỗi
-        sellerOrders = [];
+        // Hiển thị danh sách đơn hàng
         renderOrders(sellerOrders);
+        
+        // Cập nhật phân trang
         renderOrderPagination();
         
-        // Hiển thị thông báo không có đơn hàng khi có lỗi
-        const noOrdersMessage = document.getElementById('no-orders-message');
-        if (noOrdersMessage) {
-            noOrdersMessage.classList.remove('hidden');
-        }
-    } finally {
-        ordersLoading = false;
-        
-        // Điều chỉnh responsive sau khi hiển thị dữ liệu
-        setTimeout(adjustOrdersTableResponsive, 100);
-    }
-}
-
-
-/**
- * Hiển thị danh sách đơn hàng trong bảng
- * @param {Array} orders - Mảng đơn hàng cần hiển thị
- */
-function renderOrders(orders) {
-    const orderTableBody = document.getElementById('order-table-body');
-    if (!orderTableBody) return;
-    
-    // Hàm định dạng tiền tệ
-    const formatCurrency = (amount) => {
-        // Kiểm tra số có phải là NaN không
-        if (isNaN(amount) || amount === null || amount === undefined) {
-            return '0 ₫';
+        // Cập nhật số lượng hiển thị
+        const ordersCount = document.getElementById('orders-count');
+        if (ordersCount) {
+            ordersCount.textContent = `${data.totalCount || 0} đơn hàng`;
         }
         
-        return new Intl.NumberFormat('vi-VN', { 
-            style: 'currency', 
-            currency: 'VND',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(amount);
-    };
-    
-    // Thêm debug để kiểm tra
-    if (debugMode) {
-        console.log('Orders data:', orders);
-        if (orders && orders.length > 0) {
-            console.log('First order:', orders[0]);
-            console.log('totalPayment type:', typeof orders[0].totalPayment);
-            console.log('totalPayment value:', orders[0].totalPayment);
-        }
-    }
-    
-    if (orders && orders.length > 0) {
-        orderTableBody.innerHTML = orders.map(order => {
-            // Log chi tiết từng đơn hàng để debug
-            if (debugMode) console.log('Processing order:', order);
-            
-            // Lấy thông tin đơn hàng - CHÚ Ý CHỮ HOA/THƯỜNG
-            const orderId = order.orderID || order.orderId || order.id || 'N/A';
-            const customerName = order.customerName || (order.customerInfo && order.customerInfo.fullName) || 'Khách hàng';
-            const orderDate = formatDateTime(order.orderDate || order.createdAt);
-            
-            // QUAN TRỌNG: Lấy giá trị totalPayment đúng - xử lý phân biệt chữ HOA/thường
-            // API trả về totalPayment (P viết thường)
-            const totalPayment = parseFloat(order.totalPayment) || 0;
-            
-            // Các thông tin khác
-            const totalAmount = parseFloat(order.totalAmount) || 0;
-            const status = order.status || 'Không xác định';
-            const statusClass = getOrderStatusClass(status);
-            
-            return `
+    } catch (error) {
+        console.error('Lỗi khi tải đơn hàng:', error);
+        displayToastMessage(`Lỗi khi tải đơn hàng: ${error.message}`, 'error');
+        
+        // Hiển thị thông báo lỗi trong bảng
+        const orderTableBody = document.getElementById('order-table-body');
+        if (orderTableBody) {
+            orderTableBody.innerHTML = `
                 <tr>
-                    <td class="px-3 py-2 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">#${orderId}</div>
-                    </td>
-                    <td class="px-3 py-2">
-                        <div class="text-sm text-gray-900">${customerName}</div>
-                    </td>
-                    <td class="px-3 py-2 whitespace-nowrap">
-                        <div class="text-sm text-gray-500">${orderDate}</div>
-                    </td>
-                    <!-- Cột mới: Tổng thanh toán thay cho Số lượng -->
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500 font-medium">
-                        ${formatCurrency(totalPayment)}
-                    </td>
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                        ${formatCurrency(totalAmount)}
-                    </td>
-                    <td class="px-3 py-2 whitespace-nowrap">
-                        <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
-                            ${getOrderStatusText(status)}
-                        </span>
-                    </td>
-                    <td class="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
-                        <button onclick="viewOrderDetails(${orderId})" class="text-blue-600 hover:text-blue-900 mr-3" title="Xem chi tiết">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        ${canUpdateOrderStatus(status) ? `
-                            <button onclick="openUpdateStatusModal(${orderId}, '${status}')" class="text-green-600 hover:text-green-900" title="Cập nhật trạng thái">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                        ` : ''}
+                    <td colspan="8" class="px-6 py-4 text-center">
+                        <div class="text-red-600">
+                            <i class="fas fa-exclamation-circle mr-2"></i>
+                            Có lỗi xảy ra khi tải danh sách đơn hàng
+                        </div>
                     </td>
                 </tr>
             `;
-        }).join('');
-    } else {
-        // Nếu không có đơn hàng nào
-        orderTableBody.innerHTML = `
-            <tr>
-                <td colspan="7" class="px-6 py-4 text-center">
-                    <div class="text-gray-500">Không có đơn hàng nào</div>
-                </td>
-            </tr>
-        `;
+        }
+    } finally {
+        // Đánh dấu đã tải xong
+        ordersLoading = false;
     }
 }
-/**
- * Lấy lớp CSS dựa trên trạng thái đơn hàng
- * @param {string} status - Trạng thái đơn hàng
- * @returns {string} Tên lớp CSS tương ứng
- */
-function getOrderStatusClass(status) {
-    const statusLower = status?.toLowerCase();
-    
-    if (!statusLower) return 'bg-gray-100 text-gray-800';
-    
-    if (statusLower.includes('hủy') || statusLower === 'cancelled')
-        return 'bg-red-100 text-red-800';
-        
-    if (statusLower.includes('hoàn thành') || statusLower === 'completed')
-        return 'bg-green-100 text-green-800';
-        
-    if (statusLower.includes('giao hàng') || statusLower === 'delivered')
-        return 'bg-green-100 text-green-800';
-        
-    if (statusLower.includes('đang giao') || statusLower === 'shipped')
-        return 'bg-blue-100 text-blue-800';
-        
-    if (statusLower.includes('xử lý') || statusLower === 'processing')
-        return 'bg-yellow-100 text-yellow-800';
-        
-    if (statusLower.includes('chờ') || statusLower === 'pending')
-        return 'bg-gray-100 text-gray-800';
-        
-    return 'bg-gray-100 text-gray-800';
-}
+
+
 
 /**
- * Chuyển đổi trạng thái đơn hàng sang văn bản người dùng
- * @param {string} status - Trạng thái đơn hàng
- * @returns {string} Trạng thái hiển thị cho người dùng
+ * Cập nhật hiển thị số lượng đơn hàng
+ * @param {number} count - Số lượng đơn hàng
  */
-function getOrderStatusText(status) {
-    const statusLower = status?.toLowerCase();
+function updateOrderCountDisplay(count) {
+    const ordersCountElement = document.getElementById('orders-count');
+    const ordersCountInfoElement = document.getElementById('orders-count-info');
     
-    if (!statusLower) return 'Không xác định';
+    if (ordersCountElement) {
+        ordersCountElement.textContent = `${count} đơn hàng`;
+    }
     
-    if (statusLower.includes('hủy') || statusLower === 'cancelled')
-        return 'Đã hủy';
-        
-    if (statusLower.includes('hoàn thành') || statusLower === 'completed')
-        return 'Hoàn thành';
-        
-    if (statusLower.includes('giao hàng') || statusLower === 'delivered')
-        return 'Đã giao';
-        
-    if (statusLower.includes('đang giao') || statusLower === 'shipped')
-        return 'Đang giao';
-        
-    if (statusLower.includes('xử lý') || statusLower === 'processing')
-        return 'Đang xử lý';
-        
-    if (statusLower.includes('chờ') || statusLower === 'pending')
-        return 'Chờ xử lý';
-        
-    return status; // Trả về nguyên bản nếu không khớp
+    if (ordersCountInfoElement) {
+        ordersCountInfoElement.textContent = `Hiển thị ${count} đơn hàng`;
+    }
 }
+
+
 /**
  * Kiểm tra xem có thể cập nhật trạng thái đơn hàng không
- * @param {string} status - Trạng thái đơn hàng hiện tại
- * @returns {boolean} Có thể cập nhật hay không
+ * @param {string} status - Trạng thái hiện tại của đơn hàng
+ * @returns {boolean} - Có thể cập nhật hay không
  */
 function canUpdateOrderStatus(status) {
-    const statusLower = status?.toLowerCase();
+    const allowedStatuses = [
+        'Chờ xác nhận', 'Đang xử lý', 'Đang giao', 
+        'pending', 'processing', 'shipped'
+    ];
     
-    // Không thể cập nhật trạng thái của đơn hàng đã hủy hoặc hoàn thành
-    if (!statusLower || 
-        statusLower.includes('hủy') || 
-        statusLower === 'cancelled' || 
-        statusLower.includes('hoàn thành') || 
-        statusLower === 'completed') {
-        return false;
+    return allowedStatuses.some(s => status.toLowerCase() === s.toLowerCase());
+}
+
+
+
+
+
+/**
+ * Tạo HTML cho các nút hành động dựa trên trạng thái đơn hàng
+ * @param {number} orderId - ID đơn hàng
+ * @param {string} status - Trạng thái đơn hàng
+ * @returns {string} HTML các nút hành động
+ */
+function getOrderActions(orderId, status) {
+    const statusLower = status?.toLowerCase() || '';
+    
+    // Luôn có nút Xem
+    let actions = `
+        <button onclick="viewOrderDetails(${orderId})" class="action-button action-button-view" title="Xem chi tiết đơn hàng">
+            <i class="fas fa-eye"></i> Xem
+        </button>
+    `;
+    
+    // Chỉ hiển thị nút Hủy nếu đơn hàng chưa giao và chưa hủy
+    const canCancel = !statusLower.includes('đã giao') && 
+                      !statusLower.includes('delivered') && 
+                      !statusLower.includes('đã hủy') && 
+                      !statusLower.includes('cancelled') &&
+                      !statusLower.includes('completed');
+                      
+    if (canCancel) {
+        actions += `
+            <button onclick="handleCancelOrder(${orderId})" class="action-button action-button-cancel" title="Hủy đơn hàng">
+                <i class="fas fa-times-circle"></i> Hủy
+            </button>
+        `;
     }
     
-    return true;
+    return actions;
 }
 
 /**
- * Hiển thị phân trang cho đơn hàng
+ * Hiển thị phân trang cho danh sách đơn hàng
  */
 function renderOrderPagination() {
-    const orderPaginationContainer = document.getElementById('order-pagination');
-    if (!orderPaginationContainer) return;
+    // Cập nhật hiển thị thông tin trang
+    const currentPageInfo = document.getElementById('current-page-info');
+    const totalPagesInfo = document.getElementById('total-pages-info');
+    const totalItemsInfo = document.getElementById('total-items-info');
     
-    // Xóa phân trang cũ
-    orderPaginationContainer.innerHTML = '';
+    if (currentPageInfo) currentPageInfo.textContent = orderPagination.currentPage.toString();
+    if (totalPagesInfo) totalPagesInfo.textContent = orderPagination.totalPages.toString();
+    if (totalItemsInfo) totalItemsInfo.textContent = orderPagination.totalItems.toString();
     
-    // Nếu chỉ có 1 trang, không cần hiển thị phân trang
-    if (orderPagination.totalPages <= 1) return;
-    
-    // Tạo container cho phân trang
-    const paginationDiv = document.createElement('div');
-    paginationDiv.className = 'flex justify-between items-center bg-white px-4 py-3 sm:px-6 border rounded-md';
-    
-    // Hiển thị thông tin tổng số mục
-    const infoSpan = document.createElement('div');
-    infoSpan.className = 'text-sm text-gray-700';
-    infoSpan.textContent = `Hiển thị ${sellerOrders.length} / ${orderPagination.totalItems} đơn hàng`;
-    
-    // Tạo các nút phân trang
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'flex space-x-2';
-    
-    // Nút Previous
-    const prevButton = document.createElement('button');
-    prevButton.type = 'button';
-    prevButton.className = `px-3 py-1 rounded ${orderPagination.currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
-    prevButton.innerHTML = '<i class="fas fa-chevron-left"></i>';
-    prevButton.disabled = orderPagination.currentPage === 1;
-    if (orderPagination.currentPage > 1) {
-        prevButton.addEventListener('click', () => changeOrderPage(orderPagination.currentPage - 1));
+    const pageInput = document.getElementById('page-input');
+    if (pageInput) {
+        pageInput.value = orderPagination.currentPage.toString();
+        pageInput.max = orderPagination.totalPages.toString();
     }
     
-    buttonContainer.appendChild(prevButton);
+    // Cập nhật trạng thái nút phân trang
+    const prevPageBtn = document.getElementById('prev-page-btn');
+    const nextPageBtn = document.getElementById('next-page-btn');
     
-    // Các nút số trang
-    const maxPagesToShow = 5;
-    const startPage = Math.max(1, orderPagination.currentPage - Math.floor(maxPagesToShow / 2));
-    const endPage = Math.min(orderPagination.totalPages, startPage + maxPagesToShow - 1);
+    if (prevPageBtn) prevPageBtn.disabled = orderPagination.currentPage <= 1;
+    if (nextPageBtn) nextPageBtn.disabled = orderPagination.currentPage >= orderPagination.totalPages;
     
-    for (let i = startPage; i <= endPage; i++) {
-        const pageButton = document.createElement('button');
-        pageButton.type = 'button';
-        pageButton.className = `px-3 py-1 rounded ${i === orderPagination.currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
-        pageButton.textContent = i;
+    // Thiết lập sự kiện cho các nút phân trang
+    if (prevPageBtn) {
+        prevPageBtn.onclick = () => {
+            if (orderPagination.currentPage > 1) {
+                changeOrderPage(orderPagination.currentPage - 1);
+            }
+        };
+    }
+    
+    if (nextPageBtn) {
+        nextPageBtn.onclick = () => {
+            if (orderPagination.currentPage < orderPagination.totalPages) {
+                changeOrderPage(orderPagination.currentPage + 1);
+            }
+        };
+    }
+    
+    // Thiết lập sự kiện cho nút go-to-page
+    const goToPageBtn = document.getElementById('go-to-page-btn');
+    if (goToPageBtn && pageInput) {
+        goToPageBtn.onclick = () => {
+            const targetPage = parseInt(pageInput.value);
+            if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= orderPagination.totalPages && targetPage !== orderPagination.currentPage) {
+                changeOrderPage(targetPage);
+            } else {
+                pageInput.value = orderPagination.currentPage.toString();
+            }
+        };
         
-        // Thêm sự kiện click nếu không phải trang hiện tại
-        if (i !== orderPagination.currentPage) {
-            pageButton.addEventListener('click', () => changeOrderPage(i));
-        }
-        
-        buttonContainer.appendChild(pageButton);
+        // Thêm xử lý sự kiện Enter
+        pageInput.onkeyup = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                goToPageBtn.click();
+            }
+        };
     }
-    
-    // Nút Next
-    const nextButton = document.createElement('button');
-    nextButton.type = 'button';
-    nextButton.className = `px-3 py-1 rounded ${orderPagination.currentPage === orderPagination.totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
-    nextButton.innerHTML = '<i class="fas fa-chevron-right"></i>';
-    nextButton.disabled = orderPagination.currentPage === orderPagination.totalPages;
-    if (orderPagination.currentPage < orderPagination.totalPages) {
-        nextButton.addEventListener('click', () => changeOrderPage(orderPagination.currentPage + 1));
-    }
-    
-    buttonContainer.appendChild(nextButton);
-    
-    // Thêm các phần tử vào container
-    paginationDiv.appendChild(infoSpan);
-    paginationDiv.appendChild(buttonContainer);
-    
-    // Thêm vào DOM
-    orderPaginationContainer.appendChild(paginationDiv);
 }
 
 /**
@@ -725,18 +903,13 @@ function changeOrderPage(page) {
     loadSellerOrders(page);
 }
 
-/**
- * Khởi tạo các bộ lọc đơn hàng
- */
-/**
- * Khởi tạo các bộ lọc đơn hàng
- */
+
 /**
  * Khởi tạo các bộ lọc đơn hàng và xử lý sự kiện
  */
+
 function initOrderFilters() {
-    // Bật chế độ debug tạm thời
-    const tempDebug = true;
+    const tempDebug = debugMode;
     
     if (tempDebug) console.log('Khởi tạo bộ lọc đơn hàng');
     
@@ -746,145 +919,105 @@ function initOrderFilters() {
     const startDateFilter = document.getElementById('start-date-filter');
     const endDateFilter = document.getElementById('end-date-filter');
     const searchFilter = document.getElementById('search-filter');
+    const minPriceFilter = document.getElementById('min-price-filter');
+    const maxPriceFilter = document.getElementById('max-price-filter');
     const resetFilterBtn = document.getElementById('reset-filter-btn');
     const sortOrdersBy = document.getElementById('sort-orders-by');
+    const pageSizeSelect = document.getElementById('page-size-select');
     
-    if (!orderFilterForm) {
-        console.warn('Không tìm thấy form lọc đơn hàng (order-filter-form)');
-        return;
+    // Đặt giá trị mặc định cho các bộ lọc
+    if (statusFilter) statusFilter.value = orderFilter.status || '';
+    if (startDateFilter) startDateFilter.value = orderFilter.startDate || '';
+    if (endDateFilter) endDateFilter.value = orderFilter.endDate || '';
+    if (searchFilter) searchFilter.value = orderFilter.searchTerm || '';
+    if (minPriceFilter) minPriceFilter.value = orderFilter.minPrice || '';
+    if (maxPriceFilter) maxPriceFilter.value = orderFilter.maxPrice || '';
+    
+    // Đặt giá trị mặc định cho bộ sắp xếp
+    if (sortOrdersBy) {
+        const sortValue = `${orderFilter.sortBy}:${orderFilter.sortDirection}`;
+        sortOrdersBy.value = sortValue;
     }
     
-    // Kiểm tra các thành phần của form
-    if (tempDebug) {
-        console.log('Status filter:', statusFilter ? 'Found' : 'Not found');
-        console.log('Start date filter:', startDateFilter ? 'Found' : 'Not found');
-        console.log('End date filter:', endDateFilter ? 'Found' : 'Not found');
-        console.log('Search filter:', searchFilter ? 'Found' : 'Not found');
-        console.log('Reset button:', resetFilterBtn ? 'Found' : 'Not found');
-        console.log('Sort orders by:', sortOrdersBy ? 'Found' : 'Not found');
+    // Đặt giá trị mặc định cho kích thước trang
+    if (pageSizeSelect) {
+        pageSizeSelect.value = orderFilter.pageSize.toString();
     }
     
     // Xử lý sự kiện submit form
-    orderFilterForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        if (tempDebug) {
-            console.group('Form filter submit');
-            console.log('Status:', statusFilter?.value);
-            console.log('Start date:', startDateFilter?.value);
-            console.log('End date:', endDateFilter?.value);
-            console.log('Search term:', searchFilter?.value);
-            console.groupEnd();
-        }
-        
-        // Cập nhật bộ lọc
-        orderFilter = {
-            ...orderFilter, // Giữ các giá trị sắp xếp
-            status: statusFilter?.value || null,
-            startDate: startDateFilter?.value || null,
-            endDate: endDateFilter?.value || null,
-            searchTerm: searchFilter?.value || ''
-        };
-        
-        if (tempDebug) {
-            console.log('Updated filter:', orderFilter);
-        }
-        
-        // Tải lại đơn hàng với bộ lọc mới (luôn bắt đầu từ trang 1)
-        loadSellerOrders(1);
-    });
-    
-    // Xử lý sự kiện reset bộ lọc
-    if (resetFilterBtn) {
-        resetFilterBtn.addEventListener('click', () => {
-            if (tempDebug) console.log('Resetting filters');
+    if (orderFilterForm) {
+        orderFilterForm.addEventListener('submit', (e) => {
+            e.preventDefault();
             
-            // Reset các trường input
-            if (statusFilter) statusFilter.value = '';
-            if (startDateFilter) startDateFilter.value = '';
-            if (endDateFilter) endDateFilter.value = '';
-            if (searchFilter) searchFilter.value = '';
+            // Cập nhật bộ lọc với các giá trị từ form
+            orderFilter.status = statusFilter?.value || null;
+            orderFilter.startDate = startDateFilter?.value || null;
+            orderFilter.endDate = endDateFilter?.value || null;
+            orderFilter.searchTerm = searchFilter?.value || '';
+            orderFilter.minPrice = minPriceFilter?.value || null;
+            orderFilter.maxPrice = maxPriceFilter?.value || null;
             
-            // Giữ nguyên cấu hình sắp xếp hiện tại
-            const currentSortBy = orderFilter.sortBy || 'orderDate';
-            const currentSortDirection = orderFilter.sortDirection || 'desc';
-            
-            // Reset bộ lọc
-            orderFilter = {
-                sortBy: currentSortBy,
-                sortDirection: currentSortDirection,
-                startDate: null,
-                endDate: null,
-                status: null,
-                searchTerm: ''
-            };
-            
-            if (tempDebug) {
-                console.log('Reset filter to:', orderFilter);
-            }
-            
-            // Tải lại đơn hàng không có bộ lọc
+            // Tải lại đơn hàng với bộ lọc mới (luôn bắt đầu từ trang 1)
+            if (tempDebug) console.log('Áp dụng bộ lọc mới:', orderFilter);
             loadSellerOrders(1);
         });
     }
     
-    // QUAN TRỌNG: Xử lý đúng sắp xếp
-    if (sortOrdersBy) {
-        if (tempDebug) {
-            console.log('Sort select found with value:', sortOrdersBy.value);
+    // Xử lý sự kiện đặt lại bộ lọc
+    if (resetFilterBtn) {
+        resetFilterBtn.addEventListener('click', () => {
+            // Đặt lại tất cả các trường bộ lọc
+            if (statusFilter) statusFilter.value = '';
+            if (startDateFilter) startDateFilter.value = '';
+            if (endDateFilter) endDateFilter.value = '';
+            if (searchFilter) searchFilter.value = '';
+            if (minPriceFilter) minPriceFilter.value = '';
+            if (maxPriceFilter) maxPriceFilter.value = '';
+            if (sortOrdersBy) sortOrdersBy.value = 'OrderDate:desc';
+            if (pageSizeSelect) pageSizeSelect.value = '10';
             
-            // In ra danh sách các option trong select
-            const options = Array.from(sortOrdersBy.options);
-            console.log('Available sort options:', options.map(opt => ({
-                value: opt.value,
-                text: opt.text
-            })));
-        }
-        
-        // Đảm bảo có giá trị mặc định
-        if (!sortOrdersBy.value) {
-            sortOrdersBy.value = 'orderDate:desc';
-        }
-        
-        sortOrdersBy.addEventListener('change', () => {
-            const selectedValue = sortOrdersBy.value;
+            // Đặt lại đối tượng bộ lọc
+            orderFilter = {
+                startDate: null,
+                endDate: null,
+                status: null,
+                searchTerm: '',
+                minPrice: null,
+                maxPrice: null,
+                sortBy: 'OrderDate',
+                sortDirection: 'desc',
+                pageSize: 10
+            };
             
-            if (tempDebug) {
-                console.log('Sort changed to:', selectedValue);
-            }
-            
-            // Phân tích giá trị được chọn
-            if (selectedValue && selectedValue.includes(':')) {
-                const [sortBy, sortDirection] = selectedValue.split(':');
-                
-                // Cập nhật bộ lọc
-                orderFilter.sortBy = sortBy;
-                orderFilter.sortDirection = sortDirection;
-                
-                if (tempDebug) {
-                    console.log('Updated sort settings:', {
-                        sortBy: orderFilter.sortBy,
-                        sortDirection: orderFilter.sortDirection
-                    });
-                }
-                
-                // Tải lại đơn hàng với cấu hình sắp xếp mới
-                loadSellerOrders(orderPagination.currentPage);
-            } else {
-                console.warn('Invalid sort value:', selectedValue);
-            }
+            if (tempDebug) console.log('Đã đặt lại bộ lọc');
+            loadSellerOrders(1);
         });
-    } else {
-        console.warn('Sort select element not found (sort-orders-by)');
     }
     
-    // Cập nhật số đơn hàng
-    updateOrderCountInfo();
+    // Xử lý sự kiện thay đổi bộ sắp xếp
+    if (sortOrdersBy) {
+        sortOrdersBy.addEventListener('change', () => {
+            const sortValue = sortOrdersBy.value;
+            const [sortBy, sortDirection] = sortValue.split(':');
+            
+            orderFilter.sortBy = sortBy;
+            orderFilter.sortDirection = sortDirection;
+            
+            if (tempDebug) console.log(`Sắp xếp thay đổi: ${sortBy} ${sortDirection}`);
+            loadSellerOrders(1);
+        });
+    }
     
-    // Đảm bảo tự động tải đơn hàng khi khởi tạo
-    loadSellerOrders(1);
+    // Xử lý sự kiện thay đổi kích thước trang
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', () => {
+            orderFilter.pageSize = parseInt(pageSizeSelect.value);
+            
+            if (tempDebug) console.log(`Kích thước trang thay đổi: ${orderFilter.pageSize}`);
+            loadSellerOrders(1);
+        });
+    }
 }
-
 
 
 /**
@@ -903,271 +1036,6 @@ function updateOrderCountInfo() {
     }
 }
 
-/**
- * Mở modal chi tiết đơn hàng
- * @param {number} orderId - ID của đơn hàng cần xem
- */
-async function viewOrderDetails(orderId) {
-    try {
-        if (debugMode) console.log(`Đang tải chi tiết đơn hàng ${orderId}`);
-        displayToastMessage('Đang tải thông tin đơn hàng...', 'info');
-        
-        // Mở modal
-        const orderDetailModal = document.getElementById('order-detail-modal');
-        if (!orderDetailModal) {
-            if (debugMode) console.error('Không tìm thấy modal chi tiết đơn hàng');
-            displayToastMessage('Không tìm thấy giao diện hiển thị chi tiết đơn hàng', 'error');
-            return;
-        }
-        
-        // Cập nhật tiêu đề
-        const orderDetailTitle = document.getElementById('order-detail-title');
-        if (orderDetailTitle) {
-            orderDetailTitle.textContent = `Chi tiết đơn hàng #${orderId}`;
-        }
-        
-        // Hiển thị loading trong modal
-        const orderDetailContent = document.getElementById('order-detail-content');
-        if (orderDetailContent) {
-            orderDetailContent.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-12">
-                    <svg class="animate-spin h-8 w-8 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <p class="text-gray-600">Đang tải thông tin đơn hàng...</p>
-                </div>
-            `;
-        }
-        
-        orderDetailModal.classList.remove('hidden');
-        
-        // Lấy token
-        const token = getTokenFromStorage();
-        if (!token) {
-            displayToastMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
-            orderDetailModal.classList.add('hidden');
-            return;
-        }
-        
-        // Gọi API lấy chi tiết đơn hàng theo OrderId từ OrderController
-        const response = await fetch(`${API_BASE}/Orders/${orderId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API trả về mã lỗi: ${response.status} - ${errorText}`);
-        }
-        
-        const order = await response.json();
-        
-        if (!order) {
-            displayToastMessage('Không tìm thấy thông tin đơn hàng', 'error');
-            orderDetailModal.classList.add('hidden');
-            return;
-        }
-        
-        if (debugMode) console.log('Dữ liệu chi tiết đơn hàng:', order);
-        
-        // Hiển thị thông tin đơn hàng trong modal
-        renderOrderDetail(order);
-        
-    } catch (error) {
-        if (debugMode) console.error('Lỗi khi tải chi tiết đơn hàng:', error);
-        displayToastMessage(`Không thể tải chi tiết đơn hàng: ${error.message}`, 'error');
-        
-        // Đóng modal trong trường hợp lỗi
-        const orderDetailModal = document.getElementById('order-detail-modal');
-        if (orderDetailModal) {
-            orderDetailModal.classList.add('hidden');
-        }
-    }
-}
-
-/**
- * Hiển thị chi tiết đơn hàng trong modal
- * @param {Object} order - Dữ liệu đơn hàng cần hiển thị
- */
-function renderOrderDetail(order) {
-    const orderDetailContent = document.getElementById('order-detail-content');
-    
-    if (!orderDetailContent) return;
-    
-    // Hàm định dạng tiền tệ
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('vi-VN', { 
-            style: 'currency', 
-            currency: 'VND',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(amount);
-    };
-    
-    // Hàm định dạng ngày giờ
-    const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return date.toLocaleString('vi-VN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-    
-    // Lấy thông tin trạng thái
-    const getStatusInfo = (status) => {
-        switch (status?.toLowerCase()) {
-            case 'pending':
-                return { class: 'bg-yellow-100 text-yellow-800', text: 'Chờ xử lý' };
-            case 'processing':
-                return { class: 'bg-blue-100 text-blue-800', text: 'Đang xử lý' };
-            case 'shipped':
-                return { class: 'bg-indigo-100 text-indigo-800', text: 'Đang giao' };
-            case 'delivered':
-                return { class: 'bg-green-100 text-green-800', text: 'Đã giao' };
-            case 'cancelled':
-                return { class: 'bg-red-100 text-red-800', text: 'Đã hủy' };
-            case 'completed':
-                return { class: 'bg-green-100 text-green-800', text: 'Hoàn thành' };
-            default:
-                return { class: 'bg-gray-100 text-gray-800', text: status || 'Không xác định' };
-        }
-    };
-    
-    const statusInfo = getStatusInfo(order.status);
-    
-    // Xác định các hành động có thể thực hiện dựa trên trạng thái
-    const canUpdateStatus = order.status?.toLowerCase() !== 'cancelled' && order.status?.toLowerCase() !== 'completed';
-    
-    // Tạo dữ liệu sản phẩm
-    let orderItemsHtml = '';
-    
-    // Kiểm tra tất cả các khả năng lưu trữ các item trong đơn hàng
-    const items = order.orderItems || order.items || order.orderDetails || [];
-    
-    if (items && items.length > 0) {
-        orderItemsHtml = items.map(item => `
-            <tr>
-                <td class="px-4 py-3 whitespace-nowrap">
-                    <div class="flex items-center">
-                        <div class="h-10 w-10 flex-shrink-0">
-                            <img class="h-10 w-10 rounded object-cover" 
-                                 src="${item.imageUrl || item.productImageUrl || item.product?.imageUrl || 'https://dummyimage.com/50x50/e0e0e0/000000.png&text=No+Image'}" 
-                                 alt="${item.productName || item.product?.name}" 
-                                 onerror="this.onerror=null; this.src='https://dummyimage.com/50x50/e0e0e0/000000.png&text=Err';">
-                        </div>
-                        <div class="ml-4">
-                            <div class="text-sm font-medium text-gray-900">${item.productName || item.product?.name}</div>
-                            <div class="text-xs text-gray-500">${item.productId ? `ID: ${item.productId}` : ''}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${formatCurrency(item.price || item.unitPrice)}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${item.quantity}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${formatCurrency((item.price || item.unitPrice) * item.quantity)}</td>
-            </tr>
-        `).join('');
-    } else {
-        orderItemsHtml = `
-            <tr>
-                <td colspan="4" class="px-4 py-3 text-center text-gray-500">
-                    Không có thông tin sản phẩm
-                </td>
-            </tr>
-        `;
-    }
-    
-    // Tạo HTML chi tiết đơn hàng
-    orderDetailContent.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="bg-gray-50 p-4 rounded-lg">
-                <h4 class="text-sm font-medium text-gray-500 mb-2 border-b pb-1">Thông tin khách hàng</h4>
-                <p class="mb-1"><span class="font-medium">Tên khách hàng:</span> ${order.customerName || order.user?.name || order.customer?.name || 'Không có thông tin'}</p>
-                <p class="mb-1"><span class="font-medium">Email:</span> ${order.email || order.user?.email || order.customer?.email || 'Không có thông tin'}</p>
-                <p class="mb-1"><span class="font-medium">Số điện thoại:</span> ${order.phone || order.phoneNumber || order.user?.phoneNumber || order.customer?.phoneNumber || 'Không có thông tin'}</p>
-            </div>
-            
-            <div class="bg-gray-50 p-4 rounded-lg">
-                <h4 class="text-sm font-medium text-gray-500 mb-2 border-b pb-1">Thông tin đơn hàng</h4>
-                <p class="mb-1"><span class="font-medium">Mã đơn hàng:</span> #${order.orderId || order.id}</p>
-                <p class="mb-1"><span class="font-medium">Ngày đặt:</span> ${formatDate(order.orderDate || order.createdAt)}</p>
-                <p class="mb-1">
-                    <span class="font-medium">Trạng thái:</span> 
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusInfo.class}">${statusInfo.text}</span>
-                </p>
-            </div>
-        </div>
-        
-        <div class="mb-6 bg-gray-50 p-4 rounded-lg">
-            <h4 class="text-sm font-medium text-gray-500 mb-2 border-b pb-1">Địa chỉ giao hàng</h4>
-            <p>${order.shippingAddress || order.address || order.deliveryAddress || 'Không có thông tin địa chỉ'}</p>
-        </div>
-        
-        <div class="mb-6">
-            <h4 class="text-sm font-medium text-gray-500 mb-2 border-b pb-1">Sản phẩm</h4>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sản phẩm</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thành tiền</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        ${orderItemsHtml}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <div class="border-t border-gray-200 pt-4">
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-sm text-gray-500">Tổng tiền sản phẩm:</span>
-                <span>${formatCurrency(order.subtotal || order.subTotal || order.orderSubtotal || 0)}</span>
-            </div>
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-sm text-gray-500">Phí vận chuyển:</span>
-                <span>${formatCurrency(order.shippingFee || order.shippingCost || 0)}</span>
-            </div>
-            <div class="flex justify-between items-center font-semibold text-lg">
-                <span>Tổng thanh toán:</span>
-                <span>${formatCurrency(order.totalAmount || order.total || order.orderTotal || 0)}</span>
-            </div>
-        </div>
-        
-        ${canUpdateStatus ? `
-            <div class="mt-6 pt-4 border-t border-gray-200">
-                <div class="flex justify-end space-x-3">
-                    <button type="button" onclick="openUpdateStatusModal(${order.orderId || order.id}, '${order.status}')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-                        <i class="fas fa-edit mr-1"></i> Cập nhật trạng thái
-                    </button>
-                </div>
-            </div>
-        ` : ''}
-    `;
-    
-    // Thêm sự kiện đóng modal khi click ngoài nội dung
-    const orderDetailModal = document.getElementById('order-detail-modal');
-    if (orderDetailModal) {
-        const handleClickOutside = (e) => {
-            if (e.target === orderDetailModal) {
-                closeOrderDetailModal();
-                orderDetailModal.removeEventListener('click', handleClickOutside);
-            }
-        };
-        
-        orderDetailModal.addEventListener('click', handleClickOutside);
-    }
-}
 
 /**
  * Mở modal chi tiết đơn hàng
@@ -1411,12 +1279,7 @@ function renderOrderDetail(order) {
             </div>
             
             ${canUpdateStatus ? `
-                <div class="mt-6 pt-4 border-t border-gray-200">
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" onclick="openUpdateStatusModal(${orderId}, '${status}')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-                            <i class="fas fa-edit mr-1"></i> Cập nhật trạng thái
-                        </button>
-                    </div>
+                
                 </div>
             ` : ''}
         </div>
@@ -1572,89 +1435,91 @@ function getAvailableStatuses(currentStatus) {
     return allStatuses.filter(s => allowedTransitions.includes(s.value));
 }
 
+
 /**
- * Xử lý cập nhật trạng thái đơn hàng
+ * Xử lý khi người dùng click vào trạng thái đơn hàng
+ * @param {Event} event - Sự kiện click
+ * @param {string} currentStatus - Trạng thái hiện tại
  */
-async function handleUpdateOrderStatus() {
-    try {
-        // Lấy form và các giá trị
-        const updateStatusForm = document.getElementById('update-status-form');
-        const newStatusSelect = document.getElementById('new-status');
-        const statusNote = document.getElementById('status-note');
-        
-        if (!updateStatusForm || !newStatusSelect) {
-            if (debugMode) console.error('Không tìm thấy form hoặc select trạng thái');
-            displayToastMessage('Có lỗi xảy ra khi cập nhật trạng thái', 'error');
-            return;
-        }
-        
-        // Lấy orderId từ dataset của form
-        const orderId = updateStatusForm.dataset.orderId;
-        if (!orderId) {
-            if (debugMode) console.error('Không tìm thấy orderId trong form');
-            displayToastMessage('Không tìm thấy mã đơn hàng cần cập nhật', 'error');
-            return;
-        }
-        
-        // Lấy giá trị trạng thái mới
-        const newStatus = newStatusSelect.value;
-        if (!newStatus) {
-            displayToastMessage('Vui lòng chọn trạng thái mới', 'error');
-            return;
-        }
-        
-        // Dữ liệu cập nhật theo định dạng OrderStatusUpdateDto
-        const updateData = {
-            orderStatus: newStatus,
-            note: statusNote?.value || ''
-        };
-        
-        // Hiển thị thông báo đang cập nhật
-        displayToastMessage('Đang cập nhật trạng thái đơn hàng...', 'info');
-        
-        // Lấy token
-        const token = getTokenFromStorage();
-        if (!token) {
-            displayToastMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
-            closeUpdateStatusModal();
-            return;
-        }
-        
+function handleStatusChange(event, currentStatus) {
+    const button = event.currentTarget;
+    const tr = button.closest('tr');
+    const orderId = tr.querySelector('td:first-child a')?.textContent?.replace('#', '');
+    
+    if (!orderId) {
+        console.error('Không tìm thấy ID đơn hàng');
+        return;
+    }
+    
+    // Xác định trạng thái tiếp theo
+    let nextStatus = '';
+    const statusLower = currentStatus.toLowerCase();
+    
+    if (statusLower.includes('pending') || statusLower.includes('chờ xác nhận')) {
+        nextStatus = 'Processing'; // Đang xử lý
+    } else if (statusLower.includes('processing') || statusLower.includes('đang xử lý')) {
+        nextStatus = 'Shipped'; // Đang giao
+    } else if (statusLower.includes('shipped') || statusLower.includes('đang giao')) {
+        nextStatus = 'Delivered'; // Đã giao hàng
+    } else {
+        alert('Không thể chuyển tiếp trạng thái này!');
+        return;
+    }
+    
+    if (confirm(`Bạn có chắc muốn chuyển đơn hàng #${orderId} từ "${currentStatus}" sang "${nextStatus}"?`)) {
+        // Gọi API cập nhật trạng thái ở đây
+        updateOrderStatus(orderId, nextStatus);
+    }
+}
+
+
+
+/**
+ * Xử lý hủy đơn hàng
+ * @param {number} orderId - ID đơn hàng cần hủy
+ */
+async function handleCancelOrder(orderId) {
+    if (confirm(`Bạn có chắc chắn muốn hủy đơn hàng #${orderId}?`)) {
         try {
-            // Gọi API cập nhật trạng thái
+            // Hiển thị thông báo đang xử lý
+            displayToastMessage('Đang hủy đơn hàng...', 'info');
+            
+            const token = getTokenFromStorage();
+            if (!token) {
+                displayToastMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
+                return;
+            }
+            
             const response = await fetch(`${API_BASE}/Orders/${orderId}/status`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(updateData)
+                body: JSON.stringify({
+                    newStatus: 'Cancelled',
+                    reason: 'Hủy bởi người bán'
+                })
             });
             
-            // Đóng modal
-            closeUpdateStatusModal();
-            
             if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                const errorMessage = errorData?.message || `API trả về mã lỗi: ${response.status}`;
-                throw new Error(errorMessage);
+                const errorText = await response.text();
+                throw new Error(`API trả về mã lỗi: ${response.status} - ${errorText}`);
             }
             
-            // Tải lại danh sách đơn hàng
-            await loadSellerOrders(orderPagination.currentPage);
-            
             // Hiển thị thông báo thành công
-            displayToastMessage('Đã cập nhật trạng thái đơn hàng thành công!', 'success');
-        } catch (fetchError) {
-            if (debugMode) console.error('Lỗi fetch API cập nhật trạng thái:', fetchError);
-            throw fetchError;
+            displayToastMessage('Đơn hàng đã được hủy thành công', 'success');
+            
+            // Tải lại danh sách đơn hàng
+            loadSellerOrders(orderPagination.currentPage);
+            
+        } catch (error) {
+            console.error('Lỗi khi hủy đơn hàng:', error);
+            displayToastMessage(`Không thể hủy đơn hàng: ${error.message}`, 'error');
         }
-        
-    } catch (error) {
-        if (debugMode) console.error('Lỗi khi cập nhật trạng thái đơn hàng:', error);
-        displayToastMessage(`Không thể cập nhật trạng thái: ${error.message}`, 'error');
     }
 }
+
 
 /**
  * Lấy token từ localStorage hoặc sessionStorage

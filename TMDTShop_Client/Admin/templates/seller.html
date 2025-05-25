@@ -7,7 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style>
+
         body {
             overflow-x: hidden;
             padding: 0 !important;
@@ -98,6 +100,91 @@
         }
         .section { display: none; }
         .section.active { display: block; }
+        /* class active cho nav-item mặc định */
+            .nav-item.active {
+                background-color: #dbeafe !important;
+                color: #1d4ed8 !important;
+                border-right: 3px solid #3b82f6;
+            }
+            /* Shop information grid enhancements */
+.shop-info-grid {
+    transition: all 0.3s ease;
+}
+
+.shop-info-card {
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.shop-info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Status indicators */
+.status-indicator {
+    background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1));
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+/* Featured products enhancements */
+#featured-products .hover\:shadow-md:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Ranking badges */
+.ranking-badge {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+/* Loading states */
+.shop-loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .shop-info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .lg\:col-span-4 {
+        grid-column: span 1;
+    }
+}
+
+/* Animation for featured products */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.featured-product-item {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.featured-product-item:nth-child(1) { animation-delay: 0.1s; }
+.featured-product-item:nth-child(2) { animation-delay: 0.2s; }
+.featured-product-item:nth-child(3) { animation-delay: 0.3s; }
+.featured-product-item:nth-child(4) { animation-delay: 0.4s; }
+.featured-product-item:nth-child(5) { animation-delay: 0.5s; }
+
+
         /* CSS cho modal chỉnh sửa sản phẩm */
 #product-modal .modal-container {
     max-width: 500px;
@@ -178,6 +265,181 @@ textarea {
     margin: 0 auto;
   }
 }
+.status-badge {
+            padding: 0.35em 0.7em;
+            border-radius: 0.375rem;
+            font-size: 0.875em;
+            font-weight: 600;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            cursor: default;
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+            min-width: 130px;
+            display: inline-block;
+            border: 1px solid transparent;
+        }
+
+        .status-badge.interactive {
+            cursor: pointer;
+        }
+
+        .status-badge.interactive:hover {
+            opacity: 0.85;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-cho-xac-nhan {
+            background-color: #fef3c7;
+            color: #b45309;
+            border-color: #fde68a;
+        }
+
+        .status-dang-xu-ly {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-color: #bfdbfe;
+        }
+
+        .status-dang-giao {
+            background-color: #d1fae5;
+            color: #065f46;
+            border-color: #a7f3d0;
+        }
+
+        .status-da-giao {
+            background-color: #41a765;
+            color: #ffffff;
+            border-color: #bbf7d0;
+        }
+
+        .status-yeu-cau-tra-hang-hoan-tien {
+            background-color: #fffbeb;
+            color: #b45309;
+            border-color: #fef3c7;
+        }
+
+        .status-da-hoan-tien {
+            background-color: #ede9fe;
+            color: #5b21b6;
+            border-color: #ddd6fe;
+        }
+
+        .status-da-huy {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-color: #fecaca;
+        }
+
+        .status-default {
+            background-color: #f3f4f6;
+            color: #4b5563;
+            border-color: #e5e7eb;
+        }
+
+
+        .action-button {
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.15s ease-in-out;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .action-button i {
+            margin-right: 0.35rem;
+        }
+
+        .action-button-view {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border-color: #bfdbfe;
+        }
+
+        .action-button-view:hover {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .action-button-cancel {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border-color: #fecaca;
+        }
+
+        .action-button-cancel:hover {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .action-button-refund {
+            background-color: #dcfce7;
+            color: #15803d;
+            border-color: #bbf7d0;
+        }
+
+        .action-button-refund:hover {
+            background-color: #bbf7d0;
+            color: #14532d;
+        }
+
+        .action-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .action-button:disabled:hover {
+            background-color: inherit;
+            color: inherit;
+        }
+        /* Featured products image sizing */
+.featured-product-image {
+    width: 60px !important;
+    height: 60px !important;
+    min-width: 60px !important;
+    min-height: 60px !important;
+    max-width: 60px !important;
+    max-height: 60px !important;
+    object-fit: cover !important;
+    border-radius: 0.5rem !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Responsive cho mobile */
+@media (max-width: 640px) {
+    .featured-product-image {
+        width: 50px !important;
+        height: 50px !important;
+        min-width: 50px !important;
+        min-height: 50px !important;
+        max-width: 50px !important;
+        max-height: 50px !important;
+    }
+}
+
+/* Container cho featured products */
+.featured-product-item {
+    min-height: 80px;
+    align-items: center;
+}
+
+.featured-product-content {
+    flex: 1;
+    min-width: 0;
+    padding-left: 1rem;
+}
+
+.featured-product-price {
+    text-align: right;
+    flex-shrink: 0;
+    min-width: 100px;
+}
     </style>
 </head>
 <body class="bg-gray-100">
@@ -194,11 +456,8 @@ textarea {
                 </div>
             </div>
             <nav class="p-4 space-y-2">
-                <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg bg-blue-50 text-blue-600" data-section="dashboard">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span class="sidebar-text">Bảng điều khiển</span>
                 </a>
-                <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" data-section="shop">
+                <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100 active" data-section="shop">
                     <i class="fas fa-store"></i>
                     <span class="sidebar-text">Quản lý cửa hàng</span>
                 </a>
@@ -218,13 +477,6 @@ textarea {
                     <i class="fas fa-chart-line"></i>
                     <span class="sidebar-text">Thống kê</span>
                 </a>
-                <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" data-section="shipping">
-                    <i class="fas fa-truck"></i>
-                    <span class="sidebar-text">Vận chuyển</span>
-                </a>
-                <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" data-section="revenue">
-                    <i class="fas fa-wallet"></i>
-                    <span class="sidebar-text">Doanh thu</span>
                 </a>
                 <a href="/Customer/templates/login.html" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" id="logout-btn">
                     <i class="fas fa-sign-out-alt"></i>
@@ -247,7 +499,7 @@ textarea {
                     <button class="text-gray-600 md:hidden" id="mobileMenuButton">
                         <i class="fas fa-bars"></i>
                     </button>
-                    <h1 class="text-xl font-semibold" id="pageTitle">Bảng điều khiển</h1>
+                    <h1 class="text-xl font-semibold" id="pageTitle">Trang quản lý cửa hàng</h1>
                 </div>
                 <div class="flex items-center space-x-6">
                     <div class="relative">
@@ -267,114 +519,6 @@ textarea {
 
             <!-- Page Content -->
             <main class="p-6">
-                <!-- Dashboard Section -->
-                <section id="dashboard-section" class="section active">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-gray-500">Tổng doanh thu</p>
-                                    <h3 id="total-revenue" class="text-2xl font-bold mt-2">125.450.000đ</h3>
-                                </div>
-                                <div class="bg-blue-100 p-3 rounded-full">
-                                    <i class="fas fa-wallet text-blue-600 text-xl"></i>
-                                </div>
-                            </div>
-                            <p class="text-green-500 text-sm mt-2"><i class="fas fa-arrow-up mr-1"></i> 12.5% so với tháng trước</p>
-                        </div>
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-gray-500">Tổng đơn hàng</p>
-                                    <h3 id="total-orders" class="text-2xl font-bold mt-2">342</h3>
-                                </div>
-                                <div class="bg-green-100 p-3 rounded-full">
-                                    <i class="fas fa-shopping-bag text-green-600 text-xl"></i>
-                                </div>
-                            </div>
-                            <p class="text-green-500 text-sm mt-2"><i class="fas fa-arrow-up mr-1"></i> 8.2% so với tháng trước</p>
-                        </div>
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-gray-500">Sản phẩm</p>
-                                    <h3 id="total-products" class="text-2xl font-bold mt-2">56</h3>
-                                </div>
-                                <div class="bg-purple-100 p-3 rounded-full">
-                                    <i class="fas fa-box-open text-purple-600 text-xl"></i>
-                                </div>
-                            </div>
-                            <p class="text-green-500 text-sm mt-2"><i class="fas fa-arrow-up mr-1"></i> 3 sản phẩm mới</p>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                        <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
-                            <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-lg font-semibold">Doanh thu 7 ngày gần đây</h2>
-                                <select class="border border-gray-300 rounded px-3 py-1 text-sm">
-                                    <option>7 ngày</option>
-                                    <option>30 ngày</option>
-                                    <option>3 tháng</option>
-                                </select>
-                            </div>
-                            <div class="chart-container">
-                                <canvas id="revenue-chart"></canvas>
-                            </div>
-                        </div>
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <h2 class="text-lg font-semibold mb-4">Sản phẩm bán chạy</h2>
-                            <div class="space-y-4">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-12 h-12 rounded overflow-hidden">
-                                        <img src="https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80" class="w-full h-full object-cover">
-                                    </div>
-                                    <div>
-                                        <h4 class="font-medium">iPhone 14 Pro Max</h4>
-                                        <p class="text-sm text-gray-500">28 đơn • 840.000.000đ</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
-                        <div class="p-6 border-b border-gray-200">
-                            <div class="flex justify-between items-center">
-                                <h2 class="text-lg font-semibold">Đơn hàng gần đây</h2>
-                                <a href="#" class="text-blue-600 text-sm">Xem tất cả</a>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#ORD-2025-001</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Nguyễn Văn A</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">12/11/2025</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">35.980.000đ</td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Đã giao</span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
 
                 <!-- Categories Section -->
                 <section id="categories-section" class="section">
@@ -433,233 +577,415 @@ textarea {
                 </section>
 
                 <!-- Shop Section -->
-                <section id="shop-section" class="section">
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-lg font-semibold">Thông tin cửa hàng</h2>
-                            <button id="edit-shop-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition action-btn">
-                                <i class="fas fa-edit mr-2"></i>Chỉnh sửa
-                            </button>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <div class="flex items-center space-x-4 mb-4">
-                                    <img id="shopLogo" src="" alt="Logo cửa hàng" class="w-20 h-20 rounded-lg object-cover">
-                                    <div>
-                                        <h3 id="shopName" class="text-xl font-semibold"></h3>
-                                        <p id="shopStatus" class="text-sm text-gray-500"></p>
-                                        <p class="text-sm text-gray-500 mt-1"><i class="fas fa-envelope mr-1"></i><span id="shopEmail"></span></p>
-                                        <p class="text-sm text-gray-500 mt-1"><i class="fas fa-phone mr-1"></i><span id="shopPhone"></span></p>
-                                    </div>
+                <section id="shop-section" class="section active">
+                    <!-- Header Banner cửa hàng --> 
+                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-xl p-8 mb-8 text-white">
+                        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between">
+                            <div class="flex items-center space-x-6 mb-6 lg:mb-0">
+                                <div class="relative">
+                                    <img id="shopLogo" src="https://via.placeholder.com/120" alt="Logo cửa hàng" 
+                                        class="w-24 h-24 lg:w-32 lg:h-32 rounded-full object-cover border-4 border-white shadow-lg">
+                                   
                                 </div>
-                                <p id="shopDescription" class="text-gray-600"></p>
-                                <p class="text-sm text-gray-500 mt-3"><i class="fas fa-map-marker-alt mr-1"></i><span id="shopAddress"></span></p>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="bg-gray-50 p-4 rounded-lg">
-                                    <p class="text-gray-500">Doanh thu</p>
-                                    <p id="totalRevenue" class="text-2xl font-bold mt-2"></p>
-                                    <p id="totalSales" class="text-sm text-gray-500 mt-1"></p>
-                                </div>
-                                <div class="bg-gray-50 p-4 rounded-lg">
-                                    <p class="text-gray-500">Đánh giá</p>
-                                    <div class="flex items-center mt-2">
-                                        <span id="shopRating" class="text-2xl font-bold">4.8</span>
-                                        <div class="ml-2 text-yellow-400">
+                                <div>
+                                    <h1 id="shopName" class="text-3xl lg:text-4xl font-bold mb-2">Tên Cửa Hàng</h1>
+                                    <div class="flex items-center space-x-4 mb-3">
+                                        <!-- TRẠNG THÁI MỚI - RÕ RÀNG HỖN -->
+                                        <div id="shop-status-container" class="flex items-center space-x-2 px-4 py-2 bg-white rounded-full border-2 border-white shadow-lg">
+                                            
+                                            <span id="shopStatus" class="text-gray-800 font-bold text-sm">
+                                                Đang hoạt động
+                                            </span>
+                                        </div>
+                                        <!-- Rating (nếu cần) -->
+                                        <div class="flex items-center space-x-1 text-yellow-300">
                                             <i class="fas fa-star"></i>
+                                            <span class="font-medium">4.8</span>
+                                            <span class="text-sm opacity-90">(1,234 đánh giá)</span>
                                         </div>
                                     </div>
-                                    <p id="reviewCount" class="text-sm text-gray-500 mt-1">42 đánh giá</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col lg:flex-row space-y-3 lg:space-y-0 lg:space-x-4">
+                                <button id="edit-shop-btn" class="bg-white text-blue-600 px-6 py-3 rounded-lg hover:bg-gray-50 transition font-medium shadow-lg flex items-center">
+                                    <i class="fas fa-edit mr-2"></i>Chỉnh sửa thông tin
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Thông tin chi tiết cửa hàng -->
+                    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                                <i class="fas fa-info-circle text-blue-500 mr-3"></i>
+                                Thông tin chi tiết cửa hàng
+                            </h3>
+                        </div>
+                        
+                        <!-- Grid thông tin mở rộng 4 cột -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                            <!-- Email -->
+                            <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition shop-info-card">
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-envelope text-blue-600 text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Email liên hệ</p>
+                                    <p id="shopEmail" class="font-semibold text-gray-800 text-sm">shop@example.com</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Số điện thoại -->
+                            <div class="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-green-300 transition shop-info-card">
+                                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-phone text-green-600 text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Số điện thoại</p>
+                                    <p id="shopPhone" class="font-semibold text-gray-800 text-sm">0123 456 789</p>
+                                </div>
+                            </div>
+                            
+                        </div>
+                        
+                        <!-- Địa chỉ và mô tả - Hàng thứ 2 -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                            <!-- Địa chỉ -->
+                            <div class="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-red-300 transition shop-info-card">
+                                <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-map-marker-alt text-red-600 text-lg"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Địa chỉ cửa hàng</p>
+                                    <p id="shopAddress" class="font-semibold text-gray-800 text-sm leading-relaxed">123 Đường ABC, Quận XYZ, Thành phố Hồ Chí Minh</p>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="bg-white rounded-lg shadow p-6 mt-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-lg font-semibold">Danh mục sản phẩm</h2>
+
+                    <!-- Danh mục và sản phẩm nổi bật -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Danh mục sản phẩm -->
+                        <div class="bg-white rounded-xl shadow-lg p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                                    <i class="fas fa-list text-indigo-500 mr-3"></i>
+                                    Danh mục sản phẩm
+                                </h3>
+                            </div>
+                            
+                            <div class="space-y-3" id="categoryList">
+                                <!-- Categories sẽ được render bằng JavaScript -->
+                                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-mobile-alt text-blue-600"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-800">Điện thoại</p>
+                                            <p class="text-sm text-gray-500">25 sản phẩm</p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Hoạt động</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="categoryList"></div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow p-6 mt-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-lg font-semibold">Sản phẩm</h2>
+
+                        <!-- Sản phẩm nổi bật -->
+                        <div class="bg-white rounded-xl shadow-lg p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                                    <i class="fas fa-fire text-red-500 mr-3"></i>
+                                    Sản phẩm nổi bật
+                                </h3>
+
+                            </div>
+                            
+                            <div class="space-y-3" id="featured-products">
+                                <!-- Featured products sẽ được render bằng JavaScript -->
+                                <div class="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                                    <img src="https://via.placeholder.com/60" alt="Product" class="w-15 h-15 rounded-lg object-cover">
+                                    <div class="flex-1">
+                                        <p class="font-medium text-gray-800">iPhone 14 Pro Max</p>
+                                        <p class="text-sm text-gray-500">28,000,000đ</p>
+                                        <div class="flex items-center space-x-2 mt-1">
+                                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Còn hàng</span>
+                                            <span class="text-xs text-gray-500">15 đã bán</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="productList"></div>
                     </div>
                 </section>
+
                 <!-- Orders Section - Cập nhật cho seller.html -->
-<section id="orders-section" class="section">
-    <div class="bg-white rounded-lg shadow p-6">
-        <!-- Header với tiêu đề và thông tin tổng quan -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-            <div class="mb-4 md:mb-0">
-                <h2 class="text-lg font-semibold">Quản lý đơn hàng</h2>
-                <p class="text-sm text-gray-600 mt-1" id="orders-count-info">Đang tải thông tin đơn hàng...</p>
-            </div>
-            
-            <!-- Bộ sắp xếp đơn hàng -->
-            <div class="flex flex-wrap items-center gap-2">
-                <label for="sort-orders-by" class="text-sm text-gray-600 whitespace-nowrap">Sắp xếp:</label>
-                <select id="sort-orders-by" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:ring-blue-500 focus:border-blue-500">
-                    <option value="orderDate:desc">Ngày đặt (mới nhất)</option>
-                    <option value="orderDate:asc">Ngày đặt (cũ nhất)</option>
-                    <option value="orderId:desc">Mã đơn (giảm dần)</option>
-                    <option value="orderId:asc">Mã đơn (tăng dần)</option>
-                    <option value="totalAmount:desc">Tổng tiền (cao nhất)</option>
-                    <option value="totalAmount:asc">Tổng tiền (thấp nhất)</option>
-                    <option value="status:asc">Trạng thái (A-Z)</option>
-                    <option value="status:desc">Trạng thái (Z-A)</option>
-                </select>
-            </div>
-        </div>
-        
-        <!-- Bộ lọc đơn hàng - Fix bộ lọc -->
-        <form id="order-filter-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            <select id="status-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-blue-500 focus:border-blue-500">
-                <option value="">Tất cả trạng thái</option>
-                <option value="Pending">Chờ xử lý</option>
-                <option value="Processing">Đang xử lý</option>
-                <option value="Shipped">Đang giao</option>
-                <option value="Delivered">Đã giao</option>
-                <option value="Completed">Hoàn thành</option>
-                <option value="Cancelled">Đã hủy</option>
-            </select>
-            
-            <div class="flex flex-col sm:flex-row gap-2">
-                <div class="relative flex-1">
-                    <input type="date" id="start-date-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full" placeholder="Từ ngày">
-                </div>
-                <div class="relative flex-1">
-                    <input type="date" id="end-date-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full" placeholder="Đến ngày">
-                </div>
-            </div>
-            
-            <div class="relative sm:col-span-2">
-                <input type="text" id="search-filter" class="border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-sm w-full" placeholder="Tìm theo mã đơn, tên khách hàng...">
-                <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-            </div>
-            
-            <div class="flex gap-2 sm:col-span-2 lg:col-span-1">
-                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex-1 flex items-center justify-center">
-                    <i class="fas fa-filter mr-1.5"></i> Lọc
-                </button>
-                <button type="button" id="reset-filter-btn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
-                    <i class="fas fa-undo"></i>
-                </button>
-            </div>
-        </form>
-        
-        <!-- Bảng đơn hàng -->
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đặt</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng thanh toán</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng tiền</th>
-                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                        <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
-                    </tr>
-                </thead>
-                <tbody id="order-table-body" class="bg-white divide-y divide-gray-200">
-                    <tr>
-                        <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">
-                            <div class="flex flex-col items-center justify-center">
-                                <svg class="animate-spin h-6 w-6 text-blue-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <section id="orders-section" class="section">
+                    <div class="bg-gray-50 rounded-lg shadow p-6">
+                        <!-- Header với tiêu đề và thông tin tổng quan -->
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-800">Quản lý đơn hàng</h2>
+                                <p class="text-sm text-gray-600 mt-1" id="orders-count-info">Đang tải thông tin đơn hàng...</p>
+                            </div>
+                        </div>
+
+                        <!-- Phần lọc và sắp xếp đơn hàng -->
+                        <div class="bg-white p-4 md:p-6 rounded-lg shadow-sm mb-6 border border-gray-200">
+                            <h3 class="text-lg font-semibold mb-4 flex items-center space-x-2 text-blue-700">
+                                <i class="fas fa-filter"></i>
+                                <span>Lọc và sắp xếp đơn hàng</span>
+                            </h3>
+                            <form id="order-filter-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-4 items-end">
+                                <!-- Tìm kiếm theo Tên/Mã đơn hàng -->
+                                <div class="lg:col-span-2 xl:col-span-2">
+                                    <label for="search-filter" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Tìm theo tên KH/Mã ĐH
+                                    </label>
+                                    <input type="text" id="search-filter" name="searchTerm" placeholder="Nhập tên hoặc mã đơn hàng..."
+                                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150">
+                                </div>
+
+                                <!-- Trạng thái -->
+                                <div>
+                                    <label for="status-filter" class="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                                    <select id="status-filter" name="status"
+                                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150">
+                                        <option value="">Tất cả trạng thái</option>
+                                        <option value="Pending">Chờ xử lý</option>
+                                        <option value="Processing">Đang xử lý</option>
+                                        <option value="Shipped">Đang giao</option>
+                                        <option value="Delivered">Đã giao</option>
+                                        <option value="Completed">Hoàn thành</option>
+                                        <option value="Cancelled">Đã hủy</option>
+                                    </select>
+                                </div>
+
+                                <!-- Ngày đặt hàng - Từ ngày -->
+                                <div>
+                                    <label for="start-date-filter" class="block text-sm font-medium text-gray-700 mb-1">Từ ngày</label>
+                                    <input type="date" id="start-date-filter" name="startDate"
+                                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150">
+                                </div>
+
+                                <!-- Ngày đặt hàng - Đến ngày -->
+                                <div>
+                                    <label for="end-date-filter" class="block text-sm font-medium text-gray-700 mb-1">Đến ngày</label>
+                                    <input type="date" id="end-date-filter" name="endDate"
+                                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150">
+                                </div>
+
+                                <!-- Khoảng giá tiền: Từ -->
+                                <div>
+                                    <label for="min-price-filter" class="block text-sm font-medium text-gray-700 mb-1">Giá từ (VNĐ)</label>
+                                    <input type="number" id="min-price-filter" name="minPrice" placeholder="VD: 100000" min="0"
+                                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150">
+                                </div>
+
+                                <!-- Khoảng giá tiền: Đến -->
+                                <div>
+                                    <label for="max-price-filter" class="block text-sm font-medium text-gray-700 mb-1">Giá đến (VNĐ)</label>
+                                    <input type="number" id="max-price-filter" name="maxPrice" placeholder="VD: 5000000" min="0"
+                                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150">
+                                </div>
+
+                                <!-- Sắp xếp -->
+                                <div>
+                                    <label for="sort-orders-by" class="block text-sm font-medium text-gray-700 mb-1">Sắp xếp theo</label>
+                                    <select id="sort-orders-by" name="sortBy"
+                                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150">
+                                        <option value="OrderDate:desc">Mặc định (Ngày mới nhất)</option>
+                                        <option value="TotalAmount:asc">Tổng tiền: Thấp đến Cao</option>
+                                        <option value="TotalAmount:desc">Tổng tiền: Cao đến Thấp</option>
+                                        <option value="CustomerName:asc">Tên khách hàng: A-Z</option>
+                                        <option value="CustomerName:desc">Tên khách hàng: Z-A</option>
+                                        <option value="Status:asc">Trạng thái (A-Z)</option>
+                                        <option value="Status:desc">Trạng thái (Z-A)</option>
+                                        <option value="OrderDate:asc">Ngày đặt: Cũ nhất</option>
+                                    </select>
+                                </div>
+
+                                <!-- Page Size -->
+                                <div>
+                                    <label for="page-size-select" class="block text-sm font-medium text-gray-700 mb-1">Hiển thị</label>
+                                    <select id="page-size-select" name="pageSize"
+                                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150">
+                                        <option value="10">10 đơn hàng</option>
+                                        <option value="25">25 đơn hàng</option>
+                                        <option value="50">50 đơn hàng</option>
+                                        <option value="100">100 đơn hàng</option>
+                                    </select>
+                                </div>
+
+                                <!-- Buttons -->
+                                <div class="col-span-full flex justify-end items-end mt-3">
+                                    <button type="button" id="reset-filter-btn" class="bg-gray-200 text-gray-700 px-4 py-2.5 rounded-md hover:bg-gray-300 transition font-medium shadow-sm mr-3">
+                                        <i class="fas fa-undo mr-2"></i>Đặt lại
+                                    </button>
+                                    <button type="submit" class="bg-blue-600 text-white px-6 py-2.5 rounded-md hover:bg-blue-700 transition font-medium shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                        <i class="fas fa-search mr-2"></i>Áp dụng
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Bảng đơn hàng -->
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                            <div class="flex justify-between items-center px-6 py-4 bg-gray-50 border-b border-gray-200">
+                                <h3 class="text-lg font-semibold text-gray-800">Danh sách đơn hàng</h3>
+                                <span id="orders-count" class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                    Đang tải...
+                                </span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Mã ĐH
+                                            </th>
+                                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Khách hàng
+                                            </th>
+                                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Ngày đặt
+                                            </th>
+                                            <th scope="col" class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Tổng tiền
+                                            </th>
+                                            <th scope="col" class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Thanh toán
+                                            </th>
+                                            <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Số SP
+                                            </th>
+                                            <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Trạng thái
+                                            </th>
+                                            <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Hành động
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="order-table-body" class="bg-white divide-y divide-gray-200">
+                                        <!-- Dữ liệu đơn hàng sẽ được thêm vào bằng JavaScript -->
+                                        <tr>
+                                            <td colspan="8" class="px-6 py-4 text-center">
+                                                <div class="animate-pulse flex justify-center items-center">
+                                                    <div class="h-6 w-6 bg-blue-200 rounded-full mr-2"></div>
+                                                    <div class="h-4 bg-blue-100 rounded w-1/3"></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Phân trang -->
+                            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                                <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <div>
+                                        Hiển thị <span id="current-page-info" class="font-medium">1</span> / <span id="total-pages-info" class="font-medium">1</span> trang
+                                        (Tổng số <span id="total-items-info" class="font-medium">0</span> đơn hàng)
+                                    </div>
+                                    <div class="flex items-center space-x-1">
+                                        <button id="prev-page-btn"
+                                            class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            disabled>
+                                            <i class="fas fa-chevron-left"></i>
+                                        </button>
+                                        <div class="flex items-center">
+                                            <input type="number" id="page-input" min="1"
+                                                class="p-2 border border-gray-300 rounded-md w-16 text-center shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                            <button id="go-to-page-btn"
+                                                class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-3 rounded-md ml-1 transition-colors">Đi</button>
+                                        </div>
+                                        <button id="next-page-btn"
+                                            class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            disabled>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Placeholder cho trường hợp không có đơn hàng - Ẩn ban đầu -->
+                        <div id="no-orders-message" class="hidden py-12 px-6 text-center">
+                            <svg class="mx-auto h-16 w-16 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            <h3 class="mt-4 text-lg font-medium text-gray-900">Chưa có đơn hàng nào</h3>
+                            <p class="mt-1 text-sm text-gray-500">Hiện tại chưa có đơn hàng nào phù hợp với điều kiện tìm kiếm của bạn.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Order Detail Modal -->
+                <div id="order-detail-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden" role="dialog" aria-modal="true">
+                    <div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50" aria-hidden="true"></div>
+                    <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto relative">
+                        <!-- Header modal cố định -->
+                        <div class="sticky top-0 flex justify-between items-center p-4 border-b border-gray-200 bg-white z-10">
+                            <h3 class="text-lg font-semibold" id="order-detail-title">Chi tiết đơn hàng</h3>
+                            <button type="button" onclick="closeOrderDetailModal()" class="text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Nội dung modal chi tiết đơn hàng -->
+                        <div id="order-detail-content" class="p-4">
+                            <!-- Placeholder loading -->
+                            <div class="flex flex-col items-center justify-center py-12">
+                                <svg class="animate-spin h-8 w-8 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                <p>Đang tải dữ liệu đơn hàng...</p>
+                                <p class="text-gray-600">Đang tải thông tin đơn hàng...</p>
                             </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Placeholder cho trường hợp không có đơn hàng - Ẩn ban đầu -->
-        <div id="no-orders-message" class="hidden py-12 px-6 text-center">
-            <svg class="mx-auto h-16 w-16 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <h3 class="mt-4 text-lg font-medium text-gray-900">Chưa có đơn hàng nào</h3>
-            <p class="mt-1 text-sm text-gray-500">Hiện tại chưa có đơn hàng nào phù hợp với điều kiện tìm kiếm của bạn.</p>
-        </div>
-    </div>
-    
-    <!-- Phân trang -->
-    <div id="order-pagination" class="mt-4">
-        <!-- Phân trang sẽ được thêm vào đây bằng JavaScript -->
-    </div>
-</section>
+                        </div>
+                    </div>
+                </div>
 
-<!-- Order Detail Modal -->
-<div id="order-detail-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50" aria-hidden="true"></div>
-    <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto relative">
-        <!-- Header modal cố định -->
-        <div class="sticky top-0 flex justify-between items-center p-4 border-b border-gray-200 bg-white z-10">
-            <h3 class="text-lg font-semibold" id="order-detail-title">Chi tiết đơn hàng</h3>
-            <button type="button" onclick="closeOrderDetailModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <!-- Nội dung modal chi tiết đơn hàng -->
-        <div id="order-detail-content" class="p-4">
-            <!-- Placeholder loading -->
-            <div class="flex flex-col items-center justify-center py-12">
-                <svg class="animate-spin h-8 w-8 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="text-gray-600">Đang tải thông tin đơn hàng...</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Update Status Modal -->
-<div id="update-status-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50" aria-hidden="true"></div>
-    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4 relative">
-        <div class="flex justify-between items-center mb-4 border-b pb-3">
-            <h3 class="text-lg font-semibold">Cập nhật trạng thái đơn hàng</h3>
-            <button type="button" onclick="closeUpdateStatusModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <form id="update-status-form" data-order-id="">
-            <div class="mb-4">
-                <label for="new-status" class="block text-sm font-medium text-gray-700 mb-1">Trạng thái mới</label>
-                <select id="new-status" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                    <!-- Các trạng thái sẽ được thêm vào đây bằng JavaScript -->
-                </select>
-                <div id="status-error" class="mt-1 text-sm text-red-600 hidden">Vui lòng chọn trạng thái mới.</div>
-            </div>
-            
-            <div class="mb-4">
-                <label for="status-note" class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                <textarea id="status-note" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="Nhập ghi chú về lý do thay đổi trạng thái (không bắt buộc)"></textarea>
-            </div>
-            
-            <div class="flex justify-end space-x-3 pt-3 border-t">
-                <button type="button" onclick="closeUpdateStatusModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
-                    Hủy
-                </button>
-                <button type="button" id="update-status-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-                    <span id="update-status-btn-text">Cập nhật</span>
-                    <span id="update-status-btn-loading" class="hidden">
-                        <i class="fas fa-spinner fa-spin"></i> Đang xử lý...
-                    </span>
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+                <!-- Update Status Modal -->
+                <div id="update-status-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden" role="dialog" aria-modal="true">
+                    <div class="modal-backdrop fixed inset-0 bg-black bg-opacity-50" aria-hidden="true"></div>
+                    <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4 relative">
+                        <div class="flex justify-between items-center mb-4 border-b pb-3">
+                            <h3 class="text-lg font-semibold">Cập nhật trạng thái đơn hàng</h3>
+                            <button type="button" onclick="closeUpdateStatusModal()" class="text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <form id="update-status-form" data-order-id="">
+                            <div class="mb-4">
+                                <label for="new-status" class="block text-sm font-medium text-gray-700 mb-1">Trạng thái mới</label>
+                                <select id="new-status" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                    <!-- Các trạng thái sẽ được thêm vào đây bằng JavaScript -->
+                                </select>
+                                <div id="status-error" class="mt-1 text-sm text-red-600 hidden">Vui lòng chọn trạng thái mới.</div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="status-note" class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                                <textarea id="status-note" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="3" placeholder="Nhập ghi chú về lý do thay đổi trạng thái (không bắt buộc)"></textarea>
+                            </div>
+                            
+                            <div class="flex justify-end space-x-3 pt-3 border-t">
+                                <button type="button" onclick="closeUpdateStatusModal()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+                                    Hủy
+                                </button>
+                                <button type="button" id="update-status-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                    <span id="update-status-btn-text">Cập nhật</span>
+                                    <span id="update-status-btn-loading" class="hidden">
+                                        <i class="fas fa-spinner fa-spin"></i> Đang xử lý...
+                                    </span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
                 <!-- Statistics Section -->
                 <section id="statistics-section" class="section">
                     <!-- Nội dung sẽ được thêm vào bằng JavaScript -->
@@ -876,11 +1202,290 @@ textarea {
                 </div>
             </form>
         </div>
-    </div>    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="../assets/js/script-loader.js"></script>
+    </div>    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="../assets/js/seller.js"></script>
     <script src="../assets/js/pagination-helper.js"></script>
     <script src="../assets/js/seller-orders.js"></script>
+    <script src="../assets/js/seller-statistics.js"></script>
+    <script>
+/**
+ * Sidebar Toggle Functionality
+ * Quản lý thu gọn/mở rộng sidebar
+ */
+
+// State management cho sidebar
+let sidebarState = {
+    isCollapsed: false,
+    isMobile: false
+};
+
+/**
+ * Initialize sidebar functionality
+ */
+function initializeSidebar() {
+    const toggleButton = document.getElementById('toggleSidebar');
+    const mobileMenuButton = document.getElementById('mobileMenuButton');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const header = document.querySelector('header');
+
+    if (toggleButton) {
+        toggleButton.addEventListener('click', toggleSidebar);
+    }
+
+    if (mobileMenuButton) {
+        mobileMenuButton.addEventListener('click', toggleMobileSidebar);
+    }
+
+    // Check for mobile/desktop on load
+    checkScreenSize();
     
+    // Listen for screen size changes
+    window.addEventListener('resize', checkScreenSize);
+    
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', handleOutsideClick);
+
+    console.log('✅ Sidebar functionality initialized');
+}
+
+/**
+ * Toggle sidebar collapsed state
+ */
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const header = document.querySelector('header');
+    const toggleButton = document.getElementById('toggleSidebar');
+    const toggleIcon = toggleButton?.querySelector('i');
+    const toggleText = toggleButton?.querySelector('.sidebar-text');
+
+    if (!sidebar || !mainContent || !header) {
+        console.error('❌ Không tìm thấy các elements cần thiết cho sidebar');
+        return;
+    }
+
+    // Toggle collapsed state
+    sidebarState.isCollapsed = !sidebarState.isCollapsed;
+
+    if (sidebarState.isCollapsed) {
+        // Collapse sidebar
+        sidebar.classList.add('collapsed');
+        mainContent.classList.add('collapsed');
+        header.classList.add('collapsed');
+        
+        // Update toggle button
+        if (toggleIcon) {
+            toggleIcon.className = 'fas fa-chevron-right';
+        }
+        if (toggleText) {
+            toggleText.textContent = 'Mở rộng';
+        }
+        
+        console.log('🔒 Sidebar collapsed');
+    } else {
+        // Expand sidebar
+        sidebar.classList.remove('collapsed');
+        mainContent.classList.remove('collapsed');
+        header.classList.remove('collapsed');
+        
+        // Update toggle button
+        if (toggleIcon) {
+            toggleIcon.className = 'fas fa-chevron-left';
+        }
+        if (toggleText) {
+            toggleText.textContent = 'Thu gọn';
+        }
+        
+        console.log('🔓 Sidebar expanded');
+    }
+
+    // Save state to localStorage
+    localStorage.setItem('sidebarCollapsed', sidebarState.isCollapsed.toString());
+    
+    // Trigger custom event for other components
+    window.dispatchEvent(new CustomEvent('sidebarToggle', {
+        detail: { isCollapsed: sidebarState.isCollapsed }
+    }));
+}
+
+/**
+ * Toggle mobile sidebar
+ */
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    
+    if (!sidebar) return;
+
+    // On mobile, just toggle visibility
+    if (sidebar.classList.contains('mobile-visible')) {
+        sidebar.classList.remove('mobile-visible');
+        console.log('📱 Mobile sidebar hidden');
+    } else {
+        sidebar.classList.add('mobile-visible');
+        console.log('📱 Mobile sidebar shown');
+    }
+}
+
+/**
+ * Check screen size and update sidebar behavior
+ */
+function checkScreenSize() {
+    const isMobile = window.innerWidth < 768;
+    const sidebar = document.getElementById('sidebar');
+    
+    sidebarState.isMobile = isMobile;
+    
+    if (isMobile) {
+        // Mobile mode
+        sidebar?.classList.remove('collapsed');
+        sidebar?.classList.remove('mobile-visible');
+        document.getElementById('mainContent')?.classList.remove('collapsed');
+        document.querySelector('header')?.classList.remove('collapsed');
+        
+        console.log('📱 Switched to mobile mode');
+    } else {
+        // Desktop mode - restore previous state
+        const savedState = localStorage.getItem('sidebarCollapsed');
+        if (savedState === 'true') {
+            sidebarState.isCollapsed = true;
+            applySidebarState();
+        }
+        
+        console.log('🖥️ Switched to desktop mode');
+    }
+}
+
+/**
+ * Apply sidebar state based on current settings
+ */
+function applySidebarState() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const header = document.querySelector('header');
+    const toggleButton = document.getElementById('toggleSidebar');
+    const toggleIcon = toggleButton?.querySelector('i');
+    const toggleText = toggleButton?.querySelector('.sidebar-text');
+
+    if (sidebarState.isCollapsed && !sidebarState.isMobile) {
+        sidebar?.classList.add('collapsed');
+        mainContent?.classList.add('collapsed');
+        header?.classList.add('collapsed');
+        
+        if (toggleIcon) toggleIcon.className = 'fas fa-chevron-right';
+        if (toggleText) toggleText.textContent = 'Mở rộng';
+    } else {
+        sidebar?.classList.remove('collapsed');
+        mainContent?.classList.remove('collapsed');
+        header?.classList.remove('collapsed');
+        
+        if (toggleIcon) toggleIcon.className = 'fas fa-chevron-left';
+        if (toggleText) toggleText.textContent = 'Thu gọn';
+    }
+}
+
+/**
+ * Handle clicks outside sidebar on mobile
+ */
+function handleOutsideClick(event) {
+    if (!sidebarState.isMobile) return;
+
+    const sidebar = document.getElementById('sidebar');
+    const mobileMenuButton = document.getElementById('mobileMenuButton');
+    
+    if (!sidebar || !sidebar.classList.contains('mobile-visible')) return;
+
+    // Check if click is outside sidebar and not on menu button
+    if (!sidebar.contains(event.target) && 
+        !mobileMenuButton?.contains(event.target)) {
+        sidebar.classList.remove('mobile-visible');
+        console.log('📱 Mobile sidebar closed by outside click');
+    }
+}
+
+/**
+ * Load saved sidebar state on page load
+ */
+function loadSidebarState() {
+    if (sidebarState.isMobile) return;
+
+    const savedState = localStorage.getItem('sidebarCollapsed');
+    if (savedState === 'true') {
+        sidebarState.isCollapsed = true;
+        applySidebarState();
+        console.log('💾 Loaded saved sidebar state: collapsed');
+    } else {
+        sidebarState.isCollapsed = false;
+        applySidebarState();
+        console.log('💾 Loaded saved sidebar state: expanded');
+    }
+}
+
+/**
+ * Update page title when sidebar state changes
+ */
+function updatePageTitleOnSidebarToggle() {
+    window.addEventListener('sidebarToggle', function(event) {
+        const { isCollapsed } = event.detail;
+        const pageTitle = document.getElementById('pageTitle');
+        
+        if (pageTitle && isCollapsed) {
+            // Optionally shorten title when collapsed
+            const currentTitle = pageTitle.textContent;
+            if (currentTitle.length > 20) {
+                pageTitle.title = currentTitle; // Store full title in tooltip
+                pageTitle.textContent = currentTitle.substring(0, 15) + '...';
+            }
+        } else if (pageTitle && pageTitle.title) {
+            // Restore full title
+            pageTitle.textContent = pageTitle.title;
+            pageTitle.removeAttribute('title');
+        }
+    });
+}
+
+/**
+ * Handle sidebar resize for charts and tables
+ */
+function handleSidebarResizeForComponents() {
+    window.addEventListener('sidebarToggle', function(event) {
+        // Trigger resize event for charts
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 300); // Wait for CSS transition to complete
+        
+        // Refresh any data tables that might need resizing
+        if (typeof refreshDataTables === 'function') {
+            setTimeout(refreshDataTables, 300);
+        }
+        
+        console.log('🔄 Triggered component resize after sidebar toggle');
+    });
+}
+
+/**
+ * Initialize all sidebar-related functionality
+ */
+function initializeAllSidebarFeatures() {
+    initializeSidebar();
+    loadSidebarState();
+    updatePageTitleOnSidebarToggle();
+    handleSidebarResizeForComponents();
+    
+    console.log('🎯 All sidebar features initialized');
+}
+
+// Auto-initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initializeAllSidebarFeatures();
+});
+
+// Export functions for use in other files
+window.toggleSidebar = toggleSidebar;
+window.toggleMobileSidebar = toggleMobileSidebar;
+window.sidebarState = sidebarState;
+
+    </script>
 </body>
 </html>
