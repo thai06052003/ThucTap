@@ -10,6 +10,7 @@ using ShopxEX1.Dtos.Orders;
 using ShopxEX1.Dtos.Discounts;
 using ShopxEX1.Dtos.SellerCategory;
 using ShopxEX1.Dtos.Contacts;
+using ShopxEX1.Dtos.Notifications;
 
 namespace ShopxEX1.Mappings
 {
@@ -32,7 +33,7 @@ namespace ShopxEX1.Mappings
                     {
                         if (src.SellerProfile != null)
                         {
-                            dest.Role="Seller";
+                            dest.Role = "Seller";
                         }
                     });
 
@@ -165,16 +166,16 @@ namespace ShopxEX1.Mappings
             // === Product Mappings ===
             CreateMap<Product, ProductDto>()
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.CategoryName : null))
-                .ForMember(dest => dest.SellerID, opt => opt.MapFrom(src => src.Seller != null ? src.Seller.SellerID :(int?)null))
+                .ForMember(dest => dest.SellerID, opt => opt.MapFrom(src => src.Seller != null ? src.Seller.SellerID : (int?)null))
                 .ForMember(dest => dest.SellerStoreName, opt => opt.MapFrom(src => src.Seller != null ? src.Seller.ShopName : null));
 
-CreateMap<Product, ProductDto>()
-            .ForMember(dest => dest.Status, 
-                       opt => opt.MapFrom(src => src.IsActive ? "active" : "inactive"));
-        
-        CreateMap<Product, ProductSummaryDto>()
-            .ForMember(dest => dest.Status, 
-                       opt => opt.MapFrom(src => src.IsActive ? "active" : "inactive"));
+            CreateMap<Product, ProductDto>()
+                        .ForMember(dest => dest.Status,
+                                   opt => opt.MapFrom(src => src.IsActive ? "active" : "inactive"));
+
+            CreateMap<Product, ProductSummaryDto>()
+                .ForMember(dest => dest.Status,
+                           opt => opt.MapFrom(src => src.IsActive ? "active" : "inactive"));
             CreateMap<Product, ProductSummaryDto>()
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.CategoryName : null))
                 .ForMember(dest => dest.ShopName, opt => opt.MapFrom(src => src.Seller != null ? src.Seller.ShopName : null));
@@ -250,6 +251,26 @@ CreateMap<Product, ProductDto>()
             CreateMap<DiscountUpdateDto, Discount>()
                 .ForMember(dest => dest.DiscountID, opt => opt.Ignore())
                 .ForMember(dest => dest.DiscountCode, opt => opt.Ignore());
+            // === User Notification Mappings ===
+            CreateMap<Notification, NotificationDto>();
+            
+            CreateMap<CreateNotificationDto, Notification>()
+                .ForMember(dest => dest.NotificationID, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.Status, opt => opt.Ignore())
+                .ForMember(dest => dest.SentAt, opt => opt.Ignore())
+                .ForMember(dest => dest.TotalSent, opt => opt.Ignore())
+                .ForMember(dest => dest.TotalRead, opt => opt.Ignore());
+
+            CreateMap<UpdateNotificationDto, Notification>()
+                .ForMember(dest => dest.NotificationID, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.Status, opt => opt.Ignore())
+                .ForMember(dest => dest.SentAt, opt => opt.Ignore())
+                .ForMember(dest => dest.TotalSent, opt => opt.Ignore())
+                .ForMember(dest => dest.TotalRead, opt => opt.Ignore());
+        }
         }
     }
-}

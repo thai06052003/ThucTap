@@ -10,6 +10,7 @@ using ShopxEX1.Data;          // Namespace Data
 using ShopxEX1.Mappings;      // Namespace Mappings
 using ShopxEX1.Services;      // Namespace Interfaces
 using ShopxEX1.Services.Implementations; // Namespace Implementations
+using ShopxEX1.Services.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
 using System.Security.Claims;
@@ -99,6 +100,8 @@ namespace ShopxEX1 // Namespace gốc
             builder.Services.AddScoped<IContactService, ContactService>();
             builder.Services.AddScoped<ISessionService, SessionService>();
             builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
+
 
             // 6. Controller Configuration
             builder.Services.AddControllers()
@@ -177,6 +180,9 @@ namespace ShopxEX1 // Namespace gốc
                     }
                 });
             });
+
+            // 10. Thêm các dịch vụ khác nếu cần
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
