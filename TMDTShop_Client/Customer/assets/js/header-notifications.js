@@ -1,78 +1,3 @@
-// START OF FILE components.js
-
-// Component Loader
-class ComponentLoader {
-    constructor() {
-        this.components = {
-            header: '/Customer/components/header/header.html',
-            footer: '/Customer/components/footer/footer.html'
-        };
-    }
-
-    async loadComponent(componentName, targetId) {
-        try {
-            const response = await fetch(this.components[componentName]);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for ${componentName}`);
-            const html = await response.text();
-            const targetElement = document.getElementById(targetId);
-
-            if (targetElement) {
-                targetElement.innerHTML = html;
-
-                if (window.Alpine && typeof Alpine.initTree === 'function') {
-                    Alpine.initTree(targetElement);
-                    console.log(`Alpine.initTree called on #${targetId} for component ${componentName}.`);
-                }
-
-                // ⭐ THÊM: Initialize notification manager sau khi header load xong
-                if (componentName === 'header') {
-                    console.log('🔔 Header loaded, initializing notification manager...');
-                    this.initHeaderNotifications();
-                }
-            }
-        } catch (error) {
-            console.error(`Error loading ${componentName}:`, error);
-            const targetElement = document.getElementById(targetId);
-            if (targetElement) targetElement.innerHTML = `<p class="text-red-500 p-4">Lỗi tải component ${componentName}. Xem console.</p>`;
-        }
-    }
-    async initHeaderNotifications() {
-        // Đợi một chút để đảm bảo DOM đã render xong
-        setTimeout(async () => {
-            try {
-                if (!window.headerNotificationManager) {
-                    window.headerNotificationManager = new HeaderNotificationManager();
-                }
-                await window.headerNotificationManager.init();
-                console.log('✅ Header notification manager initialized after header load');
-            } catch (error) {
-                console.error('❌ Error initializing header notifications:', error);
-            }
-        }, 100);
-    }
-
-    async loadAll() {
-        const path = window.location.pathname;
-        const isLoginPage = path.endsWith('/login.html') || path.includes('/Admin/templates/auth/login.html');
-
-        if (!isLoginPage) {
-            await this.loadComponent('header', 'header-container');
-            await this.loadComponent('footer', 'footer-container');
-        }
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Kiểm tra xem Alpine đã được load chưa
-    if (window.Alpine) {
-        console.log("Alpine is loaded globally before ComponentLoader runs in DOMContentLoaded.");
-    } else {
-        console.error("Alpine is NOT loaded before ComponentLoader runs in DOMContentLoaded.");
-    }
-    const loader = new ComponentLoader();
-    loader.loadAll();
-});
-// END OF FILE components.js
 // ============================================
 // HEADER NOTIFICATION CONFIGURATION
 // ============================================
@@ -106,18 +31,8 @@ class HeaderNotificationManager {
     // ============================================
     async init() {
         try {
+            console.log('🔔 Initializing Header Notification Manager...');
             
-            // ⭐ KIỂM TRA DOM ELEMENTS TRƯỚC
-            if (!this.waitForDOM()) {
-                console.log('⏳ DOM not ready, retrying...');
-                if (this.initRetryCount < this.maxRetries) {
-                    this.initRetryCount++;
-                    setTimeout(() => this.init(), 500);
-                    return;
-                }
-                console.error('❌ Max retries reached, DOM elements not found');
-                return;
-            }
             // Check if user is logged in
             if (!this.getAuthToken()) {
                 console.log('⚠️ No auth token found, skipping notification load');
@@ -143,22 +58,7 @@ class HeaderNotificationManager {
             this.showError('Không thể tải thông báo');
         }
     }
-    waitForDOM() {
-        const requiredElements = [
-            'notificationListHeader',
-            'notificationCountHeader'
-        ];
 
-        for (const elementId of requiredElements) {
-            if (!document.getElementById(elementId)) {
-                console.log(`⚠️ Element #${elementId} not found`);
-                return false;
-            }
-        }
-
-        console.log('✅ All required DOM elements found');
-        return true;
-    }
     // ============================================
     // API METHODS
     // ============================================
@@ -238,8 +138,7 @@ class HeaderNotificationManager {
         try {
             console.log('📥 Loading notifications for header...');
             this.isLoading = true;
-            // Update UI ngay để show loading
-            this.renderNotifications();
+            
             const params = new URLSearchParams({
                 pageNumber: '1',
                 pageSize: pageSize.toString(),
@@ -259,18 +158,16 @@ class HeaderNotificationManager {
                 this.notifications = [];
             }
 
-           
+            this.renderNotifications();
             
             console.log(`✅ Loaded ${this.notifications.length} notifications`);
         } catch (error) {
             console.error('❌ Error loading notifications:', error);
             this.notifications = [];
-            
+            this.renderNotifications();
             this.showError('Không thể tải thông báo');
         } finally {
             this.isLoading = false;
-            this.renderNotifications();
-            this.updateUnreadBadge();
         }
     }
 
@@ -367,17 +264,9 @@ class HeaderNotificationManager {
     renderNotifications() {
         const container = document.getElementById('notificationListHeader');
         if (!container) {
-            console.warn('⚠️ Notification container not found, will retry...');
-            // Retry tìm container
-            setTimeout(() => {
-                if (document.getElementById('notificationListHeader')) {
-                    this.renderNotifications();
-                }
-            }, 1000);
+            console.warn('⚠️ Notification container not found');
             return;
         }
-
-        console.log('✅ Found notification container, rendering...');
 
         if (this.isLoading) {
             container.innerHTML = `
@@ -399,91 +288,73 @@ class HeaderNotificationManager {
             return;
         }
 
-        try {
-            container.innerHTML = this.notifications.map(notification => this.renderNotificationItem(notification)).join('');
-            console.log(`✅ Rendered ${this.notifications.length} notifications`);
-        } catch (error) {
-            console.error('❌ Error rendering notifications:', error);
-            container.innerHTML = `
-                <div class="text-center py-4">
-                    <i class="fas fa-exclamation-triangle text-red-500 text-xl mb-2"></i>
-                    <p class="text-red-600 text-sm">Lỗi hiển thị thông báo</p>
-                    <button onclick="headerNotificationManager.loadNotifications()" 
-                            class="mt-2 text-xs text-blue-600 hover:text-blue-800">
-                        Thử lại
-                    </button>
-                </div>
-            `;
-        }
+        container.innerHTML = this.notifications.map(notification => this.renderNotificationItem(notification)).join('');
     }
-// ============================================
-// UI RENDERING METHODS (thêm vào sau renderNotifications)
-// ============================================
 
-renderNotificationItem(notification) {
-    const isUnread = !notification.isRead;
-    const timeAgo = this.getTimeAgo(notification.receivedAt || notification.createdAt);
-    const truncatedContent = this.truncateText(this.stripHtml(notification.content), 60);
+    renderNotificationItem(notification) {
+        const isUnread = !notification.isRead;
+        const timeAgo = this.getTimeAgo(notification.receivedAt);
+        const truncatedContent = this.truncateText(this.stripHtml(notification.content), 60);
 
-    return `
-        <div class="notification-item p-3 rounded-lg border-l-4 ${isUnread ? 'bg-blue-50 border-blue-500' : 'bg-gray-50 border-gray-300'} hover:bg-gray-100 transition-colors">
-            <!-- Header with icon and actions -->
-            <div class="flex items-start justify-between mb-2">
-                <div class="flex items-center">
-                    <i class="fas ${notification.icon || 'fa-bell'} ${isUnread ? 'text-blue-600' : 'text-gray-500'} mr-2"></i>
-                    <h4 class="font-medium text-sm ${isUnread ? 'text-gray-900' : 'text-gray-700'}">
-                        ${this.truncateText(notification.title, 30)}
-                    </h4>
-                    ${isUnread ? '<span class="ml-2 w-2 h-2 bg-blue-600 rounded-full"></span>' : ''}
-                </div>
-                
-                <!-- Actions dropdown -->
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" class="text-gray-400 hover:text-gray-600 p-1">
-                        <i class="fas fa-ellipsis-v text-xs"></i>
-                    </button>
-                    <div x-show="open" @click.outside="open = false" 
-                         class="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border z-10">
-                        ${isUnread ? `
-                            <button onclick="headerNotificationManager.markAsRead(${notification.userNotificationID})" 
-                                    class="block w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50">
-                                <i class="fas fa-check mr-1"></i> Đánh dấu đã đọc
-                            </button>
-                        ` : ''}
-                        <button onclick="headerNotificationManager.deleteNotification(${notification.userNotificationID})" 
-                                class="block w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50">
-                            <i class="fas fa-trash mr-1"></i> Xóa
+        return `
+            <div class="notification-item p-3 rounded-lg border-l-4 ${isUnread ? 'bg-blue-50 border-blue-500' : 'bg-gray-50 border-gray-300'} hover:bg-gray-100 transition-colors">
+                <!-- Header with icon and actions -->
+                <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center">
+                        <i class="fas ${notification.icon || 'fa-bell'} ${isUnread ? 'text-blue-600' : 'text-gray-500'} mr-2"></i>
+                        <h4 class="font-medium text-sm ${isUnread ? 'text-gray-900' : 'text-gray-700'}">
+                            ${this.truncateText(notification.title, 30)}
+                        </h4>
+                        ${isUnread ? '<span class="ml-2 w-2 h-2 bg-blue-600 rounded-full"></span>' : ''}
+                    </div>
+                    
+                    <!-- Actions dropdown -->
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open" class="text-gray-400 hover:text-gray-600 p-1">
+                            <i class="fas fa-ellipsis-v text-xs"></i>
                         </button>
+                        <div x-show="open" @click.outside="open = false" 
+                             class="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border z-10">
+                            ${isUnread ? `
+                                <button onclick="headerNotificationManager.markAsRead(${notification.userNotificationID})" 
+                                        class="block w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50">
+                                    <i class="fas fa-check mr-1"></i> Đánh dấu đã đọc
+                                </button>
+                            ` : ''}
+                            <button onclick="headerNotificationManager.deleteNotification(${notification.userNotificationID})" 
+                                    class="block w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50">
+                                <i class="fas fa-trash mr-1"></i> Xóa
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Content -->
-            <p class="text-xs text-gray-600 mb-2 leading-relaxed">${truncatedContent}</p>
-            
-            <!-- Footer with time and action -->
-            <div class="flex items-center justify-between">
-                <span class="text-xs text-gray-400">
-                    <i class="fas fa-clock mr-1"></i>${timeAgo}
-                </span>
+                <!-- Content -->
+                <p class="text-xs text-gray-600 mb-2 leading-relaxed">${truncatedContent}</p>
                 
-                ${notification.actionText && notification.actionUrl ? `
-                    <a href="${notification.actionUrl}" target="_blank" 
-                       class="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                        ${notification.actionText} <i class="fas fa-external-link-alt ml-1"></i>
-                    </a>
-                ` : ''}
-            </div>
+                <!-- Footer with time and action -->
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-gray-400">
+                        <i class="fas fa-clock mr-1"></i>${timeAgo}
+                    </span>
+                    
+                    ${notification.actionText && notification.actionUrl ? `
+                        <a href="${notification.actionUrl}" target="_blank" 
+                           class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                            ${notification.actionText} <i class="fas fa-external-link-alt ml-1"></i>
+                        </a>
+                    ` : ''}
+                </div>
 
-            <!-- Type badge -->
-            <div class="mt-2">
-                <span class="inline-block px-2 py-1 text-xs rounded-full ${this.getTypeBadgeClass(notification.type)}">
-                    ${this.getTypeText(notification.type)}
-                </span>
+                <!-- Type badge -->
+                <div class="mt-2">
+                    <span class="inline-block px-2 py-1 text-xs rounded-full ${this.getTypeBadgeClass(notification.type)}">
+                        ${this.getTypeText(notification.type)}
+                    </span>
+                </div>
             </div>
-        </div>
-    `;
-}
+        `;
+    }
 
     // ============================================
     // UTILITY METHODS
@@ -651,6 +522,12 @@ renderNotificationItem(notification) {
 // GLOBAL INSTANCE AND INITIALIZATION
 // ============================================
 let headerNotificationManager;
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    headerNotificationManager = new HeaderNotificationManager();
+    headerNotificationManager.init();
+});
 
 // Export for global access
 window.headerNotificationManager = headerNotificationManager;

@@ -24,6 +24,17 @@ namespace ShopxEX1.Services.Interfaces
         Task<int> GetUnreadCountAsync(int userId, string userType);
         Task<int> GetRecipientCountAsync(string targetAudience);
         Task<object> GetNotificationStatsAsync(int notificationId);
+        // ============================================
+        // SELLER OPERATIONS 
+        // ============================================
+        Task<PagedResult<NotificationDto>> GetSellerNotificationsAsync(int sellerId, int pageNumber, int pageSize, string? search, string? type);
+        Task<NotificationDto> CreateSellerNotificationAsync(CreateSellerNotificationDto dto, int sellerId);
+        Task<bool> SendSellerNotificationAsync(int notificationId, int sellerId);
+        Task<List<CustomerInfoDto>> GetSellerCustomersAsync(int sellerId);
+        Task<List<NotificationTemplateDto>> GetSellerNotificationTemplatesAsync();
+    Task<bool> DeleteSellerNotificationAsync(int notificationId, int sellerId);
+        Task<NotificationDto?> UpdateSellerNotificationAsync(int notificationId, CreateSellerNotificationDto dto, int sellerId);
+        Task<object> GetSellerNotificationStatsAsync(int notificationId, int sellerId);
 
     }
 }
