@@ -821,10 +821,10 @@ async function loadSectionData(sectionId) {
                     
                 case "orders":
                     console.log('Tải dữ liệu đơn hàng...');
-                    if (typeof loadOrders === 'function') {
-                        await loadOrders();
+                    if (typeof window.loadSellerOrders === 'function') {
+                        await window.loadSellerOrders(1);
                     } else {
-                        console.warn('Hàm loadOrders không tồn tại!');
+                        console.warn('Hàm loadSellerOrders không tồn tại!');
                     }
                     break;
                     
@@ -1318,14 +1318,7 @@ function renderRevenueChart(revenueData) {
         });
     }
 }
-async function loadOrders() {
-    try {
-        const orders = await fetchAPI(`/sellers/${currentSellerId}/orders`);
-        renderOrders(orders);
-    } catch (error) {
-        showToast(`Không thể tải danh sách đơn hàng: ${error.message}`, "error");
-    }
-}
+
 
 
 // Hàm tạo dữ liệu danh mục mẫu

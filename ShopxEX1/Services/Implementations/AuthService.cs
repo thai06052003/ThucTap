@@ -150,6 +150,9 @@ namespace ShopxEX1.Services.Implementations
                 // _logger?.LogWarning("Registration attempt with existing email: {Email}", registerDto.Email);
                 return new AuthResultDto { Success = false, Message = $"Email '{registerDto.Email}' đã được sử dụng." };
             }
+            if(await _context.Users.AnyAsync(u => u.Phone == registerDto.Phone)){
+                return new AuthResultDto { Success = false, Message = $"Phone '{registerDto.Phone}' đã được sử dụng." };
+            }
             if (registerDto.Password != registerDto.ConfirmPassword)
             {
                 return new AuthResultDto { Success = false, Message = "Mật khẩu và xác nhận mật khẩu không khớp." };
