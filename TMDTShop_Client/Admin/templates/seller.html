@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShopX - Trang người bán</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/Customer/assets/images/logo.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
@@ -481,6 +482,9 @@ textarea {
                     <i class="fas fa-bell"></i>
                     <span class="sidebar-text">Thông báo</span>
                 </a>
+                <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" onclick="handleReturnToHome(event)">
+                    <i class="fas fa-home"></i>
+                    <span class="sidebar-text">Trang chủ</span>
                 </a>
                 <a href="/Customer/templates/login.html" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100" id="logout-btn">
                     <i class="fas fa-sign-out-alt"></i>
@@ -1743,7 +1747,17 @@ function handleSidebarResizeForComponents() {
         console.log('🔄 Triggered component resize after sidebar toggle');
     });
 }
-
+// Hàm xử lý sự kiện "Trở về trang chủ"
+function handleReturnToHome(event) {
+    event.preventDefault();
+    const confirmReturn = confirm('Bạn có chắc chắn muốn trở về trang chủ? Mọi thay đổi chưa lưu sẽ bị mất.');
+    if (confirmReturn) {
+        showToast('Đang chuyển hướng về trang chủ...', 'info');
+        setTimeout(() => {
+            window.location.href = '/Customer/templates/index.html';
+        }, 1000);
+    }
+}
 /**
  * Initialize all sidebar-related functionality
  */

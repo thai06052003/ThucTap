@@ -19,12 +19,10 @@ class ComponentLoader {
             if (targetElement) {
                 targetElement.innerHTML = html;
 
-                if (window.Alpine && typeof Alpine.initTree === 'function') {
-                    Alpine.initTree(targetElement);
-                    console.log(`Alpine.initTree called on #${targetId} for component ${componentName}.`);
-                }
+                // ✅ WAIT FOR ALPINE TO PROCESS
+                await this.waitForAlpine(targetElement);
 
-                // ⭐ THÊM: Initialize notification manager sau khi header load xong
+                // ✅ INITIALIZE NOTIFICATION MANAGER AFTER ALPINE IS READY
                 if (componentName === 'header') {
                     console.log('🔔 Header loaded, initializing notification manager...');
                     this.initHeaderNotifications();
@@ -33,22 +31,97 @@ class ComponentLoader {
         } catch (error) {
             console.error(`Error loading ${componentName}:`, error);
             const targetElement = document.getElementById(targetId);
-            if (targetElement) targetElement.innerHTML = `<p class="text-red-500 p-4">Lỗi tải component ${componentName}. Xem console.</p>`;
+            if (targetElement) {
+                targetElement.innerHTML = `<p class="text-red-500 p-4">Lỗi tải component ${componentName}. Xem console.</p>`;
+            }
         }
     }
+
+    async waitForAlpine(targetElement) {
+        return new Promise((resolve) => {
+            if (window.Alpine) {
+                // Try Alpine.initTree if available
+                if (typeof Alpine.initTree === 'function') {
+                    try {
+                        Alpine.initTree(targetElement);
+                        console.log('✅ Alpine.initTree called successfully');
+                    } catch (error) {
+                        console.warn('⚠️ Alpine.initTree failed:', error);
+                    }
+                }
+                
+                // Wait for Alpine to process
+                setTimeout(() => {
+                    const headerElement = targetElement.querySelector('header[x-data]');
+                    if (headerElement && headerElement._x_dataStack) {
+                        console.log('✅ Alpine has processed the header element');
+                    } else {
+                        console.warn('⚠️ Alpine may not have fully processed the header');
+                    }
+                    resolve();
+                }, 200);
+            } else {
+                console.warn('⚠️ Alpine not available');
+                resolve();
+            }
+        });
+    }
     async initHeaderNotifications() {
-        // Đợi một chút để đảm bảo DOM đã render xong
-        setTimeout(async () => {
+        // ✅ PROGRESSIVE DELAY WITH RETRY
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        const tryInit = async () => {
             try {
+                attempts++;
+                console.log(`🔔 Attempting to initialize notifications (${attempts}/${maxAttempts})`);
+                
+                // Check DOM elements
+                const requiredElements = [
+                    'notificationListHeader',
+                    'notificationCountHeader', 
+                    'notification-badge'
+                ];
+
+                const missingElements = requiredElements.filter(id => !document.getElementById(id));
+                
+                if (missingElements.length > 0) {
+                    console.log(`⏳ Missing elements: ${missingElements.join(', ')}`);
+                    if (attempts < maxAttempts) {
+                        setTimeout(tryInit, 300 * attempts);
+                        return;
+                    }
+                    console.error('❌ Max attempts reached, DOM elements not found');
+                    return;
+                }
+
+                // Check Alpine readiness
+                const headerElement = document.querySelector('header[x-data]');
+                if (!headerElement || !headerElement._x_dataStack) {
+                    console.log('⏳ Alpine not ready on header');
+                    if (attempts < maxAttempts) {
+                        setTimeout(tryInit, 300 * attempts);
+                        return;
+                    }
+                }
+
+                // Initialize notification manager
                 if (!window.headerNotificationManager) {
                     window.headerNotificationManager = new HeaderNotificationManager();
                 }
+                
                 await window.headerNotificationManager.init();
-                console.log('✅ Header notification manager initialized after header load');
+                console.log('✅ Header notification manager initialized successfully');
+                
             } catch (error) {
                 console.error('❌ Error initializing header notifications:', error);
+                if (attempts < maxAttempts) {
+                    setTimeout(tryInit, 1000 * attempts);
+                }
             }
-        }, 100);
+        };
+        
+        setTimeout(tryInit, 500); // Initial delay
     }
 
     async loadAll() {
@@ -61,6 +134,7 @@ class ComponentLoader {
         }
     }
 }
+
 
 document.addEventListener('DOMContentLoaded', () => {
     // Kiểm tra xem Alpine đã được load chưa
@@ -92,6 +166,9 @@ class HeaderNotificationManager {
         this.unreadCount = 0;
         this.isLoading = false;
         this.refreshInterval = null;
+        this.baseUrl="https://localhost:7088/api";
+        this.initRetryCount = 0;
+    this.maxRetries = 10;
         
         // Bind methods
         this.init = this.init.bind(this);
@@ -99,6 +176,7 @@ class HeaderNotificationManager {
         this.loadUnreadCount = this.loadUnreadCount.bind(this);
         this.markAsRead = this.markAsRead.bind(this);
         this.deleteNotification = this.deleteNotification.bind(this);
+        this.renderNotifications = this.renderNotifications.bind(this);
     }
 
     // ============================================
@@ -146,7 +224,8 @@ class HeaderNotificationManager {
     waitForDOM() {
         const requiredElements = [
             'notificationListHeader',
-            'notificationCountHeader'
+            'notificationCountHeader',
+            'notification-badge'
         ];
 
         for (const elementId of requiredElements) {
@@ -240,32 +319,56 @@ class HeaderNotificationManager {
             this.isLoading = true;
             // Update UI ngay để show loading
             this.renderNotifications();
+            
             const params = new URLSearchParams({
                 pageNumber: '1',
                 pageSize: pageSize.toString(),
                 unreadOnly: 'false' // Load both read and unread for header
             });
-
+    
             const response = await this.apiRequest(
                 `${HEADER_API_CONFIG.endpoints.userNotifications}?${params.toString()}`
             );
             
+            // ✅ ENHANCED RESPONSE HANDLING
+            console.log('📊 Raw API Response:', response);
+            console.log('📊 Response type:', typeof response);
+            console.log('📊 Response keys:', Object.keys(response || {}));
+            
             // Handle different response formats
-            if (response.items && Array.isArray(response.items)) {
+            if (response && response.items && Array.isArray(response.items)) {
                 this.notifications = response.items;
+                console.log('✅ Used response.items format');
+            } else if (response && response.data && Array.isArray(response.data)) {
+                this.notifications = response.data;
+                console.log('✅ Used response.data format');
+            } else if (response && response.notifications && Array.isArray(response.notifications)) {
+                this.notifications = response.notifications;
+                console.log('✅ Used response.notifications format');
             } else if (Array.isArray(response)) {
                 this.notifications = response;
+                console.log('✅ Used direct array format');
+            } else if (response && typeof response === 'object') {
+                // ✅ FALLBACK - TÌM ARRAY TRONG RESPONSE
+                const possibleArrays = Object.values(response).filter(val => Array.isArray(val));
+                if (possibleArrays.length > 0) {
+                    this.notifications = possibleArrays[0];
+                    console.log('✅ Found array in response object:', Object.keys(response).find(key => Array.isArray(response[key])));
+                } else {
+                    console.warn('⚠️ No array found in response object');
+                    this.notifications = [];
+                }
             } else {
+                console.warn('⚠️ Unknown response format:', response);
                 this.notifications = [];
             }
-
-           
+    
+            console.log(`✅ Final notifications count: ${this.notifications.length}`);
+            console.log('📊 Notifications sample:', this.notifications.slice(0, 2));
             
-            console.log(`✅ Loaded ${this.notifications.length} notifications`);
         } catch (error) {
             console.error('❌ Error loading notifications:', error);
             this.notifications = [];
-            
             this.showError('Không thể tải thông báo');
         } finally {
             this.isLoading = false;
@@ -419,14 +522,16 @@ class HeaderNotificationManager {
 // ============================================
 // UI RENDERING METHODS (thêm vào sau renderNotifications)
 // ============================================
-
 renderNotificationItem(notification) {
     const isUnread = !notification.isRead;
     const timeAgo = this.getTimeAgo(notification.receivedAt || notification.createdAt);
     const truncatedContent = this.truncateText(this.stripHtml(notification.content), 60);
-
+    
+    // ✅ HANDLE MULTIPLE ID FIELD FORMATS
+    const notificationId = notification.userNotificationID || notification.id || notification.notificationId;
+    
     return `
-        <div class="notification-item p-3 rounded-lg border-l-4 ${isUnread ? 'bg-blue-50 border-blue-500' : 'bg-gray-50 border-gray-300'} hover:bg-gray-100 transition-colors">
+        <div class="notification-item p-3 rounded-lg border-l-4 ${isUnread ? 'bg-blue-50 border-blue-500' : 'bg-gray-50 border-gray-300'} hover:bg-gray-100 transition-colors mb-2">
             <!-- Header with icon and actions -->
             <div class="flex items-start justify-between mb-2">
                 <div class="flex items-center">
@@ -437,31 +542,25 @@ renderNotificationItem(notification) {
                     ${isUnread ? '<span class="ml-2 w-2 h-2 bg-blue-600 rounded-full"></span>' : ''}
                 </div>
                 
-                <!-- Actions dropdown -->
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" class="text-gray-400 hover:text-gray-600 p-1">
-                        <i class="fas fa-ellipsis-v text-xs"></i>
-                    </button>
-                    <div x-show="open" @click.outside="open = false" 
-                         class="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border z-10">
-                        ${isUnread ? `
-                            <button onclick="headerNotificationManager.markAsRead(${notification.userNotificationID})" 
-                                    class="block w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50">
-                                <i class="fas fa-check mr-1"></i> Đánh dấu đã đọc
-                            </button>
-                        ` : ''}
-                        <button onclick="headerNotificationManager.deleteNotification(${notification.userNotificationID})" 
-                                class="block w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50">
-                            <i class="fas fa-trash mr-1"></i> Xóa
+                <!-- Simple buttons instead of Alpine dropdown -->
+                <div class="flex space-x-2">
+                    ${isUnread ? `
+                        <button onclick="window.headerNotificationManager.markAsRead(${notificationId})" 
+                                class="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded">
+                            <i class="fas fa-check mr-1"></i>Đọc
                         </button>
-                    </div>
+                    ` : ''}
+                    <button onclick="window.headerNotificationManager.deleteNotification(${notificationId})" 
+                            class="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded">
+                        <i class="fas fa-trash mr-1"></i>Xóa
+                    </button>
                 </div>
             </div>
 
             <!-- Content -->
             <p class="text-xs text-gray-600 mb-2 leading-relaxed">${truncatedContent}</p>
             
-            <!-- Footer with time and action -->
+            <!-- Footer with time -->
             <div class="flex items-center justify-between">
                 <span class="text-xs text-gray-400">
                     <i class="fas fa-clock mr-1"></i>${timeAgo}
@@ -580,26 +679,54 @@ renderNotificationItem(notification) {
     // EVENT LISTENERS
     // ============================================
     setupEventListeners() {
-        // Refresh when notification dropdown opens
-        const notificationButton = document.querySelector('[x-data*="isNotificationOpen"] button');
+        // ✅ SỬA SELECTOR CHO ĐÚNG VỚI HEADER.HTML
+        const possibleSelectors = [
+            'button[\\@click*="toggleNotifications"]',  // Alpine syntax
+            'button[onclick*="toggleNotifications"]',   // Direct onclick
+            '.fa-bell',                                // Icon element
+            '#notification-bell',                      // Direct ID
+            '[x-data="headerData"] .fa-bell'          // Scoped selector
+        ];
+        
+        let notificationButton = null;
+        for (const selector of possibleSelectors) {
+            notificationButton = document.querySelector(selector);
+            if (notificationButton) {
+                console.log('✅ Found notification button with selector:', selector);
+                break;
+            }
+        }
+        
         if (notificationButton) {
             notificationButton.addEventListener('click', () => {
+                console.log('🔔 Notification button clicked, loading notifications...');
                 // Small delay to ensure dropdown is open
                 setTimeout(() => {
                     this.loadNotifications();
                 }, 100);
             });
+        } else {
+            console.warn('⚠️ Notification button not found with any selector');
+            // ✅ FALLBACK - LISTEN FOR ANY BELL CLICK
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('fa-bell') || 
+                    e.target.closest('button')?.querySelector('.fa-bell')) {
+                    console.log('🔔 Bell icon clicked (fallback), loading notifications...');
+                    setTimeout(() => this.loadNotifications(), 100);
+                }
+            });
         }
-
-        // Listen for visibility change to refresh notifications
+    
+        // ✅ ENHANCED VISIBILITY LISTENERS
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
+                console.log('👀 Page became visible, refreshing notifications...');
                 this.loadUnreadCount();
             }
         });
-
-        // Listen for focus events
+    
         window.addEventListener('focus', () => {
+            console.log('🎯 Window focused, refreshing notifications...');
             this.loadUnreadCount();
         });
     }
@@ -653,7 +780,7 @@ renderNotificationItem(notification) {
 let headerNotificationManager;
 
 // Export for global access
-window.headerNotificationManager = headerNotificationManager;
+window.headerNotificationManager = new HeaderNotificationManager();
 
 // ============================================
 // ALPINE.JS INTEGRATION (if needed)

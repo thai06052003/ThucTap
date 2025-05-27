@@ -232,10 +232,10 @@ function debounce(func, wait) {
                 return 'Processing'; // ← API format
                 
             case normalizedStatus.includes('đang xử lý') || normalizedStatus.includes('dang xu ly') || normalizedStatus.includes('processing'):
-                return 'Shipped'; // ← API format
+                return 'Đang giao'; // ← API format
                 
-            case normalizedStatus.includes('đang giao hàng') || normalizedStatus.includes('dang giao hàng') || normalizedStatus.includes('shipped'):
-                return 'Delivered'; // ← API format
+            case normalizedStatus.includes('đang giao') || normalizedStatus.includes('dang giao') || normalizedStatus.includes('shipped'):
+                return 'Đã giao'; // ← API format
                 
             default:
                 return null;
@@ -941,7 +941,7 @@ sellerOrders = data.items || [];
      */
     function canUpdateOrderStatus(status) {
         const allowedStatuses = [
-            'Chờ xác nhận', 'Đang xử lý', 'Đang giao hàng', 
+            'Chờ xác nhận', 'Đang xử lý', 'Đang giao hàng', 'Đã giao hàng',
             'pending', 'processing', 'shipped'
         ];
         
@@ -1781,9 +1781,9 @@ sellerOrders = data.items || [];
         if (statusLower.includes('pending') || statusLower.includes('chờ xác nhận')) {
             nextStatus = 'Processing'; // Đang xử lý
         } else if (statusLower.includes('processing') || statusLower.includes('đang xử lý')) {
-            nextStatus = 'Shipped'; // Đang giao
+            nextStatus = 'Đang giao hàng'; // Đang giao
         } else if (statusLower.includes('shipped') || statusLower.includes('đang giao hàng')) {
-            nextStatus = 'Delivered'; // Đã giao hàng
+            nextStatus = 'Đã giao hàng'; // Đã giao hàng
         } else {
             alert('Không thể chuyển tiếp trạng thái này!');
             return;

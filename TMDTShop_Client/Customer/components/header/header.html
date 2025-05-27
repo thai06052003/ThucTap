@@ -42,52 +42,52 @@
 
       <!-- Icons + User -->
       
-<div class="flex items-center gap-4 flex-shrink-0">
-  <!-- Notification Bell -->
-  <div class="relative" x-data="{ isNotificationOpen: false }">
-      <button @click="isNotificationOpen = !isNotificationOpen; if(isNotificationOpen && window.headerNotificationManager) window.headerNotificationManager.loadNotifications()" >
-          <i class="fas fa-bell text-xl"></i>
-          <!-- Notification Badge -->
-          <span id="notification-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              0
-          </span>
-      </button>
-      
-      <!-- Notification Dropdown -->
-      <div x-show="isNotificationOpen" 
-           @click.outside="isNotificationOpen = false"
-           x-transition:enter="transition ease-out duration-200"
-           x-transition:enter-start="opacity-0 scale-95"
-           x-transition:enter-end="opacity-100 scale-100"
-           x-transition:leave="transition ease-in duration-150"
-           x-transition:leave-start="opacity-100 scale-100"
-           x-transition:leave-end="opacity-0 scale-95"
-           class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-          <div class="p-4">
-              <div class="flex items-center justify-between mb-4 pb-3 border-b">
-                  <h3 class="font-bold text-lg text-gray-900">
-                      Thông báo (<span id="notificationCountHeader">0</span>)
-                  </h3>
-                  <button @click="isNotificationOpen = false" class="text-gray-400 hover:text-gray-600">
-                      <i class="fas fa-times"></i>
-                  </button>
-              </div>
-              <div id="notificationListHeader" class="space-y-3 max-h-80 overflow-y-auto">
-                  <!-- Notifications will be loaded here -->
-                  <div class="flex items-center justify-center py-4">
-                      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      <span class="ml-2 text-gray-500">Đang tải...</span>
+        <div class="flex items-center gap-4 flex-shrink-0">
+          <!-- Notification Bell -->
+          <div class="relative" x-data="{ isNotificationOpen: false }">
+            <button @click="isNotificationOpen = !isNotificationOpen; $nextTick(() => { if(isNotificationOpen && window.headerNotificationManager) { window.headerNotificationManager.loadNotifications(); } })">
+              <i class="fas fa-bell text-xl"></i>
+                  <!-- Notification Badge -->
+                  <span id="notification-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      0
+                  </span>
+              </button>
+              
+              <!-- Notification Dropdown -->
+              <div x-show="isNotificationOpen" 
+                  @click.outside="isNotificationOpen = false"
+                  x-transition:enter="transition ease-out duration-200"
+                  x-transition:enter-start="opacity-0 scale-95"
+                  x-transition:enter-end="opacity-100 scale-100"
+                  x-transition:leave="transition ease-in duration-150"
+                  x-transition:leave-start="opacity-100 scale-100"
+                  x-transition:leave-end="opacity-0 scale-95"
+                  class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                  <div class="p-4">
+                      <div class="flex items-center justify-between mb-4 pb-3 border-b">
+                          <h3 class="font-bold text-lg text-gray-900">
+                              Thông báo (<span id="notificationCountHeader">0</span>)
+                          </h3>
+                          <button @click="isNotificationOpen = false" class="text-gray-400 hover:text-gray-600">
+                              <i class="fas fa-times"></i>
+                          </button>
+                      </div>
+                      <div id="notificationListHeader" class="space-y-3 max-h-80 overflow-y-auto">
+                          <!-- Notifications will be loaded here -->
+                          <div class="flex items-center justify-center py-4">
+                              <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                              <span class="ml-2 text-gray-500">Đang tải...</span>
+                          </div>
+                      </div>
+                      <div class="mt-4 pt-3 border-t">
+                          <a href="/Customer/templates/notifications.html" class="block text-center text-blue-600 hover:text-blue-800 text-sm font-medium">
+                              Xem tất cả thông báo
+                          </a>
+                      </div>
                   </div>
               </div>
-              <div class="mt-4 pt-3 border-t">
-                  <a href="/Customer/templates/notifications.html" class="block text-center text-blue-600 hover:text-blue-800 text-sm font-medium">
-                      Xem tất cả thông báo
-                  </a>
-              </div>
           </div>
-      </div>
-  </div>
-</div>
+        </div>
         <!-- Giỏ hàng -->
         <div class="relative" x-data="{ open: false }">
           <button @click="open = !open" class="text-gray-700 hover:text-blue-600 transition">
