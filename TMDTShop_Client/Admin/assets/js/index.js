@@ -93,6 +93,17 @@ function formatCurrency(amount) {
   return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
 }
 
+function formatCurrencyCompact(amount) {
+  if (typeof amount !== 'number') return 'N/A';
+  if (amount >= 1_000_000_000) {
+    return (amount / 1_000_000_000).toFixed(2) + ' tỷ đồng';
+  } else if (amount >= 1_000_000) {
+    return (amount / 1_000_000).toFixed(2) + ' triệu đồng';
+  } else {
+    return amount.toLocaleString('vi-VN') + ' đồng';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
 
   // --- Lấy các container tĩnh (phải có trong index.html) ---
