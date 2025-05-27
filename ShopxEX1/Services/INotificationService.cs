@@ -32,9 +32,11 @@ namespace ShopxEX1.Services.Interfaces
         Task<bool> SendSellerNotificationAsync(int notificationId, int sellerId);
         Task<List<CustomerInfoDto>> GetSellerCustomersAsync(int sellerId);
         Task<List<NotificationTemplateDto>> GetSellerNotificationTemplatesAsync();
-    Task<bool> DeleteSellerNotificationAsync(int notificationId, int sellerId);
+        Task<bool> DeleteSellerNotificationAsync(int notificationId, int sellerId);
         Task<NotificationDto?> UpdateSellerNotificationAsync(int notificationId, CreateSellerNotificationDto dto, int sellerId);
         Task<object> GetSellerNotificationStatsAsync(int notificationId, int sellerId);
+        Task<List<NotificationRecipientDto>> GetSellerNotificationRecipientsAsync(int notificationId, int sellerId);
+        Task<ResendNotificationResult> ResendNotificationToUserAsync(int userNotificationId, int sellerId);
 
     }
 }

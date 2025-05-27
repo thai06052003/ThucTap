@@ -361,9 +361,9 @@ namespace ShopxEX1.Services.Implementations
 
             return new PagedResult<UserNotificationDto>(
                 dtos,
-                totalCount,
                 pageNumber,
-                pageSize
+                pageSize,
+                totalCount
             );
         }
 
@@ -511,126 +511,126 @@ namespace ShopxEX1.Services.Implementations
         }
 
         #endregion
-        
+
         #region Seller Operations 
 
-public async Task<PagedResult<NotificationDto>> GetSellerNotificationsAsync(
-    int sellerId, int pageNumber, int pageSize, string? search, string? type)
-{
-    var query = _context.Notifications
-        .Where(n => n.CreatedBy == sellerId); // Chỉ lấy notifications do seller này tạo
-
-    // Apply filters
-    if (!string.IsNullOrEmpty(search))
-    {
-        query = query.Where(n => n.Title.Contains(search) || n.Content.Contains(search));
-    }
-
-    if (!string.IsNullOrEmpty(type))
-    {
-        query = query.Where(n => n.Type == type);
-    }
-
-    var totalCount = await query.CountAsync();
-
-    var notifications = await query
-        .OrderByDescending(n => n.CreatedAt)
-        .Skip((pageNumber - 1) * pageSize)
-        .Take(pageSize)
-        .ToListAsync();
-
-    var dtos = notifications.Select(n => new NotificationDto
-    {
-        NotificationID = n.NotificationID,
-        Title = n.Title,
-        Content = n.Content,
-        Type = n.Type,
-        Icon = n.Icon,
-        ActionText = n.ActionText,
-        ActionUrl = n.ActionUrl,
-        TargetAudience = n.TargetAudience,
-        Status = n.Status,
-        ScheduledAt = n.ScheduledAt,
-        SentAt = n.SentAt,
-        CreatedAt = n.CreatedAt,
-        CreatedBy = n.CreatedBy,
-        TotalSent = n.TotalSent,
-        TotalRead = n.TotalRead
-    }).ToList();
-
-    return new PagedResult<NotificationDto>(
-        dtos,
-        pageNumber,
-        pageSize,
-        totalCount
-    );
-}
-
-public async Task<NotificationDto> CreateSellerNotificationAsync(CreateSellerNotificationDto dto, int sellerId)
-{
-    var notification = new Notification
-    {
-        Title = dto.Title,
-        Content = dto.Content,
-        Type = dto.Type,
-        Icon = dto.Icon ?? "fa-store",
-        ActionText = dto.ActionText,
-        ActionUrl = dto.ActionUrl,
-        TargetAudience = $"seller_{sellerId}_{dto.TargetCustomers}", // Custom format for seller notifications
-        Status = "draft",
-        ScheduledAt = dto.ScheduledAt,
-        CreatedBy = sellerId,
-        CreatedAt = DateTime.UtcNow,
-        TotalSent = 0,
-        TotalRead = 0
-    };
-
-    // Store specific customer IDs in a separate table or JSON field if needed
-    if (dto.SpecificCustomerIds?.Any() == true)
-    {
-        // You might want to create a TargetCustomers table or store as JSON
-        notification.TargetAudience = $"seller_{sellerId}_specific";
-        // Store specific IDs - could extend Notification model or create separate table
-    }
-
-    _context.Notifications.Add(notification);
-    await _context.SaveChangesAsync();
-
-    return _mapper.Map<NotificationDto>(notification);
-}
-
-public async Task<bool> SendSellerNotificationAsync(int notificationId, int sellerId)
-{
-    using var transaction = await _context.Database.BeginTransactionAsync();
-    try
-    {
-        Console.WriteLine($"📨 [DEBUG] Starting SendSellerNotificationAsync for notification {notificationId}, seller {sellerId}");
-        
-        var notification = await _context.Notifications
-            .FirstOrDefaultAsync(n => n.NotificationID == notificationId && 
-                                     n.CreatedBy == sellerId && 
-                                     n.Status == "draft");
-
-        if (notification == null)
+        public async Task<PagedResult<NotificationDto>> GetSellerNotificationsAsync(
+            int sellerId, int pageNumber, int pageSize, string? search, string? type)
         {
-            Console.WriteLine($"❌ [ERROR] Notification {notificationId} not found or not owned by seller {sellerId}");
-            return false;
+            var query = _context.Notifications
+                .Where(n => n.CreatedBy == sellerId); // Chỉ lấy notifications do seller này tạo
+
+            // Apply filters
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(n => n.Title.Contains(search) || n.Content.Contains(search));
+            }
+
+            if (!string.IsNullOrEmpty(type))
+            {
+                query = query.Where(n => n.Type == type);
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var notifications = await query
+                .OrderByDescending(n => n.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var dtos = notifications.Select(n => new NotificationDto
+            {
+                NotificationID = n.NotificationID,
+                Title = n.Title,
+                Content = n.Content,
+                Type = n.Type,
+                Icon = n.Icon,
+                ActionText = n.ActionText,
+                ActionUrl = n.ActionUrl,
+                TargetAudience = n.TargetAudience,
+                Status = n.Status,
+                ScheduledAt = n.ScheduledAt,
+                SentAt = n.SentAt,
+                CreatedAt = n.CreatedAt,
+                CreatedBy = n.CreatedBy,
+                TotalSent = n.TotalSent,
+                TotalRead = n.TotalRead
+            }).ToList();
+
+            return new PagedResult<NotificationDto>(
+                dtos,
+                pageNumber,
+                pageSize,
+                totalCount
+            );
         }
 
-        Console.WriteLine($"✅ [INFO] Found notification: {notification.Title}, Target: {notification.TargetAudience}");
-
-        // ✅ GET TARGET CUSTOMERS with enhanced debugging
-        var targetCustomerIds = await GetSellerTargetCustomers(sellerId, notification.TargetAudience);
-        
-        Console.WriteLine($"📊 [RESULT] Found {targetCustomerIds.Count} target customers for notification {notificationId}");
-
-        // ✅ ENHANCED FALLBACK STRATEGY
-        if (!targetCustomerIds.Any())
+        public async Task<NotificationDto> CreateSellerNotificationAsync(CreateSellerNotificationDto dto, int sellerId)
         {
-            Console.WriteLine($"⚠️ [WARNING] No specific target customers found for seller {sellerId}");
-            
-            // FALLBACK 1: Try getting ALL customers who bought from this seller (any time)
-            var fallbackSql = @"
+            var notification = new Notification
+            {
+                Title = dto.Title,
+                Content = dto.Content,
+                Type = dto.Type,
+                Icon = dto.Icon ?? "fa-store",
+                ActionText = dto.ActionText,
+                ActionUrl = dto.ActionUrl,
+                TargetAudience = $"seller_{sellerId}_{dto.TargetCustomers}", // Custom format for seller notifications
+                Status = "draft",
+                ScheduledAt = dto.ScheduledAt,
+                CreatedBy = sellerId,
+                CreatedAt = DateTime.UtcNow,
+                TotalSent = 0,
+                TotalRead = 0
+            };
+
+            // Store specific customer IDs in a separate table or JSON field if needed
+            if (dto.SpecificCustomerIds?.Any() == true)
+            {
+                // You might want to create a TargetCustomers table or store as JSON
+                notification.TargetAudience = $"seller_{sellerId}_specific";
+                // Store specific IDs - could extend Notification model or create separate table
+            }
+
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
+
+            return _mapper.Map<NotificationDto>(notification);
+        }
+
+        public async Task<bool> SendSellerNotificationAsync(int notificationId, int sellerId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                Console.WriteLine($"📨 [DEBUG] Starting SendSellerNotificationAsync for notification {notificationId}, seller {sellerId}");
+
+                var notification = await _context.Notifications
+                    .FirstOrDefaultAsync(n => n.NotificationID == notificationId &&
+                                             n.CreatedBy == sellerId &&
+                                             n.Status == "draft");
+
+                if (notification == null)
+                {
+                    Console.WriteLine($"❌ [ERROR] Notification {notificationId} not found or not owned by seller {sellerId}");
+                    return false;
+                }
+
+                Console.WriteLine($"✅ [INFO] Found notification: {notification.Title}, Target: {notification.TargetAudience}");
+
+                // ✅ GET TARGET CUSTOMERS with enhanced debugging
+                var targetCustomerIds = await GetSellerTargetCustomers(sellerId, notification.TargetAudience);
+
+                Console.WriteLine($"📊 [RESULT] Found {targetCustomerIds.Count} target customers for notification {notificationId}");
+
+                // ✅ ENHANCED FALLBACK STRATEGY
+                if (!targetCustomerIds.Any())
+                {
+                    Console.WriteLine($"⚠️ [WARNING] No specific target customers found for seller {sellerId}");
+
+                    // FALLBACK 1: Try getting ALL customers who bought from this seller (any time)
+                    var fallbackSql = @"
                 SELECT DISTINCT o.UserID 
                 FROM OrderDetails od
                 INNER JOIN Products p ON od.ProductID = p.ProductID
@@ -639,89 +639,89 @@ public async Task<bool> SendSellerNotificationAsync(int notificationId, int sell
                 WHERE p.SellerID = @sellerId 
                   AND u.Role = 'Customer'
             ";
-            
-            targetCustomerIds = await _context.Database
-                .SqlQueryRaw<int>(fallbackSql, new SqlParameter("@sellerId", sellerId))
-                .ToListAsync();
-                
-            Console.WriteLine($"🔄 [FALLBACK1] Found {targetCustomerIds.Count} customers with relaxed criteria");
-            
-            // FALLBACK 2: If still no customers, use all active customers (for demo/testing)
-            if (!targetCustomerIds.Any())
-            {
-                Console.WriteLine($"🔄 [FALLBACK2] No customers found, using all active customers for demo");
-                
-                targetCustomerIds = await _context.Users
-                    .Where(u => u.Role == "Customer" && u.IsActive == true)
-                    .Select(u => u.UserID)
-                    .Take(50) // Limit for performance
-                    .ToListAsync();
-                    
-                Console.WriteLine($"🔄 [FALLBACK2] Using {targetCustomerIds.Count} active customers");
-            }
-            
-            // FALLBACK 3: If STILL no customers, allow 0 recipients (for new sellers)
-            if (!targetCustomerIds.Any())
-            {
-                Console.WriteLine($"📝 [FALLBACK3] No customers available, sending with 0 recipients (new seller)");
-                
-                // Update notification status anyway
+
+                    targetCustomerIds = await _context.Database
+                        .SqlQueryRaw<int>(fallbackSql, new SqlParameter("@sellerId", sellerId))
+                        .ToListAsync();
+
+                    Console.WriteLine($"🔄 [FALLBACK1] Found {targetCustomerIds.Count} customers with relaxed criteria");
+
+                    // FALLBACK 2: If still no customers, use all active customers (for demo/testing)
+                    if (!targetCustomerIds.Any())
+                    {
+                        Console.WriteLine($"🔄 [FALLBACK2] No customers found, using all active customers for demo");
+
+                        targetCustomerIds = await _context.Users
+                            .Where(u => u.Role == "Customer" && u.IsActive == true)
+                            .Select(u => u.UserID)
+                            .Take(50) // Limit for performance
+                            .ToListAsync();
+
+                        Console.WriteLine($"🔄 [FALLBACK2] Using {targetCustomerIds.Count} active customers");
+                    }
+
+                    // FALLBACK 3: If STILL no customers, allow 0 recipients (for new sellers)
+                    if (!targetCustomerIds.Any())
+                    {
+                        Console.WriteLine($"📝 [FALLBACK3] No customers available, sending with 0 recipients (new seller)");
+
+                        // Update notification status anyway
+                        notification.Status = "sent";
+                        notification.SentAt = DateTime.UtcNow;
+                        notification.TotalSent = 0;
+
+                        _context.Notifications.Update(notification);
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        Console.WriteLine($"✅ [SUCCESS] Notification {notificationId} marked as sent with 0 recipients");
+                        return true; // ✅ Return success even with 0 recipients
+                    }
+                }
+
+                // ✅ NORMAL FLOW: Create UserNotifications for found customers
+                Console.WriteLine($"📤 [PROCESS] Creating UserNotifications for {targetCustomerIds.Count} customers");
+
+                var userNotifications = targetCustomerIds.Select(customerId => new UserNotification
+                {
+                    NotificationID = notificationId,
+                    UserID = customerId,
+                    UserType = "Customer",
+                    ReceivedAt = DateTime.UtcNow,
+                    IsRead = false,
+                    IsDeleted = false
+                }).ToList();
+
+                _context.UserNotifications.AddRange(userNotifications);
+
+                // Update notification status
                 notification.Status = "sent";
                 notification.SentAt = DateTime.UtcNow;
-                notification.TotalSent = 0;
+                notification.TotalSent = targetCustomerIds.Count;
 
                 _context.Notifications.Update(notification);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                Console.WriteLine($"✅ [SUCCESS] Notification {notificationId} marked as sent with 0 recipients");
-                return true; // ✅ Return success even with 0 recipients
+                Console.WriteLine($"✅ [SUCCESS] Notification {notificationId} sent successfully to {targetCustomerIds.Count} customers");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine($"❌ [ERROR] Exception in SendSellerNotificationAsync: {ex.Message}");
+                Console.WriteLine($"📍 [STACK] {ex.StackTrace}");
+                throw new Exception($"Failed to send notification: {ex.Message}", ex);
             }
         }
-
-        // ✅ NORMAL FLOW: Create UserNotifications for found customers
-        Console.WriteLine($"📤 [PROCESS] Creating UserNotifications for {targetCustomerIds.Count} customers");
-        
-        var userNotifications = targetCustomerIds.Select(customerId => new UserNotification
+        // ✅ GIẢI PHÁP THAY THẾ: Raw SQL
+        public async Task<List<CustomerInfoDto>> GetSellerCustomersAsync(int sellerId)
         {
-            NotificationID = notificationId,
-            UserID = customerId,
-            UserType = "Customer",
-            ReceivedAt = DateTime.UtcNow,
-            IsRead = false,
-            IsDeleted = false
-        }).ToList();
+            try
+            {
+                Console.WriteLine($"🔍 [SQL] Getting customers for sellerId: {sellerId}");
 
-        _context.UserNotifications.AddRange(userNotifications);
-
-        // Update notification status
-        notification.Status = "sent";
-        notification.SentAt = DateTime.UtcNow;
-        notification.TotalSent = targetCustomerIds.Count;
-
-        _context.Notifications.Update(notification);
-        await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        Console.WriteLine($"✅ [SUCCESS] Notification {notificationId} sent successfully to {targetCustomerIds.Count} customers");
-        return true;
-    }
-    catch (Exception ex)
-    {
-        await transaction.RollbackAsync();
-        Console.WriteLine($"❌ [ERROR] Exception in SendSellerNotificationAsync: {ex.Message}");
-        Console.WriteLine($"📍 [STACK] {ex.StackTrace}");
-        throw new Exception($"Failed to send notification: {ex.Message}", ex);
-    }
-}
-// ✅ GIẢI PHÁP THAY THẾ: Raw SQL
-public async Task<List<CustomerInfoDto>> GetSellerCustomersAsync(int sellerId)
-{
-    try
-    {
-        Console.WriteLine($"🔍 [SQL] Getting customers for sellerId: {sellerId}");
-        
-        var sql = @"
+                var sql = @"
             SELECT 
                 u.UserID,
                 ISNULL(u.FullName, N'Không xác định') as UserName,
@@ -744,19 +744,19 @@ public async Task<List<CustomerInfoDto>> GetSellerCustomersAsync(int sellerId)
             ORDER BY TotalSpent DESC
         ";
 
-        var customers = await _context.Database
-            .SqlQueryRaw<CustomerInfoDto>(sql, new Microsoft.Data.SqlClient.SqlParameter("@sellerId", sellerId))
-            .ToListAsync();
+                var customers = await _context.Database
+                    .SqlQueryRaw<CustomerInfoDto>(sql, new Microsoft.Data.SqlClient.SqlParameter("@sellerId", sellerId))
+                    .ToListAsync();
 
-        Console.WriteLine($"✅ [SQL] Found {customers.Count} customers for seller {sellerId}");
-        return customers;
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"❌ [SQL ERROR] {ex.Message}");
-        return new List<CustomerInfoDto>();
-    }
-}
+                Console.WriteLine($"✅ [SQL] Found {customers.Count} customers for seller {sellerId}");
+                return customers;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [SQL ERROR] {ex.Message}");
+                return new List<CustomerInfoDto>();
+            }
+        }
 
         public async Task<List<NotificationTemplateDto>> GetSellerNotificationTemplatesAsync()
         {
@@ -813,29 +813,29 @@ public async Task<List<CustomerInfoDto>> GetSellerCustomersAsync(int sellerId)
             return await Task.FromResult(templates);
         }
 
-private async Task<List<int>> GetSellerTargetCustomers(int sellerId, string targetAudience)
-{
-    try
-    {
-        Console.WriteLine($"🎯 [DEBUG] Getting target customers for seller {sellerId}, audience: {targetAudience}");
-        
-        var parts = targetAudience.Split('_');
-        if (parts.Length < 3) 
+        private async Task<List<int>> GetSellerTargetCustomers(int sellerId, string targetAudience)
         {
-            Console.WriteLine($"❌ [ERROR] Invalid target audience format: {targetAudience}");
-            return new List<int>();
-        }
+            try
+            {
+                Console.WriteLine($"🎯 [DEBUG] Getting target customers for seller {sellerId}, audience: {targetAudience}");
 
-        var targetType = parts[2]; // all, recent, frequent, vip, specific
-        Console.WriteLine($"🎯 [DEBUG] Target type: {targetType}");
+                var parts = targetAudience.Split('_');
+                if (parts.Length < 3)
+                {
+                    Console.WriteLine($"❌ [ERROR] Invalid target audience format: {targetAudience}");
+                    return new List<int>();
+                }
 
-        string sql;
-        var parameters = new List<SqlParameter> { new SqlParameter("@sellerId", sellerId) };
+                var targetType = parts[2]; // all, recent, frequent, vip, specific
+                Console.WriteLine($"🎯 [DEBUG] Target type: {targetType}");
 
-        // ✅ ENHANCED RAW SQL cho từng target type
-        sql = targetType switch
-        {
-            "all" => @"
+                string sql;
+                var parameters = new List<SqlParameter> { new SqlParameter("@sellerId", sellerId) };
+
+                // ✅ ENHANCED RAW SQL cho từng target type
+                sql = targetType switch
+                {
+                    "all" => @"
                 SELECT DISTINCT o.UserID 
                 FROM OrderDetails od
                 INNER JOIN Products p ON od.ProductID = p.ProductID
@@ -845,8 +845,8 @@ private async Task<List<int>> GetSellerTargetCustomers(int sellerId, string targ
                   AND u.Role = 'Customer'
                   AND u.IsActive = 1
             ",
-            
-            "recent" => @"
+
+                    "recent" => @"
                 SELECT DISTINCT o.UserID 
                 FROM OrderDetails od
                 INNER JOIN Products p ON od.ProductID = p.ProductID
@@ -857,8 +857,8 @@ private async Task<List<int>> GetSellerTargetCustomers(int sellerId, string targ
                   AND u.IsActive = 1
                   AND o.OrderDate >= DATEADD(day, -30, GETUTCDATE())
             ",
-            
-            "frequent" => @"
+
+                    "frequent" => @"
                 SELECT o.UserID
                 FROM OrderDetails od
                 INNER JOIN Products p ON od.ProductID = p.ProductID
@@ -870,8 +870,8 @@ private async Task<List<int>> GetSellerTargetCustomers(int sellerId, string targ
                 GROUP BY o.UserID
                 HAVING COUNT(DISTINCT o.OrderID) >= 3
             ",
-            
-            "vip" => @"
+
+                    "vip" => @"
                 SELECT o.UserID
                 FROM OrderDetails od
                 INNER JOIN Products p ON od.ProductID = p.ProductID
@@ -883,8 +883,8 @@ private async Task<List<int>> GetSellerTargetCustomers(int sellerId, string targ
                 GROUP BY o.UserID
                 HAVING SUM(ISNULL(o.TotalPayment, 0)) >= 1000000
             ",
-            
-            _ => @"
+
+                    _ => @"
                 SELECT DISTINCT o.UserID 
                 FROM OrderDetails od
                 INNER JOIN Products p ON od.ProductID = p.ProductID
@@ -894,113 +894,291 @@ private async Task<List<int>> GetSellerTargetCustomers(int sellerId, string targ
                   AND u.Role = 'Customer'
                   AND u.IsActive = 1
             " // Default to "all"
-        };
+                };
 
-        Console.WriteLine($"📋 [SQL] Executing query: {sql}");
+                Console.WriteLine($"📋 [SQL] Executing query: {sql}");
 
-        var customerIds = await _context.Database
-            .SqlQueryRaw<int>(sql, parameters.ToArray())
-            .ToListAsync();
+                var customerIds = await _context.Database
+                    .SqlQueryRaw<int>(sql, parameters.ToArray())
+                    .ToListAsync();
 
-        Console.WriteLine($"✅ [SUCCESS] Found {customerIds.Count} target customers for seller {sellerId}, type '{targetType}'");
-        
-        // ✅ DEBUG: Log first few customer IDs
-        if (customerIds.Any())
-        {
-            Console.WriteLine($"👥 [SAMPLE] First customers: {string.Join(", ", customerIds.Take(5))}");
-        }
-        else
-        {
-            Console.WriteLine($"⚠️ [WARNING] No customers found. Checking seller data...");
-            
-            // ✅ FALLBACK CHECK: Does seller have any products?
-            var productCount = await _context.Database
-                .SqlQueryRaw<int>("SELECT COUNT(*) FROM Products WHERE SellerID = @sellerId", 
-                    new SqlParameter("@sellerId", sellerId))
-                .FirstOrDefaultAsync();
-                
-            Console.WriteLine($"📦 [DEBUG] Seller has {productCount} products");
-            
-            // ✅ FALLBACK CHECK: Are there any orders?
-            var orderCount = await _context.Database
-                .SqlQueryRaw<int>(@"
+                Console.WriteLine($"✅ [SUCCESS] Found {customerIds.Count} target customers for seller {sellerId}, type '{targetType}'");
+
+                // ✅ DEBUG: Log first few customer IDs
+                if (customerIds.Any())
+                {
+                    Console.WriteLine($"👥 [SAMPLE] First customers: {string.Join(", ", customerIds.Take(5))}");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ [WARNING] No customers found. Checking seller data...");
+
+                    // ✅ FALLBACK CHECK: Does seller have any products?
+                    var productCount = await _context.Database
+                        .SqlQueryRaw<int>("SELECT COUNT(*) FROM Products WHERE SellerID = @sellerId",
+                            new SqlParameter("@sellerId", sellerId))
+                        .FirstOrDefaultAsync();
+
+                    Console.WriteLine($"📦 [DEBUG] Seller has {productCount} products");
+
+                    // ✅ FALLBACK CHECK: Are there any orders?
+                    var orderCount = await _context.Database
+                        .SqlQueryRaw<int>(@"
                     SELECT COUNT(DISTINCT o.OrderID) 
                     FROM OrderDetails od
                     INNER JOIN Products p ON od.ProductID = p.ProductID
                     INNER JOIN Orders o ON od.OrderID = o.OrderID
                     WHERE p.SellerID = @sellerId
                 ", new SqlParameter("@sellerId", sellerId))
-                .FirstOrDefaultAsync();
-                
-            Console.WriteLine($"📋 [DEBUG] Seller has {orderCount} orders");
+                        .FirstOrDefaultAsync();
+
+                    Console.WriteLine($"📋 [DEBUG] Seller has {orderCount} orders");
+                }
+
+                return customerIds;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [ERROR] Exception in GetSellerTargetCustomers: {ex.Message}");
+                Console.WriteLine($"📍 [STACK] {ex.StackTrace}");
+                return new List<int>();
+            }
+        }
+        public async Task<bool> DeleteSellerNotificationAsync(int notificationId, int sellerId)
+        {
+            // ⭐ TƯƠNG TỰ DeleteNotificationAsync nhưng có check sellerId
+            var notification = await _context.Notifications
+                .FirstOrDefaultAsync(n => n.NotificationID == notificationId && n.CreatedBy == sellerId);
+
+            if (notification == null) return false;
+
+            // Check if notification has been sent (giống admin)
+            if (notification.Status == "sent")
+            {
+                throw new InvalidOperationException("Cannot delete sent notification");
+            }
+
+            _context.Notifications.Remove(notification);
+            await _context.SaveChangesAsync();
+            return true;
         }
 
-        return customerIds;
+        public async Task<NotificationDto?> UpdateSellerNotificationAsync(int notificationId, CreateSellerNotificationDto dto, int sellerId)
+        {
+            // ⭐ TƯƠNG TỰ UpdateNotificationAsync nhưng có check sellerId
+            var notification = await _context.Notifications
+                .FirstOrDefaultAsync(n => n.NotificationID == notificationId && n.CreatedBy == sellerId);
+
+            if (notification == null) return null;
+
+            if (notification.Status == "sent")
+                throw new InvalidOperationException("Cannot update sent notification");
+
+            // Map từ CreateSellerNotificationDto (khác với admin dùng UpdateNotificationDto)
+            notification.Title = dto.Title;
+            notification.Content = dto.Content;
+            notification.Type = dto.Type;
+            notification.Icon = dto.Icon ?? "fa-store";
+            notification.ActionText = dto.ActionText;
+            notification.ActionUrl = dto.ActionUrl;
+            notification.TargetAudience = $"seller_{sellerId}_{dto.TargetCustomers}";
+            notification.ScheduledAt = dto.ScheduledAt;
+
+            _context.Notifications.Update(notification);
+            await _context.SaveChangesAsync();
+
+            return _mapper.Map<NotificationDto>(notification);
+        }
+
+        public async Task<object> GetSellerNotificationStatsAsync(int notificationId, int sellerId)
+        {
+            // ⭐ TƯƠNG TỰ GetNotificationStatsAsync nhưng có check sellerId
+            var notification = await _context.Notifications
+                .FirstOrDefaultAsync(n => n.NotificationID == notificationId && n.CreatedBy == sellerId);
+
+            if (notification == null) return null;
+
+            // SỬ DỤNG LẠI LOGIC CỦA GetNotificationStatsAsync
+            return await GetNotificationStatsAsync(notificationId);
+        }
+
+        public async Task<List<NotificationRecipientDto>> GetSellerNotificationRecipientsAsync(int notificationId, int sellerId)
+        {
+            try
+            {
+                Console.WriteLine($"🔍 [RECIPIENTS] Getting recipients for notification {notificationId}, seller {sellerId}");
+
+                // ✅ CHECK OWNERSHIP FIRST
+                var notification = await _context.Notifications
+                    .FirstOrDefaultAsync(n => n.NotificationID == notificationId && n.CreatedBy == sellerId);
+
+                if (notification == null)
+                {
+                    Console.WriteLine($"❌ [RECIPIENTS] Notification {notificationId} not found or not owned by seller {sellerId}");
+                    return new List<NotificationRecipientDto>();
+                }
+
+                // ✅ GET RECIPIENTS WITH ENHANCED INFO
+                var recipients = await _context.UserNotifications
+                    .Include(un => un.User)
+                    .Where(un => un.NotificationID == notificationId && !un.IsDeleted)
+                    .Select(un => new
+                    {
+                        un.UserNotificationID,
+                        un.UserID,
+                        CustomerName = un.User.FullName ?? "Khách hàng",
+                        Email = un.User.Email,
+                        Phone = un.User.Phone,
+                        Avatar = un.User.Avatar,
+                        un.IsRead,
+                        SentAt = un.ReceivedAt,
+                        ReadAt = un.ReadAt,
+                        un.IsDeleted,
+                        un.DeletedAt,
+                        IsActive = un.User.IsActive,
+                        JoinedDate = un.User.CreatedAt
+                    })
+                    .OrderBy(un => un.CustomerName)
+                    .ToListAsync();
+
+                Console.WriteLine($"✅ [RECIPIENTS] Found {recipients.Count} recipients for notification {notificationId}");
+
+                // ✅ ENHANCE WITH CUSTOMER STATS
+                var result = new List<NotificationRecipientDto>();
+
+                foreach (var recipient in recipients)
+                {
+                    // Get customer purchase stats
+                    var customerStats = await GetCustomerStatsForSeller(recipient.UserID, sellerId);
+
+                    result.Add(new NotificationRecipientDto
+                    {
+                        UserNotificationID = recipient.UserNotificationID,
+                        UserID = recipient.UserID,
+                        CustomerName = recipient.CustomerName,
+                        Email = recipient.Email,
+                        Phone = recipient.Phone,
+                        Avatar = recipient.Avatar,
+                        IsRead = recipient.IsRead,
+                        SentAt = recipient.SentAt,
+                        ReadAt = recipient.ReadAt,
+                        IsDeleted = recipient.IsDeleted,
+                        DeletedAt = recipient.DeletedAt,
+                        IsActive = recipient.IsActive,
+                        JoinedDate = recipient.JoinedDate,
+
+                        // Enhanced stats
+                        TotalOrders = customerStats.TotalOrders,
+                        TotalSpent = customerStats.TotalSpent,
+                        CustomerType = customerStats.CustomerType,
+                        LastOrderDate = customerStats.LastOrderDate
+                    });
+                }
+
+                Console.WriteLine($"✅ [RECIPIENTS] Enhanced {result.Count} recipients with customer stats");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [RECIPIENTS ERROR] {ex.Message}");
+                return new List<NotificationRecipientDto>();
+            }
+        }
+private async Task<(int TotalOrders, decimal TotalSpent, string CustomerType, DateTime? LastOrderDate)> 
+    GetCustomerStatsForSeller(int customerId, int sellerId)
+{
+    try
+    {
+        var sql = @"
+            SELECT 
+                COUNT(DISTINCT o.OrderID) as TotalOrders,
+                ISNULL(SUM(o.TotalPayment), 0) as TotalSpent,
+                MAX(o.OrderDate) as LastOrderDate
+            FROM OrderDetails od
+            INNER JOIN Products p ON od.ProductID = p.ProductID
+            INNER JOIN Orders o ON od.OrderID = o.OrderID
+            WHERE p.SellerID = @sellerId 
+              AND o.UserID = @customerId
+        ";
+
+        var result = await _context.Database
+            .SqlQueryRaw<CustomerStatsResult>(sql, 
+                new SqlParameter("@sellerId", sellerId),
+                new SqlParameter("@customerId", customerId))
+            .FirstOrDefaultAsync();
+
+        if (result == null)
+        {
+            return (0, 0, "Regular", null);
+        }
+
+        // Determine customer type
+        string customerType = result.TotalOrders switch
+        {
+            >= 5 when result.TotalSpent >= 1000000 => "VIP",
+            >= 3 => "Frequent",
+            _ => "Regular"
+        };
+
+        return (result.TotalOrders, result.TotalSpent, customerType, result.LastOrderDate);
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ [ERROR] Exception in GetSellerTargetCustomers: {ex.Message}");
-        Console.WriteLine($"📍 [STACK] {ex.StackTrace}");
-        return new List<int>();
+        Console.WriteLine($"❌ [CUSTOMER STATS ERROR] {ex.Message}");
+        return (0, 0, "Regular", null);
     }
 }
-public async Task<bool> DeleteSellerNotificationAsync(int notificationId, int sellerId)
+public async Task<ResendNotificationResult> ResendNotificationToUserAsync(int userNotificationId, int sellerId)
 {
-    // ⭐ TƯƠNG TỰ DeleteNotificationAsync nhưng có check sellerId
-    var notification = await _context.Notifications
-        .FirstOrDefaultAsync(n => n.NotificationID == notificationId && n.CreatedBy == sellerId);
-    
-    if (notification == null) return false;
-
-    // Check if notification has been sent (giống admin)
-    if (notification.Status == "sent")
+    try
     {
-        throw new InvalidOperationException("Cannot delete sent notification");
+        Console.WriteLine($"🔄 [SERVICE] Resending notification {userNotificationId} by seller {sellerId}");
+        
+        // ✅ CHECK OWNERSHIP
+        var userNotification = await _context.UserNotifications
+            .Include(un => un.Notification)
+            .FirstOrDefaultAsync(un => un.UserNotificationID == userNotificationId && 
+                                      un.Notification.CreatedBy == sellerId);
+        
+        if (userNotification == null)
+        {
+            return new ResendNotificationResult
+            {
+                Success = false,
+                Message = "User notification not found or not owned by you"
+            };
+        }
+        
+        // ✅ CREATE NEW NOTIFICATION RECORD
+        var newUserNotification = new UserNotification
+        {
+            NotificationID = userNotification.NotificationID,
+            UserID = userNotification.UserID,
+            UserType = userNotification.UserType,
+            ReceivedAt = DateTime.UtcNow,
+            IsRead = false,
+            IsDeleted = false
+        };
+        
+        _context.UserNotifications.Add(newUserNotification);
+        await _context.SaveChangesAsync();
+        
+        Console.WriteLine($"✅ [SERVICE] Successfully resent notification to user {userNotification.UserID}");
+        
+        return new ResendNotificationResult
+        {
+            Success = true,
+            Message = "Đã gửi lại thông báo thành công",
+            NewUserNotificationId = newUserNotification.UserNotificationID,
+            SentAt = newUserNotification.ReceivedAt
+        };
     }
-
-    _context.Notifications.Remove(notification);
-    await _context.SaveChangesAsync();
-    return true;
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [SERVICE ERROR] {ex.Message}");
+        throw new Exception($"Failed to resend notification: {ex.Message}", ex);
+    }
 }
-
-public async Task<NotificationDto?> UpdateSellerNotificationAsync(int notificationId, CreateSellerNotificationDto dto, int sellerId)
-{
-    // ⭐ TƯƠNG TỰ UpdateNotificationAsync nhưng có check sellerId
-    var notification = await _context.Notifications
-        .FirstOrDefaultAsync(n => n.NotificationID == notificationId && n.CreatedBy == sellerId);
-        
-    if (notification == null) return null;
-
-    if (notification.Status == "sent")
-        throw new InvalidOperationException("Cannot update sent notification");
-
-    // Map từ CreateSellerNotificationDto (khác với admin dùng UpdateNotificationDto)
-    notification.Title = dto.Title;
-    notification.Content = dto.Content;
-    notification.Type = dto.Type;
-    notification.Icon = dto.Icon ?? "fa-store";
-    notification.ActionText = dto.ActionText;
-    notification.ActionUrl = dto.ActionUrl;
-    notification.TargetAudience = $"seller_{sellerId}_{dto.TargetCustomers}";
-    notification.ScheduledAt = dto.ScheduledAt;
-
-    _context.Notifications.Update(notification);
-    await _context.SaveChangesAsync();
-
-    return _mapper.Map<NotificationDto>(notification);
-}
-
-public async Task<object> GetSellerNotificationStatsAsync(int notificationId, int sellerId)
-{
-    // ⭐ TƯƠNG TỰ GetNotificationStatsAsync nhưng có check sellerId
-    var notification = await _context.Notifications
-        .FirstOrDefaultAsync(n => n.NotificationID == notificationId && n.CreatedBy == sellerId);
-        
-    if (notification == null) return null;
-
-    // SỬ DỤNG LẠI LOGIC CỦA GetNotificationStatsAsync
-    return await GetNotificationStatsAsync(notificationId);
-}
-#endregion
+        #endregion
     }
 }

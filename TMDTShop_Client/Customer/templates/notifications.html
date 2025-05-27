@@ -91,31 +91,50 @@
         </div>
 
         <div class="space-y-4" x-show="!isLoading && !error">
-          <template x-if="notifications.length > 0">
-            <div>
-              <template x-for="notification in notifications" :key="notification.id">
-                <div class="flex items-start p-4 rounded-lg transition hover:bg-gray-50" :class="{ 'bg-blue-50': notification.status === 'unread' }">
-                  <div class="flex-shrink-0">
-                    <i :class="'fas ' + notification.icon + ' text-blue-600 text-xl mt-1'"></i>
-                  </div>
-                  <div class="flex-1 ml-4">
-                    <div class="flex items-center justify-between">
-                      <h3 class="text-lg font-semibold text-gray-800" x-text="notification.title"></h3>
-                      <span class="text-gray-500 text-sm" x-text="formatTime(notification.created_at)"></span>
-                    </div>
-                    <p class="text-gray-600 mt-1" x-html="notification.message"></p>
-                    <div class="mt-2 flex items-center space-x-4">
-                      <a :href="notification.action_url || '#!'" target="_blank" class="text-blue-600 hover:text-blue-800 font-medium" x-text="notification.action_text || 'Xem chi tiết'" x-show="notification.action_text"></a>
-                      <button x-show="notification.status === 'unread'" @click="markAsRead(notification.id)" class="text-gray-500 hover:text-blue-600 text-sm">
-                        Đánh dấu đã đọc
-                      </button>
-                    </div>
-                  </div>
-                  <div x-show="notification.status === 'unread'" class="flex-shrink-0 ml-2">
-                    <span class="bg-blue-600 h-3 w-3 rounded-full inline-block"></span>
+          <template x-for="notification in notifications" :key="notification.id">
+            <div class="flex items-start p-4 rounded-lg transition hover:bg-gray-50" :class="{ 'bg-blue-50': notification.status === 'unread' }">
+              <div class="flex-shrink-0">
+                <i :class="'fas ' + notification.icon + ' text-blue-600 text-xl mt-1'"></i>
+              </div>
+              <div class="flex-1 ml-4">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-lg font-semibold text-gray-800" x-text="notification.title"></h3>
+                  <div class="flex items-center space-x-2">
+                    <span class="text-gray-500 text-sm" x-text="formatTime(notification.created_at)"></span>
+                    <!-- ✅ THÊM NÚT XÓA -->
+                    <button @click="deleteNotification(notification.id)" 
+                            class="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition"
+                            title="Xóa thông báo">
+                      <i class="fas fa-trash text-sm"></i>
+                    </button>
                   </div>
                 </div>
-              </template>
+                <p class="text-gray-600 mt-1" x-html="notification.message"></p>
+                <div class="mt-2 flex items-center space-x-4">
+                  <a :href="notification.action_url || '#!'" target="_blank" 
+                     class="text-blue-600 hover:text-blue-800 font-medium" 
+                     x-text="notification.action_text || 'Xem chi tiết'" 
+                     x-show="notification.action_text"></a>
+                  
+                  <!-- ✅ NÚT ĐÁNH DẤU ĐÃ ĐỌC -->
+                  <button x-show="notification.status === 'unread'" 
+                          @click="markAsRead(notification.id)" 
+                          class="text-gray-500 hover:text-blue-600 text-sm flex items-center">
+                    <i class="fas fa-eye mr-1"></i>Đánh dấu đã đọc
+                  </button>
+                  
+                  <!-- ✅ HIỂN THỊ TRẠNG THÁI ĐÃ ĐỌC -->
+                  <span x-show="notification.status === 'read'" 
+                        class="text-green-600 text-sm flex items-center">
+                    <i class="fas fa-check-circle mr-1"></i>Đã đọc
+                  </span>
+                </div>
+              </div>
+              
+              <!-- ✅ DẤU CHẤM XANH CHO THÔNG BÁO CHƯA ĐỌC -->
+              <div x-show="notification.status === 'unread'" class="flex-shrink-0 ml-2">
+                <span class="bg-blue-600 h-3 w-3 rounded-full inline-block"></span>
+              </div>
             </div>
           </template>
           <div x-show="!isLoading && notifications.length === 0 && !error" class="text-center text-gray-600 py-4">
@@ -143,19 +162,6 @@
     </main>
   </div>
 
-  <!-- Contact Section -->
-  <section class="container mx-auto px-4 py-12 bg-white rounded-xl shadow-lg mt-6">
-    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Cần hỗ trợ thêm?</h2>
-    <p class="text-gray-600 text-center max-w-xl mx-auto mb-6">Nếu bạn có câu hỏi về thông báo hoặc cần hỗ trợ, liên hệ với chúng tôi qua email hoặc chatbot.</p>
-    <div class="flex justify-center space-x-4">
-      <a href="mailto:support@shopx.vn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition transform hover:scale-105">
-        Gửi email <i class="fas fa-envelope ml-2"></i>
-      </a>
-      <button class="bg-yellow-400 hover:bg-yellow-500 text-blue-800 px-6 py-3 rounded-lg font-medium transition transform hover:scale-105">
-        Chat ngay <i class="fas fa-robot ml-2"></i>
-      </button>
-    </div>
-  </section>
 
   <!-- Chatbot -->
   <div class="fixed bottom-6 right-6 z-50">
@@ -166,8 +172,10 @@
 
   <!-- Footer Container -->
   <div id="footer-container"></div>
-
+  <script src="../assets/js/noti.js"></script>
   <script src="../assets/js/index.js"></script> 
+  
  <script src="../assets/js/components.js"></script>
+ 
 </body>
 </html>

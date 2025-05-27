@@ -69,4 +69,10 @@ namespace ShopxEX1.Dtos.Notifications
         public DateTime? ReadAt { get; set; }
         public DateTime ReceivedAt { get; set; }
     }
+public class CustomerStatsResult
+{
+    public int TotalOrders { get; set; }
+    public decimal TotalSpent { get; set; }
+    public DateTime? LastOrderDate { get; set; }
+}
 }

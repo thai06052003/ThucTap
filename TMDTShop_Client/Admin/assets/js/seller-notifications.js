@@ -333,199 +333,125 @@ class SellerNotificationManager {
             showToast('Không thể tải dữ liệu thông báo', 'error');
         }
     }
-    // ✅ CẬP NHẬT loadNotifications method với COMPREHENSIVE ERROR HANDLING
-async loadNotifications() {
-    try {
-        console.log(`📥 [LOAD] Starting loadNotifications - Page ${this.currentPage}/${this.totalPages}`);
-        
-        const params = new URLSearchParams({
-            pageNumber: this.currentPage,
-            pageSize: this.pageSize
-        });
-
-        // Add filters if present
-        const search = document.getElementById('notification-search')?.value?.trim();
-        const type = document.getElementById('notification-type-filter')?.value;
-        
-        if (search) {
-            params.append('search', search);
-            console.log(`🔍 [FILTER] Search: "${search}"`);
-        }
-        if (type) {
-            params.append('type', type);
-            console.log(`🏷️ [FILTER] Type: "${type}"`);
-        }
-
-        console.log(`🔗 [API] Request URL: /notifications/seller?${params}`);
-
-        // Make API request with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-        
-        const response = await apiRequest(`/notifications/seller?${params}`, {
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        console.log('📊 [API] Raw Response:', response);
-        console.log('📊 [API] Response Type:', typeof response);
-        console.log('📊 [API] Response Keys:', response ? Object.keys(response) : 'null');
-        
-        // ✅ ENHANCED RESPONSE STRUCTURE DETECTION
-        let notifications = [];
-        let totalPages = 1;
-        let totalCount = 0;
-        
-        if (!response) {
-            console.warn('⚠️ [API] Null response received');
-            notifications = [];
-        }
-        // Check for PagedResult format: { items: [], totalPages: X, currentPage: Y, totalCount: Z }
-        else if (response.items && Array.isArray(response.items)) {
-            console.log('✅ [FORMAT] PagedResult detected');
-            notifications = response.items;
-            totalPages = response.totalPages || Math.ceil((response.totalCount || 0) / this.pageSize);
-            totalCount = response.totalCount || 0;
+    async loadNotifications() {
+        try {
+            console.log(`🔄 [LOAD] Loading notifications - Page: ${this.currentPage}, Size: ${this.pageSize}`);
             
-            console.log(`📊 [PAGED] Items: ${notifications.length}, Pages: ${totalPages}, Total: ${totalCount}`);
-        }
-        // Check for direct array format
-        else if (Array.isArray(response)) {
-            console.log('✅ [FORMAT] Direct array detected');
-            notifications = response;
-            totalPages = Math.max(1, Math.ceil(response.length / this.pageSize));
-            totalCount = response.length;
+            // Build query parameters
+            const params = new URLSearchParams({
+                pageNumber: this.currentPage.toString(),
+                pageSize: this.pageSize.toString()
+            });
+    
+            // Add search parameter
+            const searchTerm = document.getElementById('notification-search')?.value?.trim();
+            if (searchTerm) {
+                params.append('search', searchTerm);
+            }
+    
+            // Add type filter
+            const typeFilter = document.getElementById('notification-type-filter')?.value;
+            if (typeFilter) {
+                params.append('type', typeFilter);
+            }
+    
+            console.log(`🔍 [LOAD] Request params:`, Object.fromEntries(params));
+    
+            // ✅ ENHANCED API CALL với PROPER ERROR HANDLING
+            const response = await apiRequest(`/notifications/seller?${params.toString()}`);
             
-            console.log(`📊 [ARRAY] Items: ${notifications.length}, Estimated Pages: ${totalPages}`);
-        }
-        // Check for legacy format: { data: [] }
-        else if (response.data && Array.isArray(response.data)) {
-            console.log('✅ [FORMAT] Legacy data format detected');
-            notifications = response.data;
-            totalPages = response.totalPages || Math.max(1, Math.ceil(response.data.length / this.pageSize));
-            totalCount = response.totalCount || response.data.length;
-            
-            console.log(`📊 [LEGACY] Items: ${notifications.length}, Pages: ${totalPages}`);
-        }
-        // Unexpected format
-        else {
-            console.error('❌ [FORMAT] Unexpected response structure:', response);
-            console.error('❌ [FORMAT] Available properties:', Object.keys(response || {}));
-            
-            // Try to extract any array-like data
-            const possibleArrays = Object.values(response || {}).filter(val => Array.isArray(val));
-            if (possibleArrays.length > 0) {
-                console.log('🔄 [RECOVERY] Found array in response, using as fallback');
-                notifications = possibleArrays[0];
-                totalPages = Math.max(1, Math.ceil(notifications.length / this.pageSize));
-                totalCount = notifications.length;
+            console.log(`✅ [LOAD] API Response:`, {
+                hasResponse: !!response,
+                type: typeof response,
+                keys: response ? Object.keys(response) : 'null',
+                notificationsCount: response?.notifications?.length || 0,
+                currentPage: response?.currentPage,
+                totalPages: response?.totalPages,
+                totalCount: response?.totalCount
+            });
+    
+            // ✅ VALIDATE RESPONSE STRUCTURE
+            if (!response) {
+                throw new Error('Empty response from server');
+            }
+    
+            // ✅ HANDLE RESPONSE FORMAT
+            let notifications = [];
+            let totalPages = 1;
+            let totalCount = 0;
+            let currentPage = this.currentPage;
+    
+            if (response.notifications && Array.isArray(response.notifications)) {
+                // ✅ STANDARD FORMAT từ Controller
+                notifications = response.notifications;
+                totalCount = response.totalCount || 0;
+                currentPage = response.currentPage || this.currentPage;
+                totalPages = response.totalPages || Math.max(1, Math.ceil(totalCount / this.pageSize));
+            } else if (Array.isArray(response)) {
+                // ✅ FALLBACK: Direct array
+                notifications = response;
+                totalCount = response.length;
+                totalPages = Math.max(1, Math.ceil(totalCount / this.pageSize));
             } else {
+                console.warn('⚠️ [LOAD] Unexpected response format:', response);
                 notifications = [];
-                totalPages = 1;
                 totalCount = 0;
+                totalPages = 1;
             }
-        }
-        
-        // ✅ VALIDATE AND SANITIZE DATA
-        if (!Array.isArray(notifications)) {
-            console.error('❌ [VALIDATION] Notifications is not an array:', notifications);
-            notifications = [];
-        }
-        
-        // Ensure each notification has required properties
-        notifications = notifications.map((notif, index) => {
-            if (!notif || typeof notif !== 'object') {
-                console.warn(`⚠️ [VALIDATION] Invalid notification at index ${index}:`, notif);
-                return {
-                    notificationID: index,
-                    title: 'Invalid Notification',
-                    content: 'Data corrupted',
-                    type: 'error',
-                    status: 'unknown',
-                    createdAt: new Date().toISOString(),
-                    totalSent: 0,
-                    totalRead: 0
-                };
+    
+            console.log(`📊 [LOAD] Processed data:`, {
+                notificationsLoaded: notifications.length,
+                currentPage: currentPage,
+                totalPages: totalPages,
+                totalCount: totalCount
+            });
+    
+            // ✅ UPDATE INSTANCE PROPERTIES với VALIDATION
+            this.notifications = notifications || [];
+            this.currentPage = Math.max(1, currentPage);
+            this.totalPages = Math.max(1, totalPages);
+            this.totalCount = Math.max(0, totalCount);
+    
+            // ✅ VALIDATE CURRENT PAGE
+            if (this.currentPage > this.totalPages && this.totalPages > 0) {
+                console.warn(`⚠️ [LOAD] Current page ${this.currentPage} > total pages ${this.totalPages}, adjusting...`);
+                this.currentPage = this.totalPages;
+                return this.loadNotifications(); // Recursive call with correct page
+            }
+    
+            // ✅ RENDER COMPONENTS in correct order
+            this.renderNotifications();
+            this.renderPagination();
+            this.updateUIIndicators(this.totalCount);
+    
+            console.log(`✅ [LOAD] Successfully loaded and rendered notifications`);
+    
+        } catch (error) {
+            console.error('❌ [LOAD] Error loading notifications:', error);
+            
+            // ✅ ENHANCED ERROR HANDLING
+            this.notifications = [];
+            this.currentPage = 1;
+            this.totalPages = 1;
+            this.totalCount = 0;
+            
+            // Show safe error state
+            this.renderNotifications();
+            this.renderPagination();
+            
+            // Show error toast
+            let errorMessage = 'Không thể tải danh sách thông báo';
+            if (error.message.includes('401')) {
+                errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+            } else if (error.message.includes('403')) {
+                errorMessage = 'Bạn không có quyền truy cập chức năng này.';
+            } else if (error.message.includes('500')) {
+                errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
             }
             
-            // Ensure required properties exist
-            return {
-                notificationID: notif.notificationID || 0,
-                title: notif.title || 'Untitled',
-                content: notif.content || '',
-                type: notif.type || 'announcement',
-                status: notif.status || 'draft',
-                icon: notif.icon || 'fa-bell',
-                actionText: notif.actionText || null,
-                actionUrl: notif.actionUrl || null,
-                targetAudience: notif.targetAudience || 'all',
-                scheduledAt: notif.scheduledAt || null,
-                sentAt: notif.sentAt || null,
-                createdAt: notif.createdAt || new Date().toISOString(),
-                createdBy: notif.createdBy || 0,
-                totalSent: notif.totalSent || 0,
-                totalRead: notif.totalRead || 0
-            };
-        });
-        
-        // ✅ UPDATE STATE
-        this.notifications = notifications;
-        this.totalPages = totalPages;
-        
-        console.log(`✅ [STATE] Updated - Notifications: ${this.notifications.length}, Total Pages: ${this.totalPages}`);
-        
-        // ✅ VALIDATE CURRENT PAGE
-        if (this.currentPage > this.totalPages && this.totalPages > 0) {
-            console.warn(`⚠️ [PAGE] Current page ${this.currentPage} > total pages ${this.totalPages}, adjusting...`);
-            this.currentPage = this.totalPages;
-            return this.loadNotifications(); // Recursive call with correct page
-        }
-        
-        // ✅ RENDER RESULTS
-        this.renderNotifications();
-        this.renderPagination();
-        
-        console.log(`✅ [SUCCESS] Notifications loaded successfully: Page ${this.currentPage}/${this.totalPages}, ${this.notifications.length} items`);
-        
-        // ✅ UPDATE UI INDICATORS
-        this.updateUIIndicators(totalCount);
-        
-    } catch (error) {
-        console.error('❌ [ERROR] Failed to load notifications:', error);
-        
-        // ✅ COMPREHENSIVE ERROR HANDLING
-        let errorMessage = 'Không thể tải danh sách thông báo';
-        
-        if (error.name === 'AbortError') {
-            errorMessage = 'Yêu cầu tải dữ liệu quá lâu, vui lòng thử lại';
-        } else if (error.message.includes('403')) {
-            errorMessage = 'Bạn không có quyền truy cập. Vui lòng đăng nhập lại';
-        } else if (error.message.includes('404')) {
-            errorMessage = 'Không tìm thấy dữ liệu thông báo';
-        } else if (error.message.includes('500')) {
-            errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau';
-        } else if (!navigator.onLine) {
-            errorMessage = 'Không có kết nối internet';
-        }
-        
-        // ✅ SET SAFE STATE ON ERROR
-        this.notifications = [];
-        this.totalPages = 1;
-        
-        this.renderNotifications();
-        this.renderPagination();
-        this.updateUIIndicators(0);
-        
-        showToast(errorMessage, 'error');
-        
-        // ✅ RETRY MECHANISM (optional)
-        if (!error.message.includes('403') && !error.message.includes('404')) {
-            console.log('🔄 [RETRY] Will allow manual retry...');
+            showToast(errorMessage, 'error');
         }
     }
-}
-
 // ✅ THÊM METHOD MỚI: updateUIIndicators
 updateUIIndicators(totalCount) {
     // Update any additional UI indicators
@@ -544,7 +470,7 @@ updateUIIndicators(totalCount) {
     console.log(`📊 [UI] Updated indicators with count: ${totalCount}`);
 }
 
-// ✅ ENHANCED renderPagination với FULL ERROR CHECKING
+
 renderPagination() {
     const paginationContainer = document.getElementById('notifications-pagination-buttons');
     const paginationInfo = {
@@ -553,175 +479,111 @@ renderPagination() {
         total: document.getElementById('notifications-total')
     };
     
-    console.log('🔧 [PAGINATION] Rendering - Current state:', {
-        container: !!paginationContainer,
-        currentPage: this.currentPage,
-        totalPages: this.totalPages,
-        notificationsCount: this.notifications.length,
-        pageSize: this.pageSize
-    });
-    
-    // ✅ CHECK CONTAINER EXISTS
     if (!paginationContainer) {
-        console.error('❌ [PAGINATION] Container "notifications-pagination-buttons" not found!');
-        
-        // ✅ DEBUG: List all pagination elements
-        const allPaginationElements = document.querySelectorAll('[id*="pagination"], [id*="notification"]');
-        console.log('🔍 [DEBUG] Available elements:', 
-            Array.from(allPaginationElements).map(el => ({ 
-                id: el.id, 
-                tag: el.tagName,
-                classes: el.className 
-            }))
-        );
+        console.error('❌ [PAGINATION] Container not found');
         return;
     }
 
     // ✅ HANDLE EMPTY STATE
-    if (this.totalPages === 0 || this.notifications.length === 0) {
-        console.log('⚠️ [PAGINATION] Empty state detected');
-        
+    if (this.totalPages <= 0 || this.totalCount === 0) {
         paginationContainer.innerHTML = `
-            <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md">
+            <span class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-md">
                 <i class="fas fa-info-circle mr-2"></i>Không có dữ liệu
             </span>
         `;
         
-        // ✅ UPDATE INFO DISPLAY
         if (paginationInfo.start) paginationInfo.start.textContent = '0';
         if (paginationInfo.end) paginationInfo.end.textContent = '0';
         if (paginationInfo.total) paginationInfo.total.textContent = '0';
-        
-        this.updateMobileButtons();
-        console.log('✅ [PAGINATION] Empty state rendered');
         return;
     }
 
-    // ✅ GENERATE PAGINATION HTML
-    let paginationHTML = '';
+    // ✅ BUILD PAGINATION HTML (giữ nguyên logic hiện tại)
     const maxVisiblePages = 5;
-    
-    // Calculate page range
     let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(this.totalPages, startPage + maxVisiblePages - 1);
     
-    // Adjust startPage if we're near the end
     if (endPage - startPage + 1 < maxVisiblePages) {
         startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
 
-    console.log('📊 [PAGINATION] Calculation:', { 
-        startPage, 
-        endPage, 
-        maxVisible: maxVisiblePages,
-        currentPage: this.currentPage,
-        totalPages: this.totalPages
-    });
+    let paginationHTML = '';
 
-    // ✅ PREVIOUS BUTTON
+    // Previous button
     paginationHTML += this.currentPage > 1 ? 
         `<button onclick="window.sellerNotificationManager.goToPage(${this.currentPage - 1})" 
-                class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50 hover:text-gray-700 focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-                title="Trang trước" data-page="${this.currentPage - 1}">
+                class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50 hover:text-gray-700 transition-all duration-150">
             <i class="fas fa-chevron-left"></i>
         </button>` :
-        `<button disabled 
-                class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-300 bg-gray-100 border border-gray-300 rounded-l-md cursor-not-allowed">
+        `<button disabled class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-300 bg-gray-100 border border-gray-300 rounded-l-md cursor-not-allowed">
             <i class="fas fa-chevron-left"></i>
         </button>`;
 
-    // ✅ FIRST PAGE + ELLIPSIS
-    if (startPage > 1) {
-        paginationHTML += `
-            <button onclick="window.sellerNotificationManager.goToPage(1)" 
-                    class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-900 focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-                    data-page="1">
-                1
-            </button>
-        `;
-        
-        if (startPage > 2) {
-            paginationHTML += `
-                <span class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300">
-                    ...
-                </span>
-            `;
-        }
-    }
-
-    // ✅ PAGE NUMBERS
+    // Page numbers
     for (let i = startPage; i <= endPage; i++) {
-        const isActive = i === this.currentPage;
+        const isCurrentPage = i === this.currentPage;
         paginationHTML += `
             <button onclick="window.sellerNotificationManager.goToPage(${i})" 
-                    class="relative inline-flex items-center px-3 py-2 text-sm font-medium border transition-colors duration-150 ${isActive 
-                        ? 'z-10 bg-blue-50 border-blue-500 text-blue-600 font-semibold' 
-                        : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50 hover:text-gray-900'} focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    ${isActive ? 'aria-current="page"' : ''} data-page="${i}">
+                    class="relative inline-flex items-center px-4 py-2 text-sm font-medium transition-all duration-150 ${
+                        isCurrentPage 
+                            ? 'z-10 bg-blue-600 border-blue-600 text-white' 
+                            : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-50 hover:text-gray-700'
+                    }">
                 ${i}
-            </button>
-        `;
+            </button>`;
     }
 
-    // ✅ LAST PAGE + ELLIPSIS
-    if (endPage < this.totalPages) {
-        if (endPage < this.totalPages - 1) {
-            paginationHTML += `
-                <span class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300">
-                    ...
-                </span>
-            `;
-        }
-        
-        paginationHTML += `
-            <button onclick="window.sellerNotificationManager.goToPage(${this.totalPages})" 
-                    class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-900 focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-                    data-page="${this.totalPages}">
-                ${this.totalPages}
-            </button>
-        `;
-    }
-
-    // ✅ NEXT BUTTON
+    // Next button
     paginationHTML += this.currentPage < this.totalPages ? 
         `<button onclick="window.sellerNotificationManager.goToPage(${this.currentPage + 1})" 
-                class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50 hover:text-gray-700 focus:z-10 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-150"
-                title="Trang sau" data-page="${this.currentPage + 1}">
+                class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50 hover:text-gray-700 transition-all duration-150">
             <i class="fas fa-chevron-right"></i>
         </button>` :
-        `<button disabled 
-                class="relative inline-flex items-center px-2 py-2 text-sm font-medium text-gray-300 bg-gray-100 border border-gray-300 rounded-r-md cursor-not-allowed">
+        `<button disabled class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-300 bg-gray-100 border border-gray-300 rounded-r-md cursor-not-allowed">
             <i class="fas fa-chevron-right"></i>
         </button>`;
 
-    // ✅ SET HTML AND VERIFY
-    console.log('📝 [PAGINATION] Setting HTML, length:', paginationHTML.length);
     paginationContainer.innerHTML = paginationHTML;
-    
-    // ✅ VERIFY BUTTONS WERE CREATED
-    const buttonsCreated = paginationContainer.querySelectorAll('button').length;
-    console.log('✅ [PAGINATION] Buttons created:', buttonsCreated);
-    
-    if (buttonsCreated === 0) {
-        console.error('❌ [PAGINATION] No buttons were created! HTML:', paginationHTML.substring(0, 200));
-        return;
-    }
 
-    // ✅ UPDATE PAGINATION INFO
-    const totalEstimated = this.totalPages * this.pageSize;
-    const start = (this.currentPage - 1) * this.pageSize + 1;
-    const end = Math.min(this.currentPage * this.pageSize, start + this.notifications.length - 1);
+    // ✅ TÍNH TOÁN ĐÚNG PAGINATION INFO
+    const start = this.totalCount > 0 ? (this.currentPage - 1) * this.pageSize + 1 : 0;
+    const end = this.totalCount > 0 ? 
+        Math.min(start + this.notifications.length - 1, this.totalCount) : 0;
 
-    if (paginationInfo.start) paginationInfo.start.textContent = this.notifications.length > 0 ? start : 0;
-    if (paginationInfo.end) paginationInfo.end.textContent = this.notifications.length > 0 ? end : 0;
-    if (paginationInfo.total) paginationInfo.total.textContent = totalEstimated;
+    // ✅ HIỂN THỊ ĐÚNG: start-end của TỔNG SỐ thông báo
+    if (paginationInfo.start) paginationInfo.start.textContent = start.toString();
+    if (paginationInfo.end) paginationInfo.end.textContent = end.toString();
+    if (paginationInfo.total) paginationInfo.total.textContent = this.totalCount.toString();
 
-    // ✅ UPDATE MOBILE BUTTONS
+    console.log(`📊 [PAGINATION] Updated: ${start}-${end}/${this.totalCount} (showing ${this.notifications.length} notifications on page ${this.currentPage})`);
+
     this.updateMobileButtons();
-
-    console.log(`✅ [PAGINATION] Completed: Page ${this.currentPage}/${this.totalPages}, Items: ${start}-${end}/${totalEstimated}, Buttons: ${buttonsCreated}`);
 }
 
+renderTargetDisplay(notification) {
+    const targetText = this.getTargetText(notification.targetAudience);
+    const hasRecipients = notification.status === 'sent' && notification.totalSent > 0;
+    
+    if (hasRecipients) {
+        return `
+            <div class="flex flex-col space-y-1">
+                <span class="text-sm text-gray-900">${targetText}</span>
+                <button onclick="showRecipientList(${notification.notificationID})" 
+                        class="text-xs text-blue-600 hover:text-blue-800 hover:underline text-left transition-colors">
+                    <i class="fas fa-users mr-1"></i>
+                    Xem ${notification.totalSent} người nhận với thống kê chi tiết
+                </button>
+            </div>
+        `;
+    } else {
+        return `
+            <div class="text-sm text-gray-600">
+                <i class="fas fa-target mr-1"></i>
+                ${targetText}
+            </div>
+        `;
+    }
+}   
 // ✅ ENHANCED updateMobileButtons
 updateMobileButtons() {
     const prevBtn = document.getElementById('mobile-prev-btn');
@@ -850,102 +712,124 @@ async goToPage(page) {
             console.error('❌ Error loading templates:', error);
         }
     }
-
     renderNotifications() {
-        const tbody = document.getElementById('notifications-table-body');
-        if (!tbody) return;
-    
-        if (this.notifications.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="px-6 py-12 text-center">
-                        <div class="flex flex-col items-center">
-                            <i class="fas fa-bell-slash text-gray-300 text-4xl mb-4"></i>
-                            <h3 class="text-lg font-medium text-gray-900 mb-2">Chưa có thông báo</h3>
-                            <p class="text-gray-500">Tạo thông báo đầu tiên để gửi đến khách hàng</p>
-                            <button onclick="openNotificationModal()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-                                Tạo thông báo
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-    
-        tbody.innerHTML = this.notifications.map(notification => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4">
-                    <div class="flex items-start space-x-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <i class="fas ${notification.icon || 'fa-bell'} text-blue-600"></i>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <p class="text-sm font-medium text-gray-900 truncate">${notification.title}</p>
-                            <p class="text-xs text-gray-500 truncate">${this.stripHtml(notification.content).substring(0, 60)}...</p>
-                        </div>
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${this.getTypeBadgeClass(notification.type)}">
-                        ${this.getTypeText(notification.type)}
-                    </span>
-                </td>
-                <td class="px-6 py-4">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${this.getStatusBadgeClass(notification.status)}">
-                        ${this.getStatusText(notification.status)}
-                    </span>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="text-sm text-gray-900">${this.getTargetText(notification.targetAudience)}</div>
-                </td>
-                <td class="px-6 py-4">
-                    ${notification.status === 'sent' ? `
-                        <div class="text-sm">
-                            <div class="text-gray-900">Gửi: ${notification.totalSent || 0}</div>
-                            <div class="text-green-600">Đọc: ${notification.totalRead || 0}</div>
-                            <div class="text-blue-600">${notification.totalSent > 0 ? Math.round((notification.totalRead || 0) / notification.totalSent * 100) : 0}%</div>
-                        </div>
-                    ` : `
-                        <span class="text-gray-400 text-sm">Chưa gửi</span>
-                    `}
-                </td>
-                <td class="px-6 py-4 text-sm text-gray-500">
-                    ${formatTime(notification.createdAt)}
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex items-center space-x-2">
-                        <!-- ⭐ THÊM VIEW ACTION CHO TẤT CẢ -->
-                        <button onclick="viewNotification(${notification.notificationID})" 
-                                class="text-blue-600 hover:text-blue-900 text-sm" title="Xem chi tiết">
-                            <i class="fas fa-eye"></i>
+    const tbody = document.getElementById('notifications-table-body');
+    if (!tbody) {
+        console.error('❌ [RENDER] Table body not found');
+        return;
+    }
+
+    if (this.notifications.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="px-6 py-12 text-center">
+                    <div class="flex flex-col items-center">
+                        <i class="fas fa-bell-slash text-4xl text-gray-300 mb-4"></i>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Chưa có thông báo nào</h3>
+                        <p class="text-gray-500">Tạo thông báo đầu tiên để gửi đến khách hàng của bạn</p>
+                        <button onclick="window.sellerNotificationManager.openNotificationModal()" 
+                                class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                            <i class="fas fa-plus mr-2"></i>Tạo thông báo
                         </button>
-                        
-                        ${notification.status === 'draft' ? `
-                            <button onclick="editNotification(${notification.notificationID})" 
-                                    class="text-green-600 hover:text-green-900 text-sm" title="Chỉnh sửa">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button onclick="sendNotification(${notification.notificationID})" 
-                                    class="text-purple-600 hover:text-purple-900 text-sm" title="Gửi ngay">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                            <button onclick="deleteNotification(${notification.notificationID})" 
-                                    class="text-red-600 hover:text-red-900 text-sm" title="Xóa">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        ` : `
-                            <button onclick="viewNotificationStats(${notification.notificationID})" 
-                                    class="text-orange-600 hover:text-orange-900 text-sm" title="Xem thống kê">
-                                <i class="fas fa-chart-bar"></i>
-                            </button>
-                        `}
                     </div>
                 </td>
             </tr>
-        `).join('');
+        `;
+        return;
     }
 
+    tbody.innerHTML = this.notifications.map(notification => `
+        <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4">
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas ${notification.icon || 'fa-bell'} text-blue-600"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium text-gray-900 truncate">${escapeHtml(notification.title)}</p>
+                        <p class="text-xs text-gray-500 truncate">${this.stripHtml(notification.content).substring(0, 60)}...</p>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${this.getTypeBadgeClass(notification.type)}">
+                    ${this.getTypeText(notification.type)}
+                </span>
+            </td>
+            <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${this.getStatusBadgeClass(notification.status)}">
+                    ${this.getStatusText(notification.status)}
+                </span>
+            </td>
+            <td class="px-6 py-4">
+                <!-- ✅ SỬ DỤNG renderTargetDisplay METHOD -->
+                ${this.renderTargetDisplay(notification)}
+            </td>
+            <td class="px-6 py-4">
+                ${notification.status === 'sent' ? `
+                    <div class="text-sm">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-gray-600">Gửi:</span>
+                            <span class="font-medium text-blue-600">${notification.totalSent || 0}</span>
+                        </div>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-gray-600">Đọc:</span>
+                            <span class="font-medium text-green-600">${notification.totalRead || 0}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">Tỷ lệ:</span>
+                            <span class="font-medium text-purple-600">${notification.totalSent > 0 ? Math.round((notification.totalRead || 0) / notification.totalSent * 100) : 0}%</span>
+                        </div>
+                    </div>
+                ` : `
+                    <span class="text-gray-400 text-sm">Chưa gửi</span>
+                `}
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-500">
+                <div class="flex flex-col">
+                    <span class="text-gray-900">${formatTime(notification.createdAt)}</span>
+                    ${notification.sentAt ? `<span class="text-green-600 text-xs">Gửi: ${formatTime(notification.sentAt)}</span>` : ''}
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="flex items-center space-x-2">
+                    <!-- ⭐ VIEW ACTION CHO TẤT CẢ -->
+                    <button onclick="viewNotification(${notification.notificationID})" 
+                            class="text-blue-600 hover:text-blue-900 text-sm p-1 hover:bg-blue-50 rounded transition" 
+                            title="Xem chi tiết">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    
+                    ${notification.status === 'draft' ? `
+                        <button onclick="editNotification(${notification.notificationID})" 
+                                class="text-green-600 hover:text-green-900 text-sm p-1 hover:bg-green-50 rounded transition" 
+                                title="Chỉnh sửa">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="sendNotification(${notification.notificationID})" 
+                                class="text-purple-600 hover:text-purple-900 text-sm p-1 hover:bg-purple-50 rounded transition" 
+                                title="Gửi ngay">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                        <button onclick="deleteNotification(${notification.notificationID})" 
+                                class="text-red-600 hover:text-red-900 text-sm p-1 hover:bg-red-50 rounded transition" 
+                                title="Xóa">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    ` : `
+                        <button onclick="viewNotificationStats(${notification.notificationID})" 
+                                class="text-orange-600 hover:text-orange-900 text-sm p-1 hover:bg-orange-50 rounded transition" 
+                                title="Xem thống kê">
+                            <i class="fas fa-chart-bar"></i>
+                        </button>
+                    `}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    console.log(`✅ [RENDER] Rendered ${this.notifications.length} notifications`);
+}
     renderTemplateOptions() {
         const select = document.getElementById('notification-template');
         if (!select) return;
@@ -2025,15 +1909,681 @@ openNotificationModal() {
         return tmp.textContent || tmp.innerText || '';
     }
 
-    renderPagination() {
-        // Implementation for pagination rendering
-        // Similar to other pagination implementations in the project
-    }
+
 }
 
 // ============================================
 // GLOBAL FUNCTIONS WITH ENHANCED ERROR HANDLING
 // ============================================
+// ✅ CẬP NHẬT showRecipientList để lưu notificationId cho resend
+async function showRecipientList(notificationId) {
+    try {
+        console.log(`📋 Showing enhanced recipient list for notification ${notificationId}`);
+        
+        const loadingModal = createLoadingModal('Đang tải danh sách người nhận...');
+        document.body.appendChild(loadingModal);
+        loadingModal.classList.remove('hidden');
+        
+        const response = await apiRequest(`/notifications/seller/${notificationId}/recipients`);
+        
+        loadingModal.remove();
+        
+        if (!response || !response.recipients) {
+            showToast('Không thể tải danh sách người nhận', 'error');
+            return;
+        }
+
+        let modal = document.getElementById('recipient-list-modal');
+        if (!modal) {
+            modal = createEnhancedRecipientListModal();
+            document.body.appendChild(modal);
+        }
+
+        // ✅ LƯU NOTIFICATION ID để dùng cho resend
+        modal.setAttribute('data-notification-id', notificationId.toString());
+
+        populateEnhancedRecipientList(response);
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('.modal-content').classList.add('scale-100');
+        }, 50);
+        
+    } catch (error) {
+        console.error('❌ Error showing recipient list:', error);
+        
+        document.querySelectorAll('.loading-modal').forEach(modal => modal.remove());
+        
+        let errorMessage = 'Không thể tải danh sách người nhận';
+        if (error.message.includes('403')) {
+            errorMessage = 'Bạn không có quyền xem danh sách này';
+        } else if (error.message.includes('404')) {
+            errorMessage = 'Thông báo không tồn tại hoặc chưa được gửi';
+        }
+        
+        showToast(errorMessage, 'error');
+    }
+}
+// ✅ ENHANCED createRecipientListModal với CUSTOMER STATS
+function createEnhancedRecipientListModal() {
+    const modal = document.createElement('div');
+    modal.id = 'recipient-list-modal';
+    modal.className = 'fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 hidden';
+    
+    modal.innerHTML = `
+        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden transform scale-95 transition-transform duration-300">
+            <!-- Enhanced Header với Stats Summary -->
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-users mr-3"></i>
+                            Danh sách người nhận
+                        </h3>
+                        <p id="recipient-notification-title" class="text-blue-100 mt-1 text-sm"></p>
+                    </div>
+                    <button onclick="closeRecipientModal()" 
+                            class="text-white hover:text-gray-200 transition-colors">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Quick Stats Bar -->
+                <div id="recipient-quick-stats" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Stats sẽ được populate ở đây -->
+                </div>
+            </div>
+
+            <!-- Enhanced Body với Filters -->
+            <div class="flex flex-col h-full max-h-[70vh]">
+                <!-- Filter Controls -->
+                <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex-1 min-w-48">
+                            <input type="text" 
+                                   id="recipient-search" 
+                                   placeholder="🔍 Tìm theo tên, email..." 
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <select id="recipient-status-filter" 
+                                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">📊 Tất cả trạng thái</option>
+                                <option value="read">✅ Đã đọc</option>
+                                <option value="unread">📬 Chưa đọc</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select id="recipient-type-filter" 
+                                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">👥 Tất cả loại KH</option>
+                                <option value="VIP">🌟 VIP</option>
+                                <option value="Frequent">🔥 Thân thiết</option>
+                                <option value="Regular">👤 Thường</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button id="export-recipients-btn" 
+                                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm">
+                                <i class="fas fa-download mr-2"></i>Xuất Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Recipient Table -->
+                <div class="flex-1 overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <input type="checkbox" id="select-all-recipients" class="mr-2">
+                                    Khách hàng
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Loại KH
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Trạng thái
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Thống kê mua hàng
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Thời gian
+                                </th>
+                                <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Hành động
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="recipient-list-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Enhanced recipients sẽ được render ở đây -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ✅ ENHANCED FOOTER - BỎ NÚT PHÂN TÍCH CHI TIẾT -->
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <span id="selected-count" class="text-sm text-gray-600">0 người được chọn</span>
+                    <div id="bulk-actions" class="hidden flex space-x-2">
+                        <button class="bg-orange-600 text-white px-3 py-1 rounded text-sm hover:bg-orange-700 transition">
+                            <i class="fas fa-redo mr-1"></i>Gửi lại hàng loạt
+                        </button>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="closeRecipientModal()" 
+                            class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
+                        Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeRecipientModal();
+        }
+    });
+
+    return modal;
+}
+// ✅ ENHANCED populateRecipientList với CUSTOMER STATS và FILTERS
+function populateEnhancedRecipientList(data) {
+    const { notificationTitle, recipients, totalRecipients, totalRead, totalUnread, readRate } = data;
+    
+    console.log('📊 Populating enhanced recipient list:', {
+        title: notificationTitle,
+        total: totalRecipients,
+        read: totalRead,
+        unread: totalUnread,
+        rate: readRate
+    });
+
+    // ✅ SET NOTIFICATION TITLE
+    document.getElementById('recipient-notification-title').textContent = 
+        notificationTitle || 'Thông báo không xác định';
+
+    // ✅ POPULATE QUICK STATS với ENHANCED METRICS
+    const quickStats = document.getElementById('recipient-quick-stats');
+    quickStats.innerHTML = `
+        <div class="text-center">
+            <div class="text-2xl font-bold text-white">${totalRecipients}</div>
+            <div class="text-xs text-blue-100">Tổng gửi</div>
+        </div>
+        <div class="text-center">
+            <div class="text-2xl font-bold text-green-300">${totalRead}</div>
+            <div class="text-xs text-blue-100">Đã đọc</div>
+        </div>
+        <div class="text-center">
+            <div class="text-2xl font-bold text-yellow-300">${totalUnread}</div>
+            <div class="text-xs text-blue-100">Chưa đọc</div>
+        </div>
+        <div class="text-center">
+            <div class="text-2xl font-bold text-purple-300">${readRate}%</div>
+            <div class="text-xs text-blue-100">Tỷ lệ đọc</div>
+        </div>
+    `;
+
+    // ✅ STORE ORIGINAL DATA for filtering
+    window.currentRecipients = recipients;
+    
+    // ✅ RENDER RECIPIENTS với ENHANCED DISPLAY
+    renderFilteredRecipients(recipients);
+    
+    // ✅ SETUP FILTER EVENT LISTENERS
+    setupRecipientFilters();
+}
+
+// ✅ ENHANCED renderFilteredRecipients với CUSTOMER STATS
+function renderFilteredRecipients(recipients) {
+    const tbody = document.getElementById('recipient-list-body');
+    
+    if (!recipients || recipients.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="px-6 py-12 text-center">
+                    <div class="flex flex-col items-center">
+                        <i class="fas fa-users-slash text-4xl text-gray-300 mb-4"></i>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Không có người nhận</h3>
+                        <p class="text-gray-500">Không tìm thấy người nhận phù hợp với bộ lọc</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = recipients.map(recipient => `
+        <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-4">
+                <div class="flex items-center space-x-3">
+                    <input type="checkbox" class="recipient-checkbox" value="${recipient.userID}">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                            ${getInitials(recipient.customerName)}
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">${recipient.customerName}</p>
+                            <p class="text-xs text-gray-500">${recipient.email || 'Không có email'}</p>
+                            ${recipient.phone ? `<p class="text-xs text-gray-400">${recipient.phone}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-4 py-4">
+                <div class="flex flex-col space-y-1">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCustomerTypeBadgeClass(recipient.customerType)}">
+                        ${getCustomerTypeIcon(recipient.customerType)} ${recipient.customerTypeText || recipient.customerType}
+                    </span>
+                    <span class="text-xs text-gray-500">
+                        Tham gia: ${formatTime(recipient.joinedDate)}
+                    </span>
+                </div>
+            </td>
+            <td class="px-4 py-4">
+                <div class="flex flex-col space-y-1">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        recipient.isRead 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                    }">
+                        <span class="w-2 h-2 bg-current rounded-full mr-1.5"></span>
+                        ${recipient.isRead ? '✅ Đã đọc' : '📬 Chưa đọc'}
+                    </span>
+                    ${recipient.isActive ? '' : `
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-red-100 text-red-800">
+                            ⚠️ Không hoạt động
+                        </span>
+                    `}
+                </div>
+            </td>
+            <td class="px-4 py-4">
+                <div class="text-sm space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Đơn hàng:</span>
+                        <span class="font-medium text-blue-600">${recipient.totalOrders}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">Tổng chi:</span>
+                        <span class="font-medium text-green-600">${formatMoney(recipient.totalSpent)}</span>
+                    </div>
+                    ${recipient.lastOrderDate ? `
+                        <div class="text-xs text-gray-500">
+                            Mua cuối: ${formatTime(recipient.lastOrderDate)}
+                        </div>
+                    ` : `
+                        <div class="text-xs text-red-500">Chưa có đơn hàng</div>
+                    `}
+                </div>
+            </td>
+            <td class="px-4 py-4">
+                <div class="text-sm space-y-1">
+                    <div>
+                        <span class="text-gray-600">Gửi:</span>
+                        <span class="text-blue-600 ml-1">${formatTime(recipient.sentAt)}</span>
+                    </div>
+                    ${recipient.isRead && recipient.readAt ? `
+                        <div>
+                            <span class="text-gray-600">Đọc:</span>
+                            <span class="text-green-600 ml-1">${formatTime(recipient.readAt)}</span>
+                        </div>
+                        <div class="text-xs text-purple-600">
+                            📊 ${getReadTimeStats(recipient.sentAt, recipient.readAt)}
+                        </div>
+                    ` : ''}
+                </div>
+            </td>
+            <td class="px-4 py-4">
+                <div class="flex items-center justify-center">
+                    <!-- ✅ CHỈ GIỮ NÚT GỬI LẠI -->
+                    ${!recipient.isRead ? `
+                        <button onclick="resendToCustomer(${recipient.userNotificationID})" 
+                                class="inline-flex items-center px-3 py-1 text-xs bg-orange-100 text-orange-700 rounded-full hover:bg-orange-200 hover:text-orange-800 transition-all duration-150 font-medium"
+                                title="Gửi lại thông báo">
+                            <i class="fas fa-redo mr-1"></i>Gửi lại
+                        </button>
+                    ` : `
+                        <span class="text-xs text-gray-400 italic">Đã đọc</span>
+                    `}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    updateSelectionCounter();
+}
+// ✅ ENHANCED setupRecipientFilters với REAL-TIME FILTERING
+function setupRecipientFilters() {
+    const searchInput = document.getElementById('recipient-search');
+    const statusFilter = document.getElementById('recipient-status-filter');
+    const typeFilter = document.getElementById('recipient-type-filter');
+    const selectAllCheckbox = document.getElementById('select-all-recipients');
+    const exportBtn = document.getElementById('export-recipients-btn');
+
+    // ✅ SEARCH FILTER với DEBOUNCE
+    let searchTimeout;
+    searchInput?.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            applyRecipientFilters();
+        }, 300); // 300ms debounce
+    });
+
+    // ✅ STATUS và TYPE FILTERS
+    statusFilter?.addEventListener('change', applyRecipientFilters);
+    typeFilter?.addEventListener('change', applyRecipientFilters);
+
+    // ✅ SELECT ALL FUNCTIONALITY
+    selectAllCheckbox?.addEventListener('change', (e) => {
+        const checkboxes = document.querySelectorAll('.recipient-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = e.target.checked;
+        });
+        updateSelectionCounter();
+    });
+
+    // ✅ INDIVIDUAL CHECKBOX LISTENERS
+    document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('recipient-checkbox')) {
+            updateSelectionCounter();
+            
+            // Update select all checkbox
+            const allCheckboxes = document.querySelectorAll('.recipient-checkbox');
+            const checkedBoxes = document.querySelectorAll('.recipient-checkbox:checked');
+            selectAllCheckbox.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < allCheckboxes.length;
+            selectAllCheckbox.checked = checkedBoxes.length === allCheckboxes.length && allCheckboxes.length > 0;
+        }
+    });
+
+    // ✅ EXPORT FUNCTIONALITY
+    exportBtn?.addEventListener('click', exportRecipientsToExcel);
+}
+
+// ✅ ENHANCED applyRecipientFilters với MULTIPLE CRITERIA
+function applyRecipientFilters() {
+    if (!window.currentRecipients) return;
+
+    const searchTerm = document.getElementById('recipient-search')?.value.toLowerCase() || '';
+    const statusFilter = document.getElementById('recipient-status-filter')?.value || '';
+    const typeFilter = document.getElementById('recipient-type-filter')?.value || '';
+
+    const filteredRecipients = window.currentRecipients.filter(recipient => {
+        // ✅ SEARCH FILTER (name, email, phone)
+        const matchesSearch = !searchTerm || 
+            recipient.customerName.toLowerCase().includes(searchTerm) ||
+            (recipient.email && recipient.email.toLowerCase().includes(searchTerm)) ||
+            (recipient.phone && recipient.phone.includes(searchTerm));
+
+        // ✅ STATUS FILTER
+        const matchesStatus = !statusFilter || 
+            (statusFilter === 'read' && recipient.isRead) ||
+            (statusFilter === 'unread' && !recipient.isRead);
+
+        // ✅ CUSTOMER TYPE FILTER
+        const matchesType = !typeFilter || recipient.customerType === typeFilter;
+
+        return matchesSearch && matchesStatus && matchesType;
+    });
+
+    console.log(`🔍 Filtered ${filteredRecipients.length}/${window.currentRecipients.length} recipients`);
+    
+    renderFilteredRecipients(filteredRecipients);
+}
+// ✅ ENHANCED UTILITY FUNCTIONS với CUSTOMER STATS
+
+function getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ')
+        .map(part => part.charAt(0))
+        .join('')
+        .toUpperCase()
+        .substring(0, 2);
+}
+
+function getCustomerTypeBadgeClass(type) {
+    const classes = {
+        'VIP': 'bg-purple-100 text-purple-800',
+        'Frequent': 'bg-blue-100 text-blue-800',
+        'Regular': 'bg-gray-100 text-gray-800'
+    };
+    return classes[type] || 'bg-gray-100 text-gray-800';
+}
+
+function getCustomerTypeIcon(type) {
+    const icons = {
+        'VIP': '🌟',
+        'Frequent': '🔥',
+        'Regular': '👤'
+    };
+    return icons[type] || '👤';
+}
+
+function getReadTimeStats(sentAt, readAt) {
+    if (!sentAt || !readAt) return '';
+    
+    const sent = new Date(sentAt);
+    const read = new Date(readAt);
+    const diffMs = read - sent;
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMinutes < 60) return `Đọc sau ${diffMinutes} phút`;
+    if (diffHours < 24) return `Đọc sau ${diffHours} giờ`;
+    return `Đọc sau ${diffDays} ngày`;
+}
+
+function updateSelectionCounter() {
+    const checkedBoxes = document.querySelectorAll('.recipient-checkbox:checked');
+    const counter = document.getElementById('selected-count');
+    const bulkActions = document.getElementById('bulk-actions');
+    
+    if (counter) {
+        counter.textContent = `${checkedBoxes.length} người được chọn`;
+    }
+    
+    if (bulkActions) {
+        if (checkedBoxes.length > 0) {
+            bulkActions.classList.remove('hidden');
+        } else {
+            bulkActions.classList.add('hidden');
+        }
+    }
+}
+
+function closeRecipientModal() {
+    const modal = document.getElementById('recipient-list-modal');
+    if (modal) {
+        modal.querySelector('.modal-content').classList.remove('scale-100');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+}
+
+// ✅ EXPORT TO EXCEL FUNCTIONALITY
+async function exportRecipientsToExcel() {
+    try {
+        const checkedBoxes = document.querySelectorAll('.recipient-checkbox:checked');
+        const selectedIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+        
+        showToast('Đang chuẩn bị file Excel...', 'info');
+        
+        // Create Excel-like data
+        const data = window.currentRecipients
+            .filter(r => selectedIds.length === 0 || selectedIds.includes(r.userID))
+            .map(recipient => ({
+                'Tên khách hàng': recipient.customerName,
+                'Email': recipient.email || '',
+                'Điện thoại': recipient.phone || '',
+                'Loại khách hàng': recipient.customerType,
+                'Tổng đơn hàng': recipient.totalOrders,
+                'Tổng chi tiêu': recipient.totalSpent,
+                'Ngày mua cuối': recipient.lastOrderDate ? formatTime(recipient.lastOrderDate) : '',
+                'Trạng thái đọc': recipient.isRead ? 'Đã đọc' : 'Chưa đọc',
+                'Thời gian gửi': formatTime(recipient.sentAt),
+                'Thời gian đọc': recipient.readAt ? formatTime(recipient.readAt) : '',
+                'Ngày tham gia': formatTime(recipient.joinedDate)
+            }));
+        
+        // Convert to CSV
+        const csv = convertToCSV(data);
+        downloadCSV(csv, `danh-sach-nguoi-nhan-${new Date().getTime()}.csv`);
+        
+        showToast(`Đã xuất ${data.length} bản ghi thành công!`, 'success');
+        
+    } catch (error) {
+        console.error('❌ Export error:', error);
+        showToast('Có lỗi xảy ra khi xuất file', 'error');
+    }
+}
+
+function convertToCSV(data) {
+    if (data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+        headers.join(','),
+        ...data.map(row => headers.map(header => `"${row[header]}"`).join(','))
+    ].join('\n');
+    
+    return '\uFEFF' + csvContent; // Add BOM for UTF-8
+}
+
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
+
+// ✅ ENHANCED ACTION FUNCTIONS
+async function viewCustomerProfile(customerId) {
+    try {
+        showToast('Đang tải hồ sơ khách hàng...', 'info');
+        
+        const response = await apiRequest(`/customers/${customerId}/profile`);
+        // Show customer profile modal...
+        
+    } catch (error) {
+        showToast('Không thể tải hồ sơ khách hàng', 'error');
+    }
+}
+
+async function viewCustomerOrders(customerId) {
+    try {
+        showToast('Đang tải lịch sử đơn hàng...', 'info');
+        
+        const response = await apiRequest(`/customers/${customerId}/orders`);
+        // Show customer orders modal...
+        
+    } catch (error) {
+        showToast('Không thể tải lịch sử đơn hàng', 'error');
+    }
+}
+
+async function sendPersonalMessage(customerId) {
+    // Open personal message modal
+    showToast('Tính năng tin nhắn cá nhân sẽ có trong phiên bản tới', 'info');
+}
+
+// ✅ SỬA resendToCustomer function
+async function resendToCustomer(userNotificationId) {
+    if (!confirm('Bạn có chắc chắn muốn gửi lại thông báo cho khách hàng này?')) return;
+    
+    // Get button element for loading state
+    const button = event?.target?.closest('button');
+    const originalHTML = button?.innerHTML;
+    
+    try {
+        // Show loading state
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Đang gửi...';
+        }
+        
+        console.log(`🔄 [RESEND] Sending request for userNotificationId: ${userNotificationId}`);
+        
+        // ✅ CALL API với đúng endpoint
+        const response = await apiRequest(`/notifications/user/${userNotificationId}/resend`, {
+            method: 'POST'
+        });
+        
+        console.log('✅ [RESEND] Response:', response);
+        
+        showToast('Đã gửi lại thông báo thành công!', 'success');
+        
+        // ✅ REFRESH RECIPIENT LIST để cập nhật trạng thái
+        const modal = document.getElementById('recipient-list-modal');
+        const notificationId = modal?.getAttribute('data-notification-id');
+        
+        if (notificationId) {
+            console.log(`🔄 [RESEND] Refreshing recipient list for notification ${notificationId}`);
+            
+            // Reload recipient list
+            await showRecipientList(parseInt(notificationId));
+        } else {
+            // Alternative: just update the button state
+            if (button) {
+                button.innerHTML = '<i class="fas fa-check mr-1 text-green-600"></i>Đã gửi lại';
+                button.classList.remove('bg-orange-100', 'text-orange-700', 'hover:bg-orange-200', 'hover:text-orange-800');
+                button.classList.add('bg-green-100', 'text-green-700');
+                button.disabled = true;
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ [RESEND] Error:', error);
+        
+        let errorMessage = 'Không thể gửi lại thông báo';
+        if (error.message.includes('404')) {
+            errorMessage = 'Không tìm thấy thông báo hoặc bạn không có quyền';
+        } else if (error.message.includes('500')) {
+            errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau';
+        }
+        
+        showToast(errorMessage, 'error');
+        
+    } finally {
+        // Restore button state if error occurred
+        if (button && button.disabled) {
+            setTimeout(() => {
+                button.disabled = false;
+                if (originalHTML) {
+                    button.innerHTML = originalHTML;
+                }
+            }, 2000);
+        }
+    }
+}
+
+// ✅ LOADING MODAL HELPER
+function createLoadingModal(message) {
+    const modal = document.createElement('div');
+    modal.className = 'loading-modal fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 flex items-center space-x-4">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span class="text-gray-900">${message}</span>
+        </div>
+    `;
+    
+    return modal;
+}
 
 async function sendNotification(id) {
     if (!confirm('Bạn có chắc chắn muốn gửi thông báo này?')) return;
