@@ -17,6 +17,8 @@ namespace ShopxEX1.Data
         public DbSet<OrderDetail> OrderDetails { get; set; } = null!;
         public DbSet<Discount> Discounts { get; set; } = null!;
         public DbSet<SellerCategory> SellerCategories { get; set; } = null!;
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<UserNotification> UserNotifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -60,7 +62,7 @@ namespace ShopxEX1.Data
                 entity.Property(e => e.Status).HasMaxLength(50); // Khớp với sơ đồ
 
                 entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETDATE()"); // Giá trị mặc định nếu là SQL Server
-                                                        // Hoặc .HasDefaultValue(DateTime.UtcNow) nếu muốn EF Core quản lý
+                                                                                   // Hoặc .HasDefaultValue(DateTime.UtcNow) nếu muốn EF Core quản lý
             });
 
             // --- Cấu hình Seller ---
@@ -121,6 +123,46 @@ namespace ShopxEX1.Data
                       .WithMany(sc => sc.Products) // Collection trong Seller
                       .HasForeignKey(p => p.SellerID) // Khóa Ngoại
                       .OnDelete(DeleteBehavior.Cascade); // Ngăn chặn xóa Seller nếu có Product liên quan
+                 // Notification configurations
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.HasKey(e => e.NotificationID);
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Content).IsRequired();
+                entity.Property(e => e.Type).HasMaxLength(50).HasDefaultValue("general");
+                entity.Property(e => e.Icon).HasMaxLength(50).HasDefaultValue("fa-bell");
+                entity.Property(e => e.TargetAudience).HasMaxLength(20).HasDefaultValue("both");
+                entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("draft");
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETDATE()");
+                
+                entity.HasOne(e => e.Creator)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatedBy)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // UserNotification configurations
+            modelBuilder.Entity<UserNotification>(entity =>
+            {
+                entity.HasKey(e => e.UserNotificationID);
+                entity.Property(e => e.UserType).IsRequired().HasMaxLength(10);
+                entity.Property(e => e.ReceivedAt).HasDefaultValueSql("GETDATE()");
+                
+                entity.HasOne(e => e.Notification)
+                    .WithMany(n => n.UserNotifications)
+                    .HasForeignKey(e => e.NotificationID)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserID)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Indexes for performance
+                entity.HasIndex(e => new { e.UserID, e.UserType });
+                entity.HasIndex(e => e.NotificationID);
+                entity.HasIndex(e => e.IsRead);
+            });
 
                 entity.Property(e => e.ProductName).IsRequired().HasMaxLength(255);
                 entity.Property(e => e.ImageURL).HasMaxLength(1024); // Cho phép null

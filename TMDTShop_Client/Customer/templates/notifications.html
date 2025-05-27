@@ -91,31 +91,50 @@
         </div>
 
         <div class="space-y-4" x-show="!isLoading && !error">
-          <template x-if="notifications.length > 0">
-            <div>
-              <template x-for="notification in notifications" :key="notification.id">
-                <div class="flex items-start p-4 rounded-lg transition hover:bg-gray-50" :class="{ 'bg-blue-50': notification.status === 'unread' }">
-                  <div class="flex-shrink-0">
-                    <i :class="'fas ' + notification.icon + ' text-blue-600 text-xl mt-1'"></i>
-                  </div>
-                  <div class="flex-1 ml-4">
-                    <div class="flex items-center justify-between">
-                      <h3 class="text-lg font-semibold text-gray-800" x-text="notification.title"></h3>
-                      <span class="text-gray-500 text-sm" x-text="formatTime(notification.created_at)"></span>
-                    </div>
-                    <p class="text-gray-600 mt-1" x-html="notification.message"></p>
-                    <div class="mt-2 flex items-center space-x-4">
-                      <a :href="notification.action_url || '#!'" target="_blank" class="text-blue-600 hover:text-blue-800 font-medium" x-text="notification.action_text || 'Xem chi tiết'" x-show="notification.action_text"></a>
-                      <button x-show="notification.status === 'unread'" @click="markAsRead(notification.id)" class="text-gray-500 hover:text-blue-600 text-sm">
-                        Đánh dấu đã đọc
-                      </button>
-                    </div>
-                  </div>
-                  <div x-show="notification.status === 'unread'" class="flex-shrink-0 ml-2">
-                    <span class="bg-blue-600 h-3 w-3 rounded-full inline-block"></span>
+          <template x-for="notification in notifications" :key="notification.id">
+            <div class="flex items-start p-4 rounded-lg transition hover:bg-gray-50" :class="{ 'bg-blue-50': notification.status === 'unread' }">
+              <div class="flex-shrink-0">
+                <i :class="'fas ' + notification.icon + ' text-blue-600 text-xl mt-1'"></i>
+              </div>
+              <div class="flex-1 ml-4">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-lg font-semibold text-gray-800" x-text="notification.title"></h3>
+                  <div class="flex items-center space-x-2">
+                    <span class="text-gray-500 text-sm" x-text="formatTime(notification.created_at)"></span>
+                    <!-- ✅ THÊM NÚT XÓA -->
+                    <button @click="deleteNotification(notification.id)" 
+                            class="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition"
+                            title="Xóa thông báo">
+                      <i class="fas fa-trash text-sm"></i>
+                    </button>
                   </div>
                 </div>
-              </template>
+                <p class="text-gray-600 mt-1" x-html="notification.message"></p>
+                <div class="mt-2 flex items-center space-x-4">
+                  <a :href="notification.action_url || '#!'" target="_blank" 
+                     class="text-blue-600 hover:text-blue-800 font-medium" 
+                     x-text="notification.action_text || 'Xem chi tiết'" 
+                     x-show="notification.action_text"></a>
+                  
+                  <!-- ✅ NÚT ĐÁNH DẤU ĐÃ ĐỌC -->
+                  <button x-show="notification.status === 'unread'" 
+                          @click="markAsRead(notification.id)" 
+                          class="text-gray-500 hover:text-blue-600 text-sm flex items-center">
+                    <i class="fas fa-eye mr-1"></i>Đánh dấu đã đọc
+                  </button>
+                  
+                  <!-- ✅ HIỂN THỊ TRẠNG THÁI ĐÃ ĐỌC -->
+                  <span x-show="notification.status === 'read'" 
+                        class="text-green-600 text-sm flex items-center">
+                    <i class="fas fa-check-circle mr-1"></i>Đã đọc
+                  </span>
+                </div>
+              </div>
+              
+              <!-- ✅ DẤU CHẤM XANH CHO THÔNG BÁO CHƯA ĐỌC -->
+              <div x-show="notification.status === 'unread'" class="flex-shrink-0 ml-2">
+                <span class="bg-blue-600 h-3 w-3 rounded-full inline-block"></span>
+              </div>
             </div>
           </template>
           <div x-show="!isLoading && notifications.length === 0 && !error" class="text-center text-gray-600 py-4">
@@ -143,19 +162,6 @@
     </main>
   </div>
 
-  <!-- Contact Section -->
-  <section class="container mx-auto px-4 py-12 bg-white rounded-xl shadow-lg mt-6">
-    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Cần hỗ trợ thêm?</h2>
-    <p class="text-gray-600 text-center max-w-xl mx-auto mb-6">Nếu bạn có câu hỏi về thông báo hoặc cần hỗ trợ, liên hệ với chúng tôi qua email hoặc chatbot.</p>
-    <div class="flex justify-center space-x-4">
-      <a href="mailto:support@shopx.vn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition transform hover:scale-105">
-        Gửi email <i class="fas fa-envelope ml-2"></i>
-      </a>
-      <button class="bg-yellow-400 hover:bg-yellow-500 text-blue-800 px-6 py-3 rounded-lg font-medium transition transform hover:scale-105">
-        Chat ngay <i class="fas fa-robot ml-2"></i>
-      </button>
-    </div>
-  </section>
 
   <!-- Chatbot -->
   <div class="fixed bottom-6 right-6 z-50">
@@ -166,147 +172,9 @@
 
   <!-- Footer Container -->
   <div id="footer-container"></div>
-
-  <!-- Scripts -->
-  <script>
-    // Mock API base URL (replace with actual backend URL)
-    const API_BASE_URL = '/api'; // For local testing, this might point to a mock server or a simple JSON file server.
-
-    function notificationSystem() {
-      return {
-        notifications: [],
-        unreadCount: 0,
-        currentPage: 1,
-        totalPages: 1,
-        totalItems: 0,
-        itemsPerPage: 5, // Or get from API response
-        isLoading: false,
-        error: null,
-        currentFilter: {
-            type: 'all', // 'all', 'order', 'promotion', 'shipping'
-            status: 'all' // 'all', 'unread'
-        },
-
-        init() {
-          console.log('Notification system initializing...');
-          this.fetchNotifications(1);
-          this.fetchUnreadCount();
-          // Mocking header/footer loading
-          document.getElementById('header-container').innerHTML = '<div class="bg-gray-800 text-white p-4 text-center">Header Placeholder</div>';
-          document.getElementById('footer-container').innerHTML = '<div class="bg-gray-700 text-white p-4 text-center mt-8">Footer Placeholder</div>';
-        },
-
-        async fetchNotifications(page = 1) {
-          this.isLoading = true;
-          this.error = null;
-          console.log(`Fetching notifications for page: ${page}, type: ${this.currentFilter.type}, status: ${this.currentFilter.status}`);
-          try {
-            // In a real scenario, user authentication (e.g., a token) would be sent.
-            const params = new URLSearchParams({
-                page: page,
-                limit: this.itemsPerPage,
-                type: this.currentFilter.type === 'all' ? '' : this.currentFilter.type,
-                status: this.currentFilter.status === 'all' ? '' : this.currentFilter.status,
-            });
-            // MOCK API CALL
-            // const response = await fetch(`${API_BASE_URL}/notifications?${params.toString()}`);
-            // if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            // const data = await response.json();
-            
-            // --- MOCK DATA --- 
-            await new Promise(resolve => setTimeout(resolve, 700)); // Simulate network delay
-            let mockDataAll = [
-                { id: '1', type: 'order', title: 'Đơn hàng #78901 đã được giao', message: 'Đơn hàng của bạn đã được giao thành công. Vui lòng kiểm tra và đánh giá sản phẩm.', created_at: '2025-05-15T10:30:00Z', status: 'read', action_url: '#', action_text: 'Đánh giá ngay', icon: 'fa-truck-fast' },
-                { id: '2', type: 'promotion', title: 'Flash Sale cuối tuần!', message: '<b>Giảm đến 50%</b> cho hàng ngàn sản phẩm. Đừng bỏ lỡ!', created_at: '2025-05-14T15:45:00Z', status: 'unread', action_url: '#', action_text: 'Săn Sale Ngay', icon: 'fa-tags' },
-                { id: '3', type: 'shipping', title: 'Cập nhật vận chuyển cho đơn #78900', message: 'Đơn hàng của bạn đang trên đường giao. Dự kiến nhận hàng vào ngày mai.', created_at: '2025-05-15T09:00:00Z', status: 'unread', action_url: '#', action_text: 'Theo dõi đơn', icon: 'fa-truck' },
-                { id: '4', type: 'system', title: 'Bảo trì hệ thống định kỳ', message: 'Hệ thống sẽ tạm ngưng để bảo trì từ 02:00 đến 04:00 ngày 17/05.', created_at: '2025-05-13T11:20:00Z', status: 'read', icon: 'fa-cogs' },
-                { id: '5', type: 'order', title: 'Đơn hàng #78899 đã hủy', message: 'Yêu cầu hủy đơn hàng của bạn đã được chấp nhận.', created_at: '2025-05-12T18:00:00Z', status: 'read', icon: 'fa-ban' },
-                { id: '6', type: 'promotion', title: 'Mã giảm giá độc quyền cho bạn', message: 'Nhập mã <code>MYPROMO20</code> để được giảm 20K cho đơn hàng từ 200K.', created_at: '2025-05-15T11:00:00Z', status: 'unread', action_url: '#', action_text: 'Sao chép mã', icon: 'fa-gift' }, 
-                { id: '7', type: 'order', title: 'Đơn hàng #78902 đang chờ thanh toán', message: 'Vui lòng hoàn tất thanh toán cho đơn hàng #78902 trước 23:59 hôm nay.', created_at: '2025-05-15T12:30:00Z', status: 'unread', action_url: '#', action_text: 'Thanh toán ngay', icon: 'fa-credit-card' },
-                { id: '8', type: 'shipping', title: 'Giao hàng bị trễ cho đơn #78898', message: 'Xin lỗi vì sự bất tiện, đơn hàng #78898 của bạn sẽ được giao trễ hơn dự kiến 1 ngày.', created_at: '2025-05-14T08:15:00Z', status: 'read', icon: 'fa-clock' },
-            ];
-
-            if (this.currentFilter.type !== 'all') {
-                mockDataAll = mockDataAll.filter(n => n.type === this.currentFilter.type);
-            }
-            if (this.currentFilter.status !== 'all') {
-                 mockDataAll = mockDataAll.filter(n => n.status === this.currentFilter.status);
-            }
-
-            const totalItems = mockDataAll.length;
-            const totalPages = Math.ceil(totalItems / this.itemsPerPage);
-            const start = (page - 1) * this.itemsPerPage;
-            const end = start + this.itemsPerPage;
-            const paginatedItems = mockDataAll.slice(start, end);
-
-            const data = {
-                items: paginatedItems,
-                total: totalItems,
-                page: page,
-                limit: this.itemsPerPage,
-                totalPages: totalPages
-            };
-            // --- END MOCK DATA ---
-
-            this.notifications = data.items;
-            this.currentPage = data.page;
-            this.totalPages = data.totalPages;
-            this.totalItems = data.total;
-            console.log('Notifications loaded:', this.notifications);
-          } catch (err) {
-            console.error('Failed to fetch notifications:', err);
-            this.error = err.message || 'Không thể tải thông báo. Vui lòng thử lại sau.';
-            this.notifications = [];
-          } finally {
-            this.isLoading = false;
-          }
-        },
-
-        async markAsRead(notificationId) {
-          console.log(`Marking notification ${notificationId} as read`);
-          // MOCK API CALL
-          // await fetch(`${API_BASE_URL}/notifications/${notificationId}/mark-read`, { method: 'POST' });
-          await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
-          const index = this.notifications.findIndex(n => n.id === notificationId);
-          if (index !== -1) {
-            this.notifications[index].status = 'read';
-            // Create a new array to trigger Alpine's reactivity for the list
-            this.notifications = [...this.notifications]; 
-          }
-          this.fetchUnreadCount(); // Update overall unread count
-        },
-
-        async markAllAsRead() {
-          console.log('Marking all notifications as read');
-          // MOCK API CALL
-          // await fetch(`${API_BASE_URL}/notifications/mark-all-read`, { method: 'POST' });
-          await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-          this.notifications.forEach(n => n.status = 'read');
-          this.notifications = [...this.notifications];
-          this.fetchUnreadCount();
-        },
-
-        async fetchUnreadCount() {
-          console.log('Fetching unread count');
-          // MOCK API CALL
-          // const response = await fetch(`${API_BASE_URL}/notifications/unread-count`);
-          // const data = await response.json();
-          // this.unreadCount = data.count;
-          await new Promise(resolve => setTimeout(resolve, 200)); // Simulate network delay
-          this.unreadCount = this.notifications.filter(n => n.status === 'unread').length; // For mock, calculate from current list
-          // In a real app, this would be a separate API call or derived from the main fetch if the API provides it.
-          // For now, we will update it based on the current mock list after any status change.
-        },
-        
-        formatTime(isoString) {
-            if (!isoString) return '';
-            const date = new Date(isoString);
-            return date.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        }
-      };
-    }
-  </script>
+  <script src="../assets/js/noti.js"></script>
   <script src="../assets/js/index.js"></script> 
  <script src="../assets/js/components.js"></script>
+ 
 </body>
 </html>

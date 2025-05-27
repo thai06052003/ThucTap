@@ -9,25 +9,267 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/Admin/assets/css/index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <style>
-        .modal {
-            display: none;
+<style>
+    /* Modal Styling - Compact Design */
+    .modal {
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+    }
+    
+    .modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    
+    .modal-content {
+        background: white;
+        border-radius: 0.75rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        width: 100%;
+        max-width: 650px; /* Giảm từ max-w-2xl */
+        max-height: 90vh;
+        overflow-y: auto;
+        margin: 1rem;
+        transform: scale(0.95);
+        transition: all 0.3s ease;
+    }
+    
+    .modal.active .modal-content {
+        transform: scale(1);
+    }
+    
+    /* Compact Form Grid */
+    .form-grid-compact {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem; /* Giảm gap */
+    }
+    
+    .form-grid-2-compact {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+    
+    .form-group-compact {
+        margin-bottom: 0;
+    }
+    
+    .form-label-compact {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.375rem;
+    }
+    
+    .form-input-compact {
+        width: 100%;
+        padding: 0.5rem 0.75rem; /* Padding nhỏ hơn */
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        background-color: #fafafa;
+    }
+    
+    .form-input-compact:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        background-color: white;
+    }
+    
+    .form-textarea-compact {
+        min-height: 70px; /* Giảm chiều cao */
+        resize: vertical;
+    }
+    
+    /* Preview Section - Compact */
+    .preview-section-compact {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+    }
+    
+    .preview-card {
+        background: white;
+        border-radius: 0.375rem;
+        padding: 0.75rem;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .preview-header {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+    
+    .preview-notification {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .preview-icon {
+        font-size: 1.125rem;
+        margin-top: 0.125rem;
+        min-width: 1.125rem;
+    }
+    
+    .preview-content {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .preview-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0 0 0.25rem 0;
+        line-height: 1.25;
+    }
+    
+    .preview-text {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin: 0 0 0.5rem 0;
+        line-height: 1.4;
+    }
+    
+    .preview-action-btn {
+        display: inline-block;
+        font-size: 0.75rem;
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 500;
+        padding: 0.25rem 0.5rem;
+        background-color: #eff6ff;
+        border-radius: 0.25rem;
+        transition: all 0.2s ease;
+    }
+    
+    .preview-action-btn:hover {
+        background-color: #dbeafe;
+        color: #2563eb;
+    }
+    
+    .preview-meta {
+        font-size: 0.625rem;
+        color: #9ca3af;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid #f3f4f6;
+    }
+    
+    /* Recipient Count */
+    #recipient-count {
+        transition: all 0.3s ease;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        background-color: #f0f9ff;
+        border: 1px solid #bae6fd;
+        color: #0369a1;
+    }
+    
+    /* Loading Spinner */
+    .loading-spinner {
+        border-top-color: transparent;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Target Audience Select */
+    #target_audience {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>');
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1rem;
+        padding-right: 2.5rem;
+    }
+    
+    /* Form Validation */
+    .form-error {
+        border-color: #ef4444 !important;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+    
+    .error-message {
+        color: #ef4444;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+    
+    /* Required Field Indicator */
+    .required::after {
+        content: " *";
+        color: #ef4444;
+        font-weight: bold;
+    }
+    
+    /* Responsive */
+    @media (max-width: 640px) {
+        .modal-content {
+            max-width: 95vw;
+            margin: 0.5rem;
+            border-radius: 0.5rem;
         }
-
-        .modal.active {
-            display: flex;
+        
+        .form-grid-2-compact {
+            grid-template-columns: 1fr;
         }
-
-        .loading-spinner {
-            border-top-color: transparent;
-            animation: spin 1s linear infinite;
+        
+        .modal-content {
+            padding: 1rem;
         }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
+    }
+    
+    /* Button Styles */
+    .btn-compact {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+    
+    .btn-primary-compact {
+        background-color: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+    
+    .btn-primary-compact:hover {
+        background-color: #2563eb;
+        border-color: #2563eb;
+        transform: translateY(-1px);
+    }
+    
+    .btn-secondary-compact {
+        background-color: white;
+        color: #374151;
+        border-color: #d1d5db;
+    }
+    
+    .btn-secondary-compact:hover {
+        background-color: #f9fafb;
+        border-color: #9ca3af;
+    }
     </style>
 </head>
 
@@ -44,9 +286,9 @@
             </div>
 
             <div id="app">
-                <main class="p-6 mx-auto">
+                <main class="p-2 mx-auto">
                     <section class="mt-10 bg-white shadow-lg rounded-lg overflow-hidden">
-                        <div class="p-6">
+                        <div class="p-4">
                             <h2 class="text-2xl font-bold mb-6 text-gray-800">Quản lý Thông báo</h2>
 
                             <!-- Search and Filters Form -->
@@ -149,7 +391,7 @@
                             <span id="error-message"></span>
                         </div>
 
-                        <div class="overflow-x-auto">
+                        <div class="w-full">
                             <table id="notification-table" class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
@@ -199,63 +441,141 @@
             </div>
 
             <!-- Modal for Create/Edit Notification -->
-            <div id="modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden items-center justify-center">
-                <div class="relative mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-                    <div class="flex justify-between items-center pb-3">
-                        <h3 id="modal-title" class="text-xl font-bold"></h3>
-                        <button onclick="closeModal()" class="text-gray-700 hover:text-gray-900"><i class="fas fa-times"></i></button>
+            <div id="modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+                <div class="modal-content">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                        <h3 id="modal-title" class="text-lg font-semibold text-gray-900">Tạo thông báo mới</h3>
+                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <i class="fas fa-times text-lg"></i>
+                        </button>
                     </div>
-                    <form id="notification-form" onsubmit="saveNotification(event)" class="space-y-4">
-                        <div>
-                            <label for="title" class="block text-sm font-medium text-gray-700">Tiêu đề</label>
-                            <input type="text" id="title" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
-                        <div>
-                            <label for="message" class="block text-sm font-medium text-gray-700">Nội dung</label>
-                            <textarea id="message" rows="5" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
-                        </div>
-                        <div>
-                            <label for="type" class="block text-sm font-medium text-gray-700">Loại thông báo</label>
-                            <select id="type" class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                <option value="general">Chung</option>
-                                <option value="order">Đơn hàng</option>
-                                <option value="promotion">Khuyến mãi</option>
-                                <option value="shipping">Vận chuyển</option>
-                                <option value="system">Hệ thống</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="icon" class="block text-sm font-medium text-gray-700">Icon (Font Awesome class, ví dụ: fa-bell)</label>
-                            <input type="text" id="icon" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
-                        <div>
-                            <label for="action_text" class="block text-sm font-medium text-gray-700">Văn bản nút hành động (ví dụ: Xem ngay)</label>
-                            <input type="text" id="action_text" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
-                        <div>
-                            <label for="action_url" class="block text-sm font-medium text-gray-700">URL nút hành động</label>
-                            <input type="url" id="action_url" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
-                        <div>
-                            <label for="scheduled_at" class="block text-sm font-medium text-gray-700">Lên lịch gửi (để trống nếu gửi ngay)</label>
-                            <input type="datetime-local" id="scheduled_at" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
-                        <div class="flex justify-end space-x-3 pt-4">
-                            <button type="button" onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md border border-gray-300">Hủy</button>
-                            <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md">Lưu thông báo</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
 
-            <!-- Preview Modal -->
-            <div id="preview-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden items-center justify-center">
-                <div class="relative mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
-                    <div class="flex justify-between items-center pb-3">
-                        <h3 class="text-xl font-bold">Xem trước thông báo</h3>
-                        <button onclick="closePreview()" class="text-gray-700 hover:text-gray-900"><i class="fas fa-times"></i></button>
+                    <!-- Body -->
+                    <div class="p-4">
+                        <form id="notification-form" onsubmit="saveNotification(event)" class="form-grid-compact">
+                            
+                            <!-- Title -->
+                            <div class="form-group-compact">
+                                <label for="title" class="form-label-compact required">Tiêu đề</label>
+                                <input type="text" id="title" name="title" required 
+                                    class="form-input-compact" 
+                                    placeholder="Nhập tiêu đề thông báo...">
+                            </div>
+
+                            <!-- Content -->
+                            <div class="form-group-compact">
+                                <label for="message" class="form-label-compact required">Nội dung</label>
+                                <textarea id="message" name="message" required 
+                                        class="form-input-compact form-textarea-compact" 
+                                        placeholder="Nhập nội dung thông báo..."></textarea>
+                            </div>
+
+                            <!-- Type and Target Audience -->
+                            <div class="form-grid-2-compact">
+                                <div class="form-group-compact">
+                                    <label for="type" class="form-label-compact">Loại thông báo</label>
+                                    <select id="type" name="type" class="form-input-compact">
+                                        <option value="general">📢 Chung</option>
+                                        <option value="promotion">🎉 Khuyến mãi</option>
+                                        <option value="warning">⚠️ Cảnh báo</option>
+                                        <option value="info">ℹ️ Thông tin</option>
+                                        <option value="success">✅ Thành công</option>
+                                        <option value="order">📦 Đơn hàng</option>
+                                        <option value="payment">💳 Thanh toán</option>
+                                        <option value="shipping">🚚 Vận chuyển</option>
+                                        <option value="system">⚙️ Hệ thống</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group-compact">
+                                    <label for="target_audience" class="form-label-compact required">Đối tượng</label>
+                                    <select id="target_audience" name="target_audience" required class="form-input-compact">
+                                        <option value="">-- Chọn đối tượng --</option>
+                                        <option value="customers">👥 Khách hàng</option>
+                                        <option value="sellers">🏪 Người bán</option>
+                                        <option value="admins">👑 Quản trị viên</option>
+                                        <option value="both">👥🏪 KH & Người bán</option>
+                                        <option value="all">🌐 Tất cả</option>
+                                    </select>
+                                    <div id="recipient-count"></div>
+                                </div>
+                            </div>
+
+                            <!-- Icon and Action Text -->
+                            <div class="form-grid-2-compact">
+                                <div class="form-group-compact">
+                                    <label for="icon" class="form-label-compact">Icon</label>
+                                    <select id="icon" name="icon" class="form-input-compact">
+                                        <option value="fa-bell">🔔 Bell</option>
+                                        <option value="fa-info-circle">ℹ️ Info</option>
+                                        <option value="fa-gift">🎁 Gift</option>
+                                        <option value="fa-shopping-cart">🛒 Cart</option>
+                                        <option value="fa-exclamation-triangle">⚠️ Warning</option>
+                                        <option value="fa-check-circle">✅ Success</option>
+                                        <option value="fa-credit-card">💳 Payment</option>
+                                        <option value="fa-truck">🚚 Shipping</option>
+                                        <option value="fa-fire">🔥 Hot</option>
+                                        <option value="fa-star">⭐ Star</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group-compact">
+                                    <label for="action_text" class="form-label-compact">Text nút hành động</label>
+                                    <input type="text" id="action_text" name="action_text" 
+                                        class="form-input-compact" 
+                                        placeholder="Xem chi tiết">
+                                </div>
+                            </div>
+
+                            <!-- Action URL and Scheduled Date -->
+                            <div class="form-grid-2-compact">
+                                <div class="form-group-compact">
+                                    <label for="action_url" class="form-label-compact">URL hành động</label>
+                                    <input type="url" id="action_url" name="action_url" 
+                                        class="form-input-compact" 
+                                        placeholder="https://example.com">
+                                </div>
+                                
+                                <div class="form-group-compact">
+                                    <label for="scheduled_at" class="form-label-compact">Lên lịch gửi</label>
+                                    <input type="datetime-local" id="scheduled_at" name="scheduled_at" 
+                                        class="form-input-compact">
+                                </div>
+                            </div>
+
+                            <!-- Preview Section -->
+                            <div class="preview-section-compact">
+                                <div class="preview-header">Xem trước thông báo</div>
+                                <div class="preview-card">
+                                    <div class="preview-notification">
+                                        <i id="preview-icon" class="fas fa-bell text-blue-600 preview-icon"></i>
+                                        <div class="preview-content">
+                                            <h5 id="preview-title" class="preview-title">Tiêu đề thông báo</h5>
+                                            <p id="preview-text" class="preview-text">Nội dung thông báo sẽ hiển thị ở đây...</p>
+                                            <div id="preview-action" style="display: none;">
+                                                <a href="#" class="preview-action-btn">Xem chi tiết</a>
+                                            </div>
+                                            <div class="preview-meta">
+                                                <span id="preview-audience">📍 Gửi đến: Chưa chọn</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </form>
                     </div>
-                    <div id="preview-content" class="flex items-start p-4 rounded-lg bg-blue-50"></div>
+
+                    <!-- Footer -->
+                    <div class="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50">
+                        <button type="button" onclick="closeModal()" class="btn-compact btn-secondary-compact">
+                            <i class="fas fa-times mr-1"></i> Hủy
+                        </button>
+                        <button type="submit" form="notification-form" class="btn-compact btn-primary-compact">
+                            <i class="fas fa-save mr-1"></i> Lưu thông báo
+                        </button>
+                    </div>
                 </div>
             </div>
 
