@@ -1,5 +1,8 @@
 /* URL API */
 const API_BASE_URL = 'https://localhost:7088/api'
+const forbiddenPageUrl = "/Admin/templates/errors/403.html"; // Đường dẫn đến trang 403.html của bạn
+const notFoundPageUrl = "/Admin/templates/errors/404.html"; // (Tùy chọn) Nếu muốn xử lý lỗi token nghiêm trọng hơn
+
 
 /* Kiểm tra trạng thái đăng nhập */
 function checkAuthToken() {
@@ -15,7 +18,6 @@ function checkAuthToken() {
     const payloadBase64 = token.split('.')[1];
     const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
     const payload = JSON.parse(payloadJson);
-
     // Kiểm tra các trường thời gian quan trọng
     const now = Date.now() / 1000; // Chuyển sang giây
     const bufferTime = 60; // Dự phòng 60 giây
@@ -35,6 +37,19 @@ function checkAuthToken() {
     window.location.href = "/Customer/templates/login.html";
     return;
   }
+}
+
+/* Kiểm tra và điều hướng nếu lỗi */
+function checkErrorCode(code) {
+  if (code == 404) {
+    window.location.href = notFoundPageUrl;
+    return;
+  }
+  else if (code == 401 && code == 403) {
+    window.location.href = forbiddenPageUrl
+    return
+  }
+  else return;
 }
 
 // Gọi hàm kiểm tra khi trang được tải
@@ -72,6 +87,22 @@ function formatDateForInput(dateInput) {
   }
 }
 window.formatDateForInput = formatDateForInput
+
+function formatCurrency(amount) {
+  if (typeof amount !== 'number') return 'N/A';
+  return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+}
+
+function formatCurrencyCompact(amount) {
+  if (typeof amount !== 'number') return 'N/A';
+  if (amount >= 1_000_000_000) {
+    return (amount / 1_000_000_000).toFixed(2) + ' tỷ đồng';
+  } else if (amount >= 1_000_000) {
+    return (amount / 1_000_000).toFixed(2) + ' triệu đồng';
+  } else {
+    return amount.toLocaleString('vi-VN') + ' đồng';
+  }
+}
 
 document.addEventListener('DOMContentLoaded', function () {
 

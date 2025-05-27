@@ -19,8 +19,8 @@ namespace ShopxEX1.Dtos.Users
         [StringLength(50)]
         public string Role { get; set; } = string.Empty; // Admin có thể set Role
 
-        [StringLength(50)]
-        public string? MembershipLevel { get; set; } // Admin có thể set Membership
+        [StringLength(150, ErrorMessage = "Tên cửa hàng không được vượt quá 150 ký tự.")]
+        public string? ShopName { get; set; }
 
         [Required(ErrorMessage = "Trạng thái hoạt động là bắt buộc.")]
         public bool IsActive { get; set; } // Admin có thể kích hoạt/vô hiệu hóa

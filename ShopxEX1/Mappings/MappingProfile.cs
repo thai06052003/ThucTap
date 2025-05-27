@@ -24,20 +24,21 @@ namespace ShopxEX1.Mappings
                 .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.UserID))
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
                 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName))
+                .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.Phone))
+                .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Address))
                 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt)) 
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive)) 
+                .ForMember(dest => dest.Birthday, opt => opt.MapFrom(src => src.Birthday)) 
+                .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.Gender))   
+                .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.Avatar))   
                 .ForMember(dest => dest.SellerID,
-                    opt => opt.MapFrom(src => src.SellerProfile != null ? src.SellerProfile.SellerID : (int?)null))
+                    opt => opt.MapFrom(src => src.SellerProfile != null ? (int?)src.SellerProfile.SellerID : null)) 
                 .ForMember(dest => dest.ShopName,
-                    opt => opt.MapFrom(src => src.SellerProfile != null ? src.SellerProfile.ShopName : null))
-                    .AfterMap((src, dest) =>
-                    {
-                        if (src.SellerProfile != null)
-                        {
-                            dest.Role = "Seller";
-                        }
-                    });
+                    opt => opt.MapFrom(src => src.SellerProfile != null ? src.SellerProfile.ShopName : null));
 
-            CreateMap<User, UserSummaryDto>(); // Đảm bảo UserSummaryDto được định nghĩa
+            CreateMap<User, UserSummaryDto>()
+                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => (bool?)src.IsActive));
 
             CreateMap<RegisterDto, User>()
                 .ForMember(dest => dest.UserID, opt => opt.Ignore())
@@ -52,12 +53,11 @@ namespace ShopxEX1.Mappings
             CreateMap<UserCreateDto, User>()
                 .ForMember(dest => dest.UserID, opt => opt.Ignore())
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
-                .ForMember(dest => dest.Role, opt => opt.Ignore())
-                .ForMember(dest => dest.IsActive, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.SellerProfile, opt => opt.Ignore())
                 .ForMember(dest => dest.Carts, opt => opt.Ignore())
-                .ForMember(dest => dest.Orders, opt => opt.Ignore());
+                .ForMember(dest => dest.Orders, opt => opt.Ignore())
+                .ForMember(dest => dest.Contacts, opt => opt.Ignore());
 
             CreateMap<UpdateProfileDto, User>()
                 .ForMember(dest => dest.UserID, opt => opt.Ignore())
@@ -72,10 +72,13 @@ namespace ShopxEX1.Mappings
 
             CreateMap<AdminUserUpdateDto, User>()
                 .ForMember(dest => dest.UserID, opt => opt.Ignore())
+                .ForMember(dest => dest.Email, opt => opt.Ignore())
+                .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.SellerProfile, opt => opt.Ignore())
                 .ForMember(dest => dest.Carts, opt => opt.Ignore())
-                .ForMember(dest => dest.Orders, opt => opt.Ignore());
+                .ForMember(dest => dest.Orders, opt => opt.Ignore())
+                .ForMember(dest => dest.Contacts, opt => opt.Ignore());
 
             CreateMap<SocialLoginRequestDto, User>()
                 .ForMember(dest => dest.UserID, opt => opt.Ignore())

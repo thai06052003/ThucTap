@@ -55,7 +55,7 @@ namespace ShopxEX1.Services.Implementations
                                   .Include(p => p.Category)
                                   .Include(p => p.Seller)
                                   .Where(p => p.IsActive == true);
-            }                   
+            }
             else
             {
                 query = _context.Products
@@ -128,42 +128,42 @@ namespace ShopxEX1.Services.Implementations
                                 .Skip((pageNumber - 1) * pageSize)
                                 .Take(pageSize)
                                 .ToListAsync();
-            
+
             var productDtos = _mapper.Map<IEnumerable<ProductSummaryDto>>(items);
             return new PagedResult<ProductSummaryDto>(productDtos, pageNumber, pageSize, totalCount);
         }
         // Cập nhật method signature để hỗ trợ tham số includeInactive (thêm overload mới)
-public async Task<ProductDto?> GetProductByIdAsync(int productId, bool includeInactive = false)
-{
-    var query = _context.Products
-                        .Include(p => p.Category)
-                        .Include(p => p.Seller)
-                        .AsNoTracking();
-    
-    // Nếu includeInactive = false, chỉ lấy sản phẩm đang hoạt động
-    if (!includeInactive)
-    {
-        query = query.Where(p => p.IsActive);
-    }
-                        
-    var product = await query.FirstOrDefaultAsync(p => p.ProductID == productId);
+        public async Task<ProductDto?> GetProductByIdAsync(int productId, bool includeInactive = false)
+        {
+            var query = _context.Products
+                                .Include(p => p.Category)
+                                .Include(p => p.Seller)
+                                .AsNoTracking();
 
-    if (product == null)
-    {
-        return null;
-    }
+            // Nếu includeInactive = false, chỉ lấy sản phẩm đang hoạt động
+            if (!includeInactive)
+            {
+                query = query.Where(p => p.IsActive);
+            }
 
-    var productDto = _mapper.Map<ProductDto>(product);
-    // Đồng bộ Status với IsActive để đảm bảo tính nhất quán
-    productDto.Status = product.IsActive ? "active" : "inactive";
-    return productDto;
-}
+            var product = await query.FirstOrDefaultAsync(p => p.ProductID == productId);
 
-// Giữ lại phương thức cũ để tương thích ngược
-public async Task<ProductDto?> GetProductByIdAsync(int productId)
-{
-    return await GetProductByIdAsync(productId, false);
-}
+            if (product == null)
+            {
+                return null;
+            }
+
+            var productDto = _mapper.Map<ProductDto>(product);
+            // Đồng bộ Status với IsActive để đảm bảo tính nhất quán
+            productDto.Status = product.IsActive ? "active" : "inactive";
+            return productDto;
+        }
+
+        // Giữ lại phương thức cũ để tương thích ngược
+        public async Task<ProductDto?> GetProductByIdAsync(int productId)
+        {
+            return await GetProductByIdAsync(productId, false);
+        }
         public async Task<ProductDto> CreateProductAsync(int sellerId, ProductCreateDto createDto)
         {
             var categoryExists = await _context.Categories.FindAsync(createDto.CategoryID);
@@ -293,50 +293,50 @@ public async Task<ProductDto?> GetProductByIdAsync(int productId)
         }
 
         public async Task<PagedResult<ProductSummaryDto>> GetProductsBySellerAsync(ProductFilterDto? filter, int pageNumber, int pageSize, int userId)
-{
-    IQueryable<Product> query = _context.Products
-                      .Include(p => p.Category);
-                      
-    // Lọc theo sellerId
-    query = query.Where(p => p.SellerID == userId);
+        {
+            IQueryable<Product> query = _context.Products
+                              .Include(p => p.Category);
 
-    // Chỉ lọc theo IsActive nếu không yêu cầu bao gồm sản phẩm không hoạt động
-    if (filter?.IncludeInactive != true)
-    {
-        query = query.Where(p => p.IsActive);
-    }
+            // Lọc theo sellerId
+            query = query.Where(p => p.SellerID == userId);
 
-    // Các điều kiện lọc khác
-    if (!string.IsNullOrWhiteSpace(filter?.SearchTerm))
-    {
-        query = query.Where(p => p.ProductName.Contains(filter.SearchTerm));
-    }
-    if (filter?.CategoryId.HasValue == true)
-    {
-        query = query.Where(p => p.CategoryID == filter.CategoryId.Value);
-    }
-    if (filter?.SellerCategoryID.HasValue == true)
-    {
-        query = query.Where(p => p.SellerCategoryID == filter.SellerCategoryID.Value);
-    }
-    if (filter?.MinPrice.HasValue == true)
-    {
-        query = query.Where(p => p.Price >= filter.MinPrice.Value);
-    }
-    if (filter?.MaxPrice.HasValue == true)
-    {
-        query = query.Where(p => p.Price <= filter.MaxPrice.Value);
-    }
+            // Chỉ lọc theo IsActive nếu không yêu cầu bao gồm sản phẩm không hoạt động
+            if (filter?.IncludeInactive != true)
+            {
+                query = query.Where(p => p.IsActive);
+            }
 
-    var totalCount = await query.CountAsync();
-    var items = await query
-                        .Skip((pageNumber - 1) * pageSize)
-                        .Take(pageSize)
-                        .ToListAsync();
-    
-    var productDtos = _mapper.Map<IEnumerable<ProductSummaryDto>>(items);
-    return new PagedResult<ProductSummaryDto>(productDtos, pageNumber, pageSize, totalCount);
-}
+            // Các điều kiện lọc khác
+            if (!string.IsNullOrWhiteSpace(filter?.SearchTerm))
+            {
+                query = query.Where(p => p.ProductName.Contains(filter.SearchTerm));
+            }
+            if (filter?.CategoryId.HasValue == true)
+            {
+                query = query.Where(p => p.CategoryID == filter.CategoryId.Value);
+            }
+            if (filter?.SellerCategoryID.HasValue == true)
+            {
+                query = query.Where(p => p.SellerCategoryID == filter.SellerCategoryID.Value);
+            }
+            if (filter?.MinPrice.HasValue == true)
+            {
+                query = query.Where(p => p.Price >= filter.MinPrice.Value);
+            }
+            if (filter?.MaxPrice.HasValue == true)
+            {
+                query = query.Where(p => p.Price <= filter.MaxPrice.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                                .Skip((pageNumber - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToListAsync();
+
+            var productDtos = _mapper.Map<IEnumerable<ProductSummaryDto>>(items);
+            return new PagedResult<ProductSummaryDto>(productDtos, pageNumber, pageSize, totalCount);
+        }
 
         public async Task<PagedResult<ProductSummaryDto>> GetProductsByCategoryAsync(ProductFilterDto? filter, int pageNumber, int pageSize, int categoryId)
         {
@@ -406,7 +406,7 @@ public async Task<ProductDto?> GetProductByIdAsync(int productId)
                                 .Skip((pageNumber - 1) * pageSize)
                                 .Take(pageSize)
                                 .ToListAsync();
-            
+
             var productDtos = _mapper.Map<IEnumerable<ProductSummaryDto>>(items);
             return new PagedResult<ProductSummaryDto>(productDtos, pageNumber, pageSize, totalCount);
         }

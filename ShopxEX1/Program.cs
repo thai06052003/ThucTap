@@ -92,12 +92,14 @@ namespace ShopxEX1 // Namespace gốc
 
             // 5. Application Services Registration (Đăng ký TẤT CẢ)
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IDiscountService, DiscountService>();
             builder.Services.AddScoped<ICartService, CartService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<IContactService, ContactService>();
+            builder.Services.AddScoped<IReportingService, ReportingService>();
             builder.Services.AddScoped<ISessionService, SessionService>();
             builder.Services.AddScoped<IStatisticsService, StatisticsService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
