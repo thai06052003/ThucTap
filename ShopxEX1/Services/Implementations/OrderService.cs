@@ -276,8 +276,8 @@ namespace ShopxEX1.Services.Implementations
                         var efCartItemsToRemove = await _context.CartItems.FirstOrDefaultAsync(ci => ci.CartItemID == cartItem);
                         _context.CartItems.RemoveRange(efCartItemsToRemove);
                         await _context.SaveChangesAsync();
-                    }    
-                    
+                    }
+
 
                 }
 
@@ -474,59 +474,62 @@ namespace ShopxEX1.Services.Implementations
             var mappedItems = _mapper.Map<IEnumerable<OrderSummaryDto>>(items);
             return new PagedResult<OrderSummaryDto>(mappedItems, pageNumber, pageSize, totalCount);
         }
-// Hàm lấy trạng thái shop
-public async Task<List<object>> GetInactiveShopsForCartItemsAsync(List<int> cartItemIds)
-{
-    try {
-        // Bước 1: Lấy riêng các cartItems theo ID
-        var cartItems = await _context.CartItems
-            .Where(c => cartItemIds.Contains(c.CartItemID))
-            .Select(c => new { c.CartItemID, c.ProductID })  // Chỉ lấy ID, không lấy các thuộc tính văn bản
-            .ToListAsync();
-        
-        // Bước 2: Lấy các productId từ cartItems
-        var productIds = cartItems.Select(c => c.ProductID).Distinct().ToList();
-        
-        // Bước 3: Lấy sellerIds từ products - không dùng Include, chỉ lấy ID
-        var sellerIds = await _context.Products
-            .Where(p => productIds.Contains(p.ProductID))
-            .Select(p => p.SellerID)  // Chỉ lấy sellerID
-            .Distinct()
-            .ToListAsync();
-        
-        // Bước 4: Lấy ID của các shop không hoạt động
-        var inactiveSellerIds = await _context.Sellers
-            .Where(s => sellerIds.Contains(s.SellerID) && !s.IsActive)
-            .Select(s => s.SellerID)  // Chỉ lấy ID
-            .ToListAsync();
-        
-        // Bước 5: Lấy từng shop theo ID để tránh vấn đề với ShopName có chứa $
-        var inactiveShops = new List<object>();
-        foreach (var id in inactiveSellerIds)
+        // Hàm lấy trạng thái shop
+        public async Task<List<object>> GetInactiveShopsForCartItemsAsync(List<int> cartItemIds)
         {
-            // Đoạn này là key - dùng FromSqlRaw với tham số hóa
-            var seller = await _context.Sellers
-                .FromSqlRaw("SELECT * FROM Sellers WHERE SellerID = @id", 
-                    new SqlParameter("@id", id))
-                .FirstOrDefaultAsync();
-                
-            if (seller != null)
+            try
             {
-                inactiveShops.Add(new { 
-                    SellerID = seller.SellerID, 
-                    ShopName = seller.ShopName 
-                });
+                // Bước 1: Lấy riêng các cartItems theo ID
+                var cartItems = await _context.CartItems
+                    .Where(c => cartItemIds.Contains(c.CartItemID))
+                    .Select(c => new { c.CartItemID, c.ProductID })  // Chỉ lấy ID, không lấy các thuộc tính văn bản
+                    .ToListAsync();
+
+                // Bước 2: Lấy các productId từ cartItems
+                var productIds = cartItems.Select(c => c.ProductID).Distinct().ToList();
+
+                // Bước 3: Lấy sellerIds từ products - không dùng Include, chỉ lấy ID
+                var sellerIds = await _context.Products
+                    .Where(p => productIds.Contains(p.ProductID))
+                    .Select(p => p.SellerID)  // Chỉ lấy sellerID
+                    .Distinct()
+                    .ToListAsync();
+
+                // Bước 4: Lấy ID của các shop không hoạt động
+                var inactiveSellerIds = await _context.Sellers
+                    .Where(s => sellerIds.Contains(s.SellerID) && !s.IsActive)
+                    .Select(s => s.SellerID)  // Chỉ lấy ID
+                    .ToListAsync();
+
+                // Bước 5: Lấy từng shop theo ID để tránh vấn đề với ShopName có chứa $
+                var inactiveShops = new List<object>();
+                foreach (var id in inactiveSellerIds)
+                {
+                    // Đoạn này là key - dùng FromSqlRaw với tham số hóa
+                    var seller = await _context.Sellers
+                        .FromSqlRaw("SELECT * FROM Sellers WHERE SellerID = @id",
+                            new SqlParameter("@id", id))
+                        .FirstOrDefaultAsync();
+
+                    if (seller != null)
+                    {
+                        inactiveShops.Add(new
+                        {
+                            SellerID = seller.SellerID,
+                            ShopName = seller.ShopName
+                        });
+                    }
+                }
+
+                return inactiveShops;
+            }
+            catch (Exception ex)
+            {
+                // Log lỗi chi tiết
+                _logger.LogError(ex, "Lỗi trong GetInactiveShopsForCartItemsAsync: {Message}", ex.Message);
+                throw; // Ném lại ngoại lệ để xử lý ở mức cao hơn
             }
         }
-        
-        return inactiveShops;
-    }
-    catch (Exception ex) {
-        // Log lỗi chi tiết
-        _logger.LogError(ex, "Lỗi trong GetInactiveShopsForCartItemsAsync: {Message}", ex.Message);
-        throw; // Ném lại ngoại lệ để xử lý ở mức cao hơn
-    }
-}
         public async Task<PagedResult<OrderSummaryDto>> GetOrdersBySellerIdAsync(int sellerId, OrderFilterDto filter, int pageNumber, int pageSize)
         {
             var query = _context.Orders
@@ -725,5 +728,5 @@ public async Task<List<object>> GetInactiveShopsForCartItemsAsync(List<int> cart
             }
         }
     }
-    
+
 }

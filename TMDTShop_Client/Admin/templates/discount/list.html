@@ -288,8 +288,8 @@
                                 title="${discount.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}">
                             <i class="fas ${discount.isActive ? 'fa-toggle-off' : 'fa-toggle-on'}"></i>
                         </button>
-                        <button onclick="window.deleteDiscountPermanently(${discount.discountID})" class="text-gray-600 hover:text-red-700 action-icon" title="Xóa vĩnh viễn">
-                            <i class="fas fa-trash-alt"></i>
+                        <button onclick="window.deleteDiscountPermanently(${discount.discountID})" class="text-red-600 hover:text-red-700 action-icon" title="Xóa vĩnh viễn">
+                            <i class="fas fa-trash-alt fa-fw"></i>
                         </button>
                     `;
                     row.innerHTML = `

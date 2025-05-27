@@ -1,8 +1,6 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.Json;
 using Microsoft.IdentityModel.Tokens;
 using ShopxEX1.Data;
 using ShopxEX1.Dtos.Auth;
@@ -10,10 +8,10 @@ using ShopxEX1.Dtos.Users;
 using ShopxEX1.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ShopxEX1.Helpers;
 
 namespace ShopxEX1.Services.Implementations
 {
@@ -154,6 +152,7 @@ namespace ShopxEX1.Services.Implementations
             }
 
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password);
+            string a = Function.PasswordHash(registerDto.Password);
             var newUser = _mapper.Map<User>(registerDto);
             newUser.PasswordHash = passwordHash;
             newUser.Role = "Customer";
