@@ -313,91 +313,213 @@ namespace ShopxEX1.Controllers
         // ============================================
 
         [HttpGet("seller")]
-        [Authorize(Roles = "Seller")]
-        public async Task<IActionResult> GetSellerNotifications(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null,
-            [FromQuery] string? type = null)
+[Authorize(Roles = "Seller")]
+public async Task<IActionResult> GetSellerNotifications(
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] string? search = null,
+    [FromQuery] string? type = null)
+{
+    try
+    {
+        var sellerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        Console.WriteLine($"🔍 [CONTROLLER] Getting seller notifications - Seller: {sellerId}");
+
+        var result = await _notificationService.GetSellerNotificationsAsync(
+            sellerId, pageNumber, pageSize, search, type);
+
+        // ✅ CONVERT TIMEZONE FOR ALL DATETIME FIELDS
+        var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        
+        var convertedNotifications = result.Items.Select(notification => new
         {
-            try
-            {
-                var sellerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            notification.NotificationID,
+            notification.Title,
+            notification.Content,
+            notification.Type,
+            notification.Status,
+            notification.TargetAudience,
+            notification.ActionText,
+            notification.ActionUrl,
+            notification.Icon,
+            notification.TotalSent,
+            notification.TotalRead,
+            
+            // ✅ CONVERT TO VIETNAM TIMEZONE
+            CreatedAt = TimeZoneInfo.ConvertTimeFromUtc(notification.CreatedAt, vietnamTimeZone),
+            SentAt = notification.SentAt.HasValue ? 
+                TimeZoneInfo.ConvertTimeFromUtc(notification.SentAt.Value, vietnamTimeZone) : 
+                (DateTime?)null,
+            ScheduledAt = notification.ScheduledAt.HasValue ? 
+                TimeZoneInfo.ConvertTimeFromUtc(notification.ScheduledAt.Value, vietnamTimeZone) : 
+                (DateTime?)null
+        }).ToList();
 
-                Console.WriteLine($"🔍 [CONTROLLER] Getting seller notifications - Seller: {sellerId}, Page: {pageNumber}, Size: {pageSize}, Search: '{search}', Type: '{type}'");
-
-                var result = await _notificationService.GetSellerNotificationsAsync(
-                    sellerId, pageNumber, pageSize, search, type);
-
-                // ✅ SỬA LỖI: Thêm () để gọi method hoặc sử dụng Count()
-                Console.WriteLine($"✅ [CONTROLLER] Returning {result.Items.Count()} notifications, Total: {result.TotalCount}, Pages: {result.TotalPages}");
-
-                // ✅ ENHANCED RESPONSE với đầy đủ pagination info
-                return Ok(new
-                {
-                    notifications = result.Items,
-                    currentPage = result.PageNumber,     // ✅ Sử dụng PageNumber từ PagedResult của bạn
-                    pageSize = result.PageSize,
-                    totalCount = result.TotalCount,
-                    totalPages = result.TotalPages,
-                    hasNextPage = result.HasNextPage,
-                    hasPreviousPage = result.HasPreviousPage,
-                    // Additional metadata
-                    searchTerm = search,
-                    filterType = type,
-                    sellerId = sellerId
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ [CONTROLLER ERROR] {ex.Message}");
-                return StatusCode(500, new
-                {
-                    message = "Internal server error",
-                    error = ex.Message
-                });
-            }
-        }
+        return Ok(new
+        {
+            notifications = convertedNotifications,
+            currentPage = result.PageNumber,
+            pageSize = result.PageSize,
+            totalCount = result.TotalCount,
+            totalPages = result.TotalPages,
+            hasNextPage = result.HasNextPage,
+            hasPreviousPage = result.HasPreviousPage,
+            searchTerm = search,
+            filterType = type,
+            sellerId = sellerId
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [CONTROLLER ERROR] {ex.Message}");
+        return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+    }
+}
+       
         [HttpPost("seller")]
-        [Authorize(Roles = "Seller")]
-        public async Task<IActionResult> CreateSellerNotification([FromBody] CreateSellerNotificationDto dto)
+[Authorize(Roles = "Seller")]
+public async Task<IActionResult> CreateSellerNotification([FromBody] CreateSellerNotificationDto dto)
+{
+    using var transaction = await _context.Database.BeginTransactionAsync();
+    
+    try
+    {
+        Console.WriteLine($"🔔 [CREATE] Starting notification creation for seller");
+        
+        if (!ModelState.IsValid)
         {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
-
-                var sellerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var result = await _notificationService.CreateSellerNotificationAsync(dto, sellerId);
-
-                return CreatedAtAction(nameof(GetNotificationById), new { id = result.NotificationID }, result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
+            Console.WriteLine("❌ [CREATE] Model validation failed");
+            return BadRequest(ModelState);
         }
 
-        [HttpPost("seller/{id}/send")]
-        [Authorize(Roles = "Seller")]
-        public async Task<IActionResult> SendSellerNotification(int id)
+        var sellerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        
+        // ✅ GET VIETNAM TIMEZONE
+        var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        var vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
+        
+        // ✅ CHECK FOR DUPLICATES WITH VIETNAM TIME
+        var duplicateCheck = await _context.Notifications
+            .Where(n => n.CreatedBy == sellerId && 
+                       n.Title == dto.Title && 
+                       n.CreatedAt >= vietnamNow.AddMinutes(-1)) // Vietnam time comparison
+            .FirstOrDefaultAsync();
+            
+        if (duplicateCheck != null)
         {
-            try
-            {
-                var sellerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var result = await _notificationService.SendSellerNotificationAsync(id, sellerId);
-
-                if (!result)
-                    return BadRequest(new { message = "Cannot send notification or notification not found" });
-
-                return Ok(new { message = "Notification sent successfully to customers" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
+            Console.WriteLine($"❌ [CREATE] Duplicate notification detected: {duplicateCheck.NotificationID}");
+            await transaction.RollbackAsync();
+            return BadRequest(new { message = "Thông báo này đã được tạo gần đây. Vui lòng chờ 1 phút trước khi tạo lại." });
         }
+        
+        // ✅ CONVERT SCHEDULED TIME IF PROVIDED
+        DateTime? vietnamScheduledAt = null;
+        if (dto.ScheduledAt.HasValue)
+        {
+            // Convert from client timezone to Vietnam timezone
+            vietnamScheduledAt = TimeZoneInfo.ConvertTimeToUtc(dto.ScheduledAt.Value, vietnamTimeZone);
+        }
+        
+        // ✅ CREATE WITH VIETNAM TIMEZONE
+        var notification = new Notification
+        {
+            Title = dto.Title,
+            Content = dto.Content,
+            Type = dto.Type,
+            ActionText = dto.ActionText,
+            ActionUrl = dto.ActionUrl,
+            TargetAudience = dto.TargetCustomers,
+            CreatedBy = sellerId,
+            CreatedAt = vietnamNow,  // ✅ VIETNAM TIME
+            ScheduledAt = vietnamScheduledAt,
+            Status = "draft"
+        };
+        
+        _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync();
+        
+        await transaction.CommitAsync();
+        
+        Console.WriteLine($"✅ [CREATE] Successfully created notification {notification.NotificationID} at {vietnamNow}");
+        
+        // ✅ RETURN WITH VIETNAM TIME
+        var result = new
+        {
+            notification.NotificationID,
+            notification.Title,
+            notification.Content,
+            notification.Type,
+            notification.Status,
+            CreatedAt = vietnamNow,
+            ScheduledAt = vietnamScheduledAt,
+            VietnamTime = vietnamNow.ToString("dd/MM/yyyy HH:mm:ss")
+        };
+        
+        return CreatedAtAction(
+            nameof(GetSellerNotificationById), 
+            new { id = result.NotificationID }, 
+            result
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [CREATE] Exception: {ex.Message}");
+        await transaction.RollbackAsync();
+        return StatusCode(500, new { message = "Lỗi hệ thống khi tạo thông báo", error = ex.Message });
+    }
+}
 
+
+[HttpPost("seller/{id}/send")]
+[Authorize(Roles = "Seller")]
+public async Task<IActionResult> SendSellerNotification(int id)
+{
+    try
+    {
+        var sellerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        
+        Console.WriteLine($"📤 [SEND] Sending notification {id} by seller {sellerId}");
+        
+        // ✅ CHECK OWNERSHIP FIRST
+        var notification = await _context.Notifications
+            .FirstOrDefaultAsync(n => n.NotificationID == id && n.CreatedBy == sellerId);
+            
+        if (notification == null)
+        {
+            return NotFound(new { message = "Notification not found or access denied" });
+        }
+        
+        // ✅ SEND NOTIFICATION
+        var result = await _notificationService.SendSellerNotificationAsync(id, sellerId);
+
+        if (!result)
+        {
+            return BadRequest(new { message = "Cannot send notification" });
+        }
+        
+        // ✅ UPDATE sentAt WITH VIETNAM TIMEZONE
+        var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        var vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
+        
+        notification.SentAt = vietnamNow;
+        notification.Status = "sent";
+        
+        await _context.SaveChangesAsync();
+        
+        Console.WriteLine($"✅ [SEND] Notification {id} sent successfully at {vietnamNow}");
+
+        return Ok(new { 
+            message = "Notification sent successfully to customers",
+            sentAt = vietnamNow,
+            vietnamTime = vietnamNow.ToString("dd/MM/yyyy HH:mm")
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [SEND ERROR] {ex.Message}");
+        return StatusCode(500, new { message = ex.Message });
+    }
+}
         [HttpGet("seller/customers")]
         [Authorize(Roles = "Seller")]
         public async Task<IActionResult> GetSellerCustomers()
@@ -586,13 +708,16 @@ public async Task<IActionResult> ResendNotificationToUser(int userNotificationId
             return NotFound(new { message = "User notification not found or not owned by you" });
         }
         
-        // ✅ CREATE NEW NOTIFICATION RECORD (trùng lặp thông báo)
+        // ✅ CREATE NEW NOTIFICATION RECORD WITH VIETNAM TIMEZONE
+        var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        var vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
+        
         var newUserNotification = new UserNotification
         {
             NotificationID = userNotification.NotificationID,
             UserID = userNotification.UserID,
             UserType = userNotification.UserType,
-            ReceivedAt = DateTime.UtcNow,
+            ReceivedAt = vietnamNow,  // ✅ VIETNAM TIME
             IsRead = false,
             IsDeleted = false
         };
@@ -600,12 +725,13 @@ public async Task<IActionResult> ResendNotificationToUser(int userNotificationId
         _context.UserNotifications.Add(newUserNotification);
         await _context.SaveChangesAsync();
         
-        Console.WriteLine($"✅ [RESEND] Successfully resent notification to user {userNotification.UserID}");
+        Console.WriteLine($"✅ [RESEND] Successfully resent to user {userNotification.UserID} at {vietnamNow}");
         
         return Ok(new { 
             message = "Đã gửi lại thông báo thành công",
             userNotificationId = newUserNotification.UserNotificationID,
-            sentAt = newUserNotification.ReceivedAt
+            sentAt = vietnamNow,
+            vietnamTime = vietnamNow.ToString("dd/MM/yyyy HH:mm:ss")
         });
     }
     catch (Exception ex)
@@ -614,6 +740,5 @@ public async Task<IActionResult> ResendNotificationToUser(int userNotificationId
         return StatusCode(500, new { message = "Internal server error", error = ex.Message });
     }
 }
-
     }
 }
