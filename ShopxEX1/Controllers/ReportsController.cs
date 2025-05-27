@@ -24,7 +24,7 @@ namespace ShopxEX1.Controllers
 
         // --- ADMIN REPORTS ---
         [HttpGet("admin/revenue/monthly-by-year/{year:int}")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Dictionary<int, List<decimal>>>> GetAdminMonthlyRevenue(int year)
         {
             if (year <= 1900 || year > DateTime.UtcNow.Year + 5) // Validation năm cơ bản
@@ -48,7 +48,7 @@ namespace ShopxEX1.Controllers
         }
 
         [HttpGet("admin/revenue/overall")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<AdminRevenueReportDto>> GetAdminOverallRevenueReport(
             [FromQuery] ReportInterval interval = ReportInterval.AllTime,
             [FromQuery] int? year = null,
