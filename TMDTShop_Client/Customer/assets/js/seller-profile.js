@@ -6,7 +6,7 @@ class SellerProfileService {
         this.products = [];
         this.categories = [];
         this.currentPage = 1;
-        this.pageSize = 20;
+        this.pageSize = 15; 
         this.filters = {
             search: '',
             categoryId: null,
@@ -53,13 +53,13 @@ class SellerProfileService {
             shopAvatar: document.querySelector('.shop-avatar'),
             shopRatingText: document.querySelector('.shop-rating-text'),
             
-            // Statistics elements (simplified)
-            statProducts: document.querySelector('.stat-products'),
-            statResponseRate: document.querySelector('.stat-response-rate'),
+            // Statistics elements
+            statProducts: document.querySelector('.stat-number.products'),
+            statResponseRate: document.querySelector('.stat-number.response-rate'),
             
             // Categories & Products
             categoriesContainer: document.querySelector('.categories-container'),
-            productsGrid: document.querySelector('.products-grid'),
+            productsGrid: document.getElementById('products-grid'),
             productsCount: document.querySelector('.products-count'),
             paginationContainer: document.querySelector('.pagination-container'),
             
@@ -80,6 +80,7 @@ class SellerProfileService {
             retryBtn: document.getElementById('retry-btn')
         };
     }
+    
 
     setupEventHandlers() {
         // Search functionality
@@ -91,6 +92,7 @@ class SellerProfileService {
         // Sort functionality
         this.elements.sortSelect?.addEventListener('change', (e) => {
             this.filters.sortBy = e.target.value;
+            this.currentPage = 1;
             this.applyFilters();
         });
 
@@ -109,7 +111,7 @@ class SellerProfileService {
     }
 
     // ============================================
-    // 🌐 API METHODS - FIXED NULL PARAMETER HANDLING
+    // 🌐 API METHODS
     // ============================================
 
     async apiRequest(endpoint, options = {}) {
@@ -140,13 +142,12 @@ class SellerProfileService {
     }
 
     async getSellerProducts(sellerId, options = {}) {
-        // ✅ FIXED: Proper parameter handling - remove null values completely
         const params = new URLSearchParams();
         
         params.append('page', options.page || this.currentPage);
         params.append('pageSize', options.pageSize || this.pageSize);
         
-        // ✅ Only add non-null, non-empty values
+        // Only add non-null, non-empty values
         if (this.filters.search && this.filters.search.trim()) {
             params.append('search', this.filters.search.trim());
         }
@@ -184,7 +185,6 @@ class SellerProfileService {
         try {
             this.showLoading();
 
-            // Load seller profile and categories in parallel
             const [sellerProfile, categoriesData] = await Promise.all([
                 this.getSellerProfile(this.currentSellerId),
                 this.getSellerCategories(this.currentSellerId)
@@ -193,11 +193,8 @@ class SellerProfileService {
             this.sellerData = sellerProfile;
             this.categories = categoriesData.categories || [];
 
-            // Render seller profile
             this.renderSellerProfile(sellerProfile);
             this.renderCategories(categoriesData);
-
-            // Load and render products
             await this.loadProducts();
 
             this.hideLoading();
@@ -227,490 +224,302 @@ class SellerProfileService {
     }
 
     // ============================================
-    // 🎨 RENDERING METHODS - REMOVED REVIEWS & ORDERS
+    // 🎨 RENDERING METHODS
     // ============================================
 
     renderSellerProfile(seller) {
         try {
-            console.log('🎨 Rendering seller profile');
-
-            // Basic info
-            this.updateElement(this.elements.shopName, seller.shopName);
+            console.log('🎨 Rendering enhanced seller profile');
+    
+            this.updateElement(this.elements.shopName, seller.shopName || 'Cửa hàng chưa đặt tên');
             this.updateElement(this.elements.shopOwner, seller.userFullName || 'Chưa cập nhật');
             this.updateElement(this.elements.shopAddress, seller.userAddress || 'Chưa cập nhật địa chỉ');
             this.updateElement(this.elements.shopPhone, seller.phone || 'Chưa cập nhật');
             this.updateElement(this.elements.shopEmail, seller.email || 'Chưa cập nhật');
             this.updateElement(this.elements.shopJoinDate, this.formatDate(seller.joinDate));
             
-            // Shop description
             this.updateElement(this.elements.shopDescription, 
-                'Chào mừng bạn đến với cửa hàng của chúng tôi! Chúng tôi cam kết cung cấp những sản phẩm chất lượng với dịch vụ tốt nhất.');
-
-            // Avatar
+                'Chào mừng bạn đến với cửa hàng! Chúng tôi cam kết cung cấp sản phẩm chất lượng cao với dịch vụ khách hàng tận tâm. Mọi sản phẩm đều được kiểm tra kỹ lưỡng và đảm bảo chính hãng 100%.');
+    
             if (this.elements.shopAvatar && seller.avatar) {
                 this.elements.shopAvatar.src = seller.avatar;
                 this.elements.shopAvatar.alt = seller.shopName;
             }
-
-            // ✅ REMOVED: Rating display - no more reviews
-            this.updateElement(this.elements.shopRatingText, `Cửa hàng uy tín`);
-
-            // ✅ SIMPLIFIED: Statistics - only products and response rate
-            this.updateElement(this.elements.statProducts, seller.totalProducts);
-            this.updateElement(this.elements.statResponseRate, `${seller.responseRate.toFixed(0)}%`);
-
-            console.log('✅ Seller profile rendered successfully');
+    
+            this.updateElement(this.elements.shopRatingText, `⭐ ${seller.totalProducts || 0} sản phẩm • Cửa hàng uy tín VIP`);
+            
+            // ✨ ENHANCED ANIMATED STATS - Only 2 stats
+            this.animateStatsNumber(this.elements.statProducts, seller.totalProducts || 0);
+            
+            // Fixed response rate element
+            const responseRateElement = document.querySelector('.stat-number.response-rate');
+            if (responseRateElement) {
+                this.animateStatsNumber(responseRateElement, '98');
+            }
+    
+            console.log('✅ Enhanced seller profile rendered successfully');
         } catch (error) {
             console.error('❌ Error rendering seller profile:', error);
         }
     }
 
-    // ============================================
-// 🎨 ENHANCED RENDERING METHODS
-// ============================================
-
-renderCategories(categoriesData) {
-    try {
-        console.log('🎨 Rendering categories with improved design');
-
-        if (!this.elements.categoriesContainer) return;
-
-        const categories = categoriesData.categories || [];
-        const totalCategories = categories.length;
-        const totalProducts = categories.reduce((sum, cat) => sum + cat.productCount, 0);
-
-        // Update category count
-        const totalCategoriesElement = document.querySelector('.total-categories');
-        if (totalCategoriesElement) {
-            totalCategoriesElement.textContent = totalCategories;
-        }
-
-        if (categories.length === 0) {
-            this.elements.categoriesContainer.innerHTML = `
-                <div class="text-center py-12">
-                    <i class="fas fa-folder-open text-6xl text-gray-300 mb-4"></i>
-                    <p class="text-gray-500 text-lg">Chưa có danh mục nào</p>
-                    <p class="text-gray-400 text-sm mt-2">Cửa hàng chưa có sản phẩm trong danh mục nào</p>
-                </div>
-            `;
-            return;
-        }
-
-        // ✅ ENHANCED: Create category buttons grid
-        const allCategoryHtml = `
-            <div class="category-button ${!this.filters.categoryId ? 'active' : ''}" 
-                 data-category-id=""
-                 title="Xem tất cả sản phẩm">
-                <div class="text-center">
-                    <div class="category-icon">
-                        <i class="fas fa-th-large"></i>
-                    </div>
-                    <div class="category-name">Tất cả</div>
-                    <div class="category-count">${totalProducts} sản phẩm</div>
-                </div>
-                ${totalProducts > 99 ? '<div class="category-badge">99+</div>' : ''}
-            </div>
-        `;
-
-        // ✅ ENHANCED: Create individual category buttons with icons and improved design
-        const categoriesHtml = categories.map((category, index) => {
-            const isActive = this.filters.categoryId === category.sellerCategoryID;
-            const categoryIcon = this.getCategoryIcon(category.categoryName);
-            const productCount = category.productCount;
-            
-            return `
-                <div class="category-button ${isActive ? 'active' : ''}" 
-                     data-category-id="${category.sellerCategoryID}"
-                     title="${category.categoryName} - ${productCount} sản phẩm">
-                    <div class="text-center">
-                        <div class="category-icon">
-                            <i class="${categoryIcon}"></i>
+    // 🌟 COMPACT SIDEBAR CATEGORIES
+    renderCategories(categoriesData) {
+        try {
+            console.log('🎨 Rendering beautiful categories');
+    
+            if (!this.elements.categoriesContainer) return;
+    
+            const categories = categoriesData.categories || [];
+    
+            if (categories.length === 0) {
+                this.elements.categoriesContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-folder-open"></i>
                         </div>
-                        <div class="category-name">${category.categoryName}</div>
-                        <div class="category-count">${productCount} sản phẩm</div>
+                        <div class="empty-title">Chưa có danh mục</div>
+                        <div class="empty-description">Cửa hàng đang cập nhật danh mục sản phẩm</div>
                     </div>
-                    ${productCount > 99 ? '<div class="category-badge">99+</div>' : 
-                      productCount > 9 ? `<div class="category-badge">${productCount}</div>` : ''}
-                </div>
-            `;
-        }).join('');
-
-        // ✅ RESPONSIVE GRID LAYOUT
-        this.elements.categoriesContainer.innerHTML = `
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                ${allCategoryHtml}
-                ${categoriesHtml}
-            </div>
-        `;
-
-        // ✅ Add enhanced click handlers with animations
-        this.elements.categoriesContainer.querySelectorAll('.category-button').forEach(button => {
-            button.addEventListener('click', (e) => {
-                // Add click animation
-                button.style.transform = 'scale(0.95)';
-                setTimeout(() => {
-                    button.style.transform = '';
-                }, 150);
-
-                const categoryId = e.currentTarget.dataset.categoryId;
-                this.filterByCategory(categoryId ? parseInt(categoryId) : null);
-            });
-
-            // Add hover sound effect (optional)
-            button.addEventListener('mouseenter', () => {
-                button.style.transform = 'translateY(-2px)';
-            });
-
-            button.addEventListener('mouseleave', () => {
-                if (!button.classList.contains('active')) {
-                    button.style.transform = '';
-                }
-            });
-        });
-
-        console.log('✅ Enhanced categories rendered successfully');
-    } catch (error) {
-        console.error('❌ Error rendering categories:', error);
-    }
-}
-
-// ✅ NEW: Get appropriate icon for category
-getCategoryIcon(categoryName) {
-    const iconMap = {
-        // Electronics & Technology
-        'điện thoại': 'fas fa-mobile-alt',
-        'laptop': 'fas fa-laptop',
-        'máy tính': 'fas fa-desktop',
-        'tai nghe': 'fas fa-headphones',
-        'camera': 'fas fa-camera',
-        'điện tử': 'fas fa-microchip',
-        'công nghệ': 'fas fa-robot',
-        
-        // Fashion & Clothing
-        'thời trang': 'fas fa-tshirt',
-        'quần áo': 'fas fa-tshirt',
-        'giày dép': 'fas fa-shoe-prints',
-        'túi xách': 'fas fa-shopping-bag',
-        'phụ kiện': 'fas fa-gem',
-        'đồng hồ': 'fas fa-clock',
-        'trang sức': 'fas fa-ring',
-        
-        // Home & Living
-        'nhà cửa': 'fas fa-home',
-        'nội thất': 'fas fa-couch',
-        'đồ gia dụng': 'fas fa-blender',
-        'bếp': 'fas fa-utensils',
-        'phòng ngủ': 'fas fa-bed',
-        'phòng khách': 'fas fa-tv',
-        
-        // Health & Beauty
-        'sức khỏe': 'fas fa-heartbeat',
-        'làm đẹp': 'fas fa-magic',
-        'mỹ phẩm': 'fas fa-palette',
-        'chăm sóc': 'fas fa-spa',
-        'dược phẩm': 'fas fa-pills',
-        
-        // Sports & Outdoor
-        'thể thao': 'fas fa-running',
-        'gym': 'fas fa-dumbbell',
-        'ngoài trời': 'fas fa-mountain',
-        'xe đạp': 'fas fa-bicycle',
-        'bơi lội': 'fas fa-swimmer',
-        
-        // Books & Education
-        'sách': 'fas fa-book',
-        'giáo dục': 'fas fa-graduation-cap',
-        'văn phòng phẩm': 'fas fa-pen',
-        'học tập': 'fas fa-user-graduate',
-        
-        // Food & Beverage
-        'thực phẩm': 'fas fa-apple-alt',
-        'đồ uống': 'fas fa-coffee',
-        'bánh kẹo': 'fas fa-birthday-cake',
-        'gia vị': 'fas fa-pepper-hot',
-        
-        // Baby & Kids
-        'trẻ em': 'fas fa-baby',
-        'đồ chơi': 'fas fa-gamepad',
-        'em bé': 'fas fa-baby-carriage',
-        'học sinh': 'fas fa-school',
-        
-        // Automotive
-        'ô tô': 'fas fa-car',
-        'xe máy': 'fas fa-motorcycle',
-        'phụ tùng': 'fas fa-tools',
-        'xăng dầu': 'fas fa-gas-pump',
-        
-        // Default categories
-        'default': 'fas fa-box'
-    };
-
-    // Convert to lowercase for matching
-    const categoryLower = categoryName.toLowerCase();
-    
-    // Find matching icon
-    for (const [key, icon] of Object.entries(iconMap)) {
-        if (categoryLower.includes(key)) {
-            return icon;
-        }
-    }
-    
-    // Return default icon if no match found
-    return iconMap.default;
-}
-
-// ✅ ENHANCED: Update filter by category with better UI feedback
-async filterByCategory(categoryId) {
-    try {
-        console.log('🔍 Filtering by category:', categoryId);
-        
-        // Show loading state on category buttons
-        document.querySelectorAll('.category-button').forEach(button => {
-            button.style.opacity = '0.6';
-            button.style.pointerEvents = 'none';
-        });
-        
-        this.filters.categoryId = categoryId;
-        this.currentPage = 1;
-        await this.applyFilters();
-        
-        // Restore category buttons
-        document.querySelectorAll('.category-button').forEach(button => {
-            button.style.opacity = '';
-            button.style.pointerEvents = '';
-        });
-        
-        // Update category pills UI with enhanced animations
-        document.querySelectorAll('.category-button').forEach(button => {
-            const pillCategoryId = button.dataset.categoryId;
-            const isActive = (categoryId === null && pillCategoryId === '') || 
-                            (categoryId !== null && parseInt(pillCategoryId) === categoryId);
-            
-            if (isActive) {
-                button.classList.add('active');
-                // Add pulse animation for active category
-                button.style.animation = 'pulse 0.5s ease-in-out';
-                setTimeout(() => {
-                    button.style.animation = '';
-                }, 500);
-            } else {
-                button.classList.remove('active');
+                `;
+                return;
             }
-        });
-        
-        // Scroll to products section smoothly
-        document.querySelector('.products-section')?.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
-        });
-        
-    } catch (error) {
-        console.error('❌ Error filtering by category:', error);
-        
-        // Restore category buttons on error
-        document.querySelectorAll('.category-button').forEach(button => {
-            button.style.opacity = '';
-            button.style.pointerEvents = '';
-        });
-    }
-}
-
-// ✅ ENHANCED: Product rendering with better cards
-renderProducts(productsData) {
-    try {
-        console.log('🎨 Rendering products with enhanced design');
-
-        if (!this.elements.productsGrid) return;
-
-        const products = productsData.products || [];
-        
-        // Update products count
-        this.updateElement(this.elements.productsCount, 
-            `${productsData.pagination?.totalCount || 0} sản phẩm`);
-
-        if (products.length === 0) {
-            this.elements.productsGrid.innerHTML = `
-                <div class="col-span-full text-center py-16">
-                    <i class="fas fa-box-open text-6xl text-gray-300 mb-6"></i>
-                    <h3 class="text-xl font-medium text-gray-600 mb-2">Không có sản phẩm nào</h3>
-                    <p class="text-gray-500 mb-6">
-                        ${this.hasActiveFilters() ? 
-                            'Không tìm thấy sản phẩm phù hợp với bộ lọc hiện tại' : 
-                            'Cửa hàng chưa có sản phẩm nào'}
-                    </p>
-                    ${this.hasActiveFilters() ? 
-                        `<button class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md hover:shadow-lg transform hover:-translate-y-0.5" 
-                                onclick="window.sellerProfileService.clearFilters()">
-                            <i class="fas fa-times mr-2"></i>Xóa bộ lọc
-                        </button>` : ''}
-                </div>
+    
+            const totalProducts = categories.reduce((sum, cat) => sum + cat.productCount, 0);
+            
+            let categoriesHtml = `
+                <button class="category-item ${!this.filters.categoryId ? 'active' : ''}" 
+                        data-category-id="">
+                    <div class="category-content">
+                        <div class="category-name">
+                            <i class="fas fa-th-large category-icon text-blue-600"></i>
+                            <span class="category-text">Tất cả sản phẩm</span>
+                        </div>
+                        <span class="category-count">${totalProducts}</span>
+                    </div>
+                </button>
             `;
-            return;
+    
+            categoriesHtml += categories.map(category => `
+                <button class="category-item ${this.filters.categoryId === category.sellerCategoryID ? 'active' : ''}" 
+                        data-category-id="${category.sellerCategoryID}">
+                    <div class="category-content">
+                        <div class="category-name">
+                            <i class="${this.getCategoryIcon(category.categoryName)} category-icon"></i>
+                            <span class="category-text">${category.categoryName}</span>
+                        </div>
+                        <span class="category-count">${category.productCount}</span>
+                    </div>
+                </button>
+            `).join('');
+    
+            this.elements.categoriesContainer.innerHTML = categoriesHtml;
+    
+            // Add click handlers with stagger animation
+            this.elements.categoriesContainer.querySelectorAll('.category-item').forEach((button, index) => {
+                button.style.animationDelay = `${index * 0.08}s`;
+                button.classList.add('fade-in-up');
+                
+                button.addEventListener('click', (e) => {
+                    const categoryId = e.currentTarget.dataset.categoryId;
+                    this.filterByCategory(categoryId ? parseInt(categoryId) : null);
+                });
+            });
+    
+            console.log('✅ Beautiful categories rendered successfully');
+        } catch (error) {
+            console.error('❌ Error rendering categories:', error);
         }
+    }
+    
+    
 
-        // ✅ ENHANCED: Product cards with better design
-        const productsHtml = products.map(product => `
-            <div class="product-card group" data-product-id="${product.productID}">
-                <div class="h-48 bg-gray-100 relative overflow-hidden">
-                    <img src="${this.getFirstImage(product.imageURL) || '/Customer/assets/images/no-image.png'}" 
-                         alt="${product.productName}" 
-                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                         loading="lazy">
+    // ✅ ENHANCED PRODUCT CARDS
+    renderProducts(productsData) {
+        try {
+            console.log('🎨 Rendering compact grid products');
+    
+            if (!this.elements.productsGrid) return;
+    
+            const products = productsData.products || [];
+            
+            this.updateElement(this.elements.productsCount, 
+                `${productsData.pagination?.totalCount || 0} sản phẩm${this.hasActiveFilters() ? ' được tìm thấy' : ''}`);
+    
+            if (products.length === 0) {
+                this.elements.productsGrid.innerHTML = `
+                    <div class="col-span-full empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-box-open"></i>
+                        </div>
+                        <div class="empty-title">
+                            ${this.hasActiveFilters() ? 'Không tìm thấy sản phẩm phù hợp' : 'Chưa có sản phẩm'}
+                        </div>
+                        <div class="empty-description">
+                            ${this.hasActiveFilters() ? 
+                                'Không có sản phẩm nào phù hợp với bộ lọc hiện tại. Hãy thử điều chỉnh tiêu chí tìm kiếm.' : 
+                                'Cửa hàng đang cập nhật sản phẩm mới. Hãy quay lại sau để khám phá những sản phẩm tuyệt vời!'}
+                        </div>
+                        ${this.hasActiveFilters() ? 
+                            `<button class="filter-btn primary" 
+                                    onclick="window.sellerProfileService.clearFilters()">
+                                <i class="fas fa-times mr-2"></i>Xóa tất cả bộ lọc
+                            </button>` : ''}
+                    </div>
+                `;
+                return;
+            }
+    
+            const productsHtml = products.map((product, index) => `
+                <div class="product-card fade-in-up" 
+                     data-product-id="${product.productID}"
+                     style="animation-delay: ${index * 0.03}s">
                     
-                    <!-- Stock badge -->
-                    <div class="absolute bottom-2 right-2 px-2 py-1 rounded-lg text-xs font-medium
-                                ${product.stockQuantity > 0 ? 
-                                  'bg-green-500/90 text-white' : 
-                                  'bg-red-500/90 text-white'}">
-                        ${product.stockQuantity > 0 ? 
-                          `Còn ${product.stockQuantity}` : 
-                          'Hết hàng'}
+                    <div class="product-image-container">
+                        <img src="${this.getFirstImage(product.imageURL) || '/Customer/assets/images/no-image.png'}" 
+                             alt="${product.productName}" 
+                             class="product-image"
+                             loading="lazy">
+                        
+                        <div class="product-badge ${product.stockQuantity > 0 ? 'bg-green-500' : 'bg-red-500'}">
+                            ${product.stockQuantity > 0 ? `Còn ${product.stockQuantity}` : 'Hết hàng'}
+                        </div>
+                        
+                        <div class="product-overlay">
+                            <button class="product-quick-view">
+                                <i class="fas fa-eye mr-1"></i>Xem chi tiết
+                            </button>
+                        </div>
                     </div>
                     
-                    <!-- Sold out overlay -->
-                    ${product.stockQuantity === 0 ? 
-                        `<div class="absolute inset-0 bg-black/40 flex items-center justify-center">
-                            <span class="bg-red-500 text-white px-4 py-2 rounded-lg font-medium shadow-lg">
-                                Hết hàng
+                    <div class="product-content">
+                        <h3 class="product-title">${product.productName}</h3>
+                        <div class="product-price">${this.formatPrice(product.price)}</div>
+                        <div class="product-meta">
+                            <span class="product-category">
+                                <i class="${this.getCategoryIcon(product.categoryName)} mr-1"></i>
+                                ${this.truncateText(product.categoryName, 6)}
                             </span>
-                        </div>` : ''}
-                    
-                    <!-- Hover overlay -->
-                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 
-                                flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <div class="bg-white/90 text-gray-800 px-4 py-2 rounded-lg font-medium shadow-lg 
-                                    transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                            <i class="fas fa-eye mr-2"></i>Xem chi tiết
+                            <span class="product-stock ${product.stockQuantity > 0 ? 'text-green-600' : 'text-red-600'}">
+                                ${product.stockQuantity > 0 ? '✅' : '❌'}
+                            </span>
                         </div>
                     </div>
                 </div>
-                
-                <div class="p-4">
-                    <h3 class="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors duration-300">
-                        ${product.productName}
-                    </h3>
-                    
-                    <div class="price-section mb-3">
-                        <span class="text-red-500 font-bold text-lg">
-                            ${this.formatPrice(product.price)}
-                        </span>
-                    </div>
-                    
-                    <div class="flex items-center justify-between text-xs">
-                        <span class="text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
-                            ${product.categoryName}
-                        </span>
-                        <span class="font-medium ${product.stockQuantity > 0 ? 'text-green-600' : 'text-red-600'}">
-                            ${product.stockQuantity > 0 ? 'Còn hàng' : 'Hết hàng'}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
-        this.elements.productsGrid.innerHTML = productsHtml;
-
-        // ✅ Enhanced click handlers for products
-        this.elements.productsGrid.querySelectorAll('.product-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                // Add click animation
-                card.style.transform = 'scale(0.98)';
-                setTimeout(() => {
-                    card.style.transform = '';
+            `).join('');
+    
+            this.elements.productsGrid.innerHTML = productsHtml;
+    
+            // Add click handlers
+            this.elements.productsGrid.querySelectorAll('.product-card').forEach(card => {
+                card.addEventListener('click', (e) => {
                     const productId = e.currentTarget.dataset.productId;
                     this.goToProduct(productId);
-                }, 100);
+                });
             });
-        });
-
-        // Show/hide clear filters button
-        if (this.elements.clearFiltersBtn) {
-            this.elements.clearFiltersBtn.classList.toggle('hidden', !this.hasActiveFilters());
+    
+            // Show/hide clear filters button
+            if (this.elements.clearFiltersBtn) {
+                const hasFilters = this.hasActiveFilters();
+                this.elements.clearFiltersBtn.classList.toggle('hidden', !hasFilters);
+            }
+    
+            console.log('✅ Compact grid products rendered successfully');
+        } catch (error) {
+            console.error('❌ Error rendering products:', error);
         }
-
-        console.log('✅ Enhanced products rendered successfully');
-    } catch (error) {
-        console.error('❌ Error rendering products:', error);
     }
-}
-
-
-
+    
+    // Cập nhật renderPagination với design đẹp hơn
     renderPagination(pagination) {
         try {
             if (!this.elements.paginationContainer || !pagination) return;
-
+    
             const { currentPage, totalPages, hasNextPage, hasPreviousPage } = pagination;
-
+    
             if (totalPages <= 1) {
                 this.elements.paginationContainer.innerHTML = '';
                 return;
             }
-
+    
             let paginationHtml = `
-                <div class="flex items-center space-x-2">
+                <div class="pagination-info">
+                    Đang xem trang <strong>${currentPage}</strong> / <strong>${totalPages}</strong> 
+                    • Tổng cộng <strong>${pagination.totalCount || 0}</strong> sản phẩm
+                </div>
+                
+                <div class="pagination-controls">
                     <button class="pagination-btn ${!hasPreviousPage ? 'disabled' : ''}" 
                             data-page="${currentPage - 1}" 
-                            ${!hasPreviousPage ? 'disabled' : ''}>
+                            ${!hasPreviousPage ? 'disabled' : ''}
+                            title="Trang trước">
                         <i class="fas fa-chevron-left"></i>
                     </button>
             `;
-
-            // Page numbers
+    
+            // Smart page numbers with better logic
             const startPage = Math.max(1, currentPage - 2);
             const endPage = Math.min(totalPages, currentPage + 2);
-
+    
             if (startPage > 1) {
-                paginationHtml += `<button class="pagination-btn" data-page="1">1</button>`;
+                paginationHtml += `<button class="pagination-btn" data-page="1" title="Trang đầu">1</button>`;
                 if (startPage > 2) {
-                    paginationHtml += `<span class="px-2 text-gray-500">...</span>`;
+                    paginationHtml += `<span class="pagination-ellipsis">⋯</span>`;
                 }
             }
-
+    
             for (let page = startPage; page <= endPage; page++) {
                 paginationHtml += `
                     <button class="pagination-btn ${page === currentPage ? 'active' : ''}" 
-                            data-page="${page}">
+                            data-page="${page}" title="Trang ${page}">
                         ${page}
                     </button>
                 `;
             }
-
+    
             if (endPage < totalPages) {
                 if (endPage < totalPages - 1) {
-                    paginationHtml += `<span class="px-2 text-gray-500">...</span>`;
+                    paginationHtml += `<span class="pagination-ellipsis">⋯</span>`;
                 }
-                paginationHtml += `<button class="pagination-btn" data-page="${totalPages}">${totalPages}</button>`;
+                paginationHtml += `<button class="pagination-btn" data-page="${totalPages}" title="Trang cuối">${totalPages}</button>`;
             }
-
+    
             paginationHtml += `
                     <button class="pagination-btn ${!hasNextPage ? 'disabled' : ''}" 
                             data-page="${currentPage + 1}" 
-                            ${!hasNextPage ? 'disabled' : ''}>
+                            ${!hasNextPage ? 'disabled' : ''}
+                            title="Trang sau">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
             `;
-
+    
             this.elements.paginationContainer.innerHTML = paginationHtml;
-
-            // Add click handlers
+    
+            // Add click handlers with loading state
             this.elements.paginationContainer.querySelectorAll('.pagination-btn:not(.disabled)').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const page = parseInt(e.currentTarget.dataset.page);
-                    if (page && page !== currentPage) {
-                        this.loadPage(page);
+                    if (page && page !== currentPage && page >= 1 && page <= totalPages) {
+                        const originalContent = btn.innerHTML;
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                        btn.disabled = true;
+                        
+                        this.loadPage(page).finally(() => {
+                            btn.innerHTML = originalContent;
+                            btn.disabled = false;
+                        });
                     }
                 });
             });
-
+    
         } catch (error) {
             console.error('❌ Error rendering pagination:', error);
         }
     }
-
+    
     // ============================================
-    // 🔍 FILTER & SEARCH METHODS - FIXED CATEGORY FILTERING
+    // 🔍 FILTER METHODS
     // ============================================
 
     async handleSearch() {
@@ -723,6 +532,12 @@ renderProducts(productsData) {
     async handlePriceFilter() {
         const minPrice = parseFloat(this.elements.minPriceInput?.value) || null;
         const maxPrice = parseFloat(this.elements.maxPriceInput?.value) || null;
+        
+        // Validate price range
+        if (minPrice && maxPrice && minPrice > maxPrice) {
+            alert('Giá từ phải nhỏ hơn giá đến');
+            return;
+        }
         
         this.filters.minPrice = minPrice;
         this.filters.maxPrice = maxPrice;
@@ -738,16 +553,17 @@ renderProducts(productsData) {
             this.currentPage = 1;
             await this.applyFilters();
             
-            // Update category pills UI
-            document.querySelectorAll('.category-pill').forEach(pill => {
-                const pillCategoryId = pill.dataset.categoryId;
-                if ((categoryId === null && pillCategoryId === '') || 
-                    (categoryId !== null && parseInt(pillCategoryId) === categoryId)) {
-                    pill.classList.add('active');
+            // Update sidebar active state
+            document.querySelectorAll('.category-item').forEach(item => {
+                const itemCategoryId = item.dataset.categoryId;
+                if ((categoryId === null && itemCategoryId === '') || 
+                    (categoryId !== null && parseInt(itemCategoryId) === categoryId)) {
+                    item.classList.add('active');
                 } else {
-                    pill.classList.remove('active');
+                    item.classList.remove('active');
                 }
             });
+            
         } catch (error) {
             console.error('❌ Error filtering by category:', error);
         }
@@ -778,11 +594,11 @@ renderProducts(productsData) {
             if (this.elements.minPriceInput) this.elements.minPriceInput.value = '';
             if (this.elements.maxPriceInput) this.elements.maxPriceInput.value = '';
 
-            // Reset category pills
-            document.querySelectorAll('.category-pill').forEach(pill => {
-                pill.classList.remove('active');
-                if (pill.dataset.categoryId === '') {
-                    pill.classList.add('active');
+            // Reset category sidebar
+            document.querySelectorAll('.category-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.categoryId === '') {
+                    item.classList.add('active');
                 }
             });
 
@@ -794,6 +610,7 @@ renderProducts(productsData) {
 
     async loadPage(page) {
         try {
+            console.log('📄 Loading page:', page);
             this.currentPage = page;
             await this.loadProducts();
             
@@ -810,7 +627,60 @@ renderProducts(productsData) {
     // ============================================
     // 🛠️ UTILITY METHODS
     // ============================================
+// ✨ ENHANCED UTILITY METHODS
+animateStatsNumber(element, targetValue) {
+    if (!element) return;
+    
+    const isFloat = String(targetValue).includes('.');
+    const numericValue = parseFloat(String(targetValue).replace(/[^\d.]/g, ''));
+    
+    let currentValue = 0;
+    const increment = isFloat ? numericValue / 20 : Math.ceil(numericValue / 20);
+    
+    const timer = setInterval(() => {
+        currentValue += increment;
+        if (currentValue >= numericValue) {
+            currentValue = numericValue;
+            clearInterval(timer);
+        }
+        
+        element.textContent = isFloat ? currentValue.toFixed(1) : Math.floor(currentValue);
+    }, 80);
+}
 
+truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
+getCategoryIcon(categoryName) {
+    const iconMap = {
+        'điện thoại': 'fas fa-mobile-alt',
+        'laptop': 'fas fa-laptop',
+        'máy tính': 'fas fa-desktop',
+        'tai nghe': 'fas fa-headphones',
+        'camera': 'fas fa-camera',
+        'thời trang': 'fas fa-tshirt',
+        'giày dép': 'fas fa-shoe-prints',
+        'túi xách': 'fas fa-shopping-bag',
+        'nhà cửa': 'fas fa-home',
+        'sách': 'fas fa-book',
+        'thể thao': 'fas fa-running',
+        'điện tử': 'fas fa-microchip',
+        'gia dụng': 'fas fa-blender',
+        'mỹ phẩm': 'fas fa-palette',
+        'đồ chơi': 'fas fa-gamepad',
+        'default': 'fas fa-tag'
+    };
+
+    const categoryLower = categoryName.toLowerCase();
+    for (const [key, icon] of Object.entries(iconMap)) {
+        if (categoryLower.includes(key)) {
+            return icon;
+        }
+    }
+    return iconMap.default;
+}
     hasActiveFilters() {
         return !!(this.filters.search || 
                  this.filters.categoryId || 
@@ -818,6 +688,7 @@ renderProducts(productsData) {
                  this.filters.maxPrice || 
                  this.filters.sortBy !== 'newest');
     }
+
 
     getFirstImage(imageUrl) {
         if (!imageUrl) return null;
@@ -843,7 +714,14 @@ renderProducts(productsData) {
     }
 
     goToProduct(productId) {
-        window.location.href = `/Customer/templates/product-detail.html?id=${productId}`;
+        window.location.href = `/Customer/templates/product-detail.html?productId=${productId}`;
+    }
+    hasActiveFilters() {
+        return !!(this.filters.search || 
+                 this.filters.categoryId || 
+                 this.filters.minPrice || 
+                 this.filters.maxPrice || 
+                 this.filters.sortBy !== 'newest');
     }
 
     // ============================================
@@ -866,9 +744,19 @@ renderProducts(productsData) {
 
     showProductsLoading() {
         if (this.elements.productsGrid) {
-            this.elements.productsGrid.innerHTML = Array(8).fill().map(() => `
-                <div class="loading-skeleton h-64 rounded-lg"></div>
+            // Tạo 12 ô loading compact
+            const loadingHtml = Array(12).fill().map((_, index) => `
+                <div class="product-loading" style="animation-delay: ${index * 0.05}s">
+                    <div class="product-loading-image loading-skeleton"></div>
+                    <div class="product-loading-content">
+                        <div class="product-loading-title loading-skeleton"></div>
+                        <div class="product-loading-price loading-skeleton"></div>
+                        <div class="product-loading-meta loading-skeleton"></div>
+                    </div>
+                </div>
             `).join('');
+            
+            this.elements.productsGrid.innerHTML = loadingHtml;
         }
     }
 
@@ -909,7 +797,16 @@ renderProducts(productsData) {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Get seller ID from URL params
+    // Smooth page entrance
+    document.body.style.opacity = '0';
+    document.body.style.transform = 'translateY(15px)';
+    
+    setTimeout(() => {
+        document.body.style.transition = 'all 0.5s ease-out';
+        document.body.style.opacity = '1';
+        document.body.style.transform = 'translateY(0)';
+    }, 100);
+
     const urlParams = new URLSearchParams(window.location.search);
     const sellerId = urlParams.get('id') || urlParams.get('sellerId');
 
@@ -920,7 +817,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Validate seller ID
     const sellerIdInt = parseInt(sellerId);
     if (isNaN(sellerIdInt) || sellerIdInt <= 0) {
         console.error('❌ Invalid seller ID:', sellerId);
@@ -929,7 +825,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Initialize service
     window.sellerProfileService = new SellerProfileService();
     window.sellerProfileService.init(sellerIdInt);
 });

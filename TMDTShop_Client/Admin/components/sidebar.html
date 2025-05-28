@@ -155,18 +155,22 @@
             </div>
             <!-- Liên hệ -->
             <div class="sidebar-group">
-                <div class="flex items-center justify-between p-3 rounded-lg hover:bg-blue-700 cursor-pointer">
+                <div class="flex items-center justify-between p-3 rounded-lg hover:bg-blue-700 cursor-pointer sidebar-group-toggle">
                     <div class="flex items-center space-x-3">
                         <i class="fas fa-phone"></i>
-                        <a href="/Admin/templates/contact/list.html" class="block rounded hover:bg-blue-700">Quản lý liên hệ</a>
+                        <span class="sidebar-item-text">Liên hệ</span>
                     </div>
+                    <i class="fas fa-chevron-down text-sm sidebar-item-text transition-transform"></i>
+                </div>
+                <div class="sidebar-group-content pl-4">
+                    <a href="/Admin/templates/contact/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700">
+                        <i class="far fa-circle mr-2"></i> Quản lý liên hệ
+                    </a>
                 </div>
             </div>
         </nav>
-        </nav>
     </div>
 </div>
-</script>
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -182,6 +186,32 @@
                     iconElement.classList.replace("fa-circle", "fa-dot-circle");
                 }
             }
+        });
+    });
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const groupToggles = document.querySelectorAll('.sidebar-group-toggle');
+
+        groupToggles.forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                // Ngăn chặn hành vi mặc định của link nếu có
+                e.preventDefault();
+                
+                const content = toggle.nextElementSibling;
+                const chevron = toggle.querySelector('.fa-chevron-down');
+
+                if (content) {
+                    // Toggle class hidden để ẩn/hiện nội dung con
+                    content.classList.toggle('hidden');
+                }
+
+                if (chevron) {
+                    // Toggle class rotate-180 để xoay icon
+                    chevron.classList.toggle('rotate-180');
+                }
+            });
         });
     });
 </script>

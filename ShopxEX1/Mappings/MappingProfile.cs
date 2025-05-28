@@ -175,7 +175,8 @@ namespace ShopxEX1.Mappings
             CreateMap<Product, ProductDto>()
                         .ForMember(dest => dest.Status,
                                    opt => opt.MapFrom(src => src.IsActive ? "active" : "inactive"));
-
+            CreateMap<Product, ProductDto>()
+                        .ForMember(dest => dest.SellerStoreName, opt => opt.Ignore()); 
             CreateMap<Product, ProductSummaryDto>()
                 .ForMember(dest => dest.Status,
                            opt => opt.MapFrom(src => src.IsActive ? "active" : "inactive"));
