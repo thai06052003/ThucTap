@@ -21,7 +21,7 @@ namespace ShopxEX1.Controllers
         private readonly GetID _getId;
         private readonly ILogger<ProductsController> _logger; // Thêm logger để ghi log
 
-        public ProductsController(IProductService productService, GetID getId ,ILogger<ProductsController> logger)
+        public ProductsController(IProductService productService, GetID getId, ILogger<ProductsController> logger)
         {
             _productService = productService;
             _getId = getId;
