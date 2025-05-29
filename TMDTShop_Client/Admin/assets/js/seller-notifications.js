@@ -150,35 +150,76 @@ function showToast(message, type = 'info', duration = 5000) {
  * Format time to Vietnamese format
  */
 function formatTime(isoString) {
-    if (!isoString) return 'Không xác định';
+    if (!isoString || isoString === 'null' || isoString === 'undefined') {
+        return 'Không xác định';
+    }
     
     try {
-        const date = new Date(isoString);
+        // ✅ PROPER TIMEZONE HANDLING
+        let date;
+        
+        // Check if string already includes timezone info
+        if (isoString.includes('Z') || isoString.includes('+') || isoString.includes('-')) {
+            date = new Date(isoString);
+        } else {
+            // Assume UTC if no timezone info
+            date = new Date(isoString + 'Z');
+        }
+        
+        // Validate date
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date:', isoString);
+            return 'Ngày không hợp lệ';
+        }
+        
+        // ✅ RELATIVE TIME CALCULATION (in Vietnam timezone)
         const now = new Date();
-        const diffMs = now - date;
+        const diffMs = now.getTime() - date.getTime();
         const diffMinutes = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
         
+        // Return relative time for recent dates
         if (diffMinutes < 1) return 'Vừa xong';
         if (diffMinutes < 60) return `${diffMinutes} phút trước`;
         if (diffHours < 24) return `${diffHours} giờ trước`;
         if (diffDays < 7) return `${diffDays} ngày trước`;
         
-        // Return formatted date
-        return date.toLocaleDateString('vi-VN', {
+        // ✅ VIETNAM TIMEZONE FORMATTING
+        const options = {
+            timeZone: 'Asia/Ho_Chi_Minh',
             year: 'numeric',
-            month: '2-digit',
+            month: '2-digit', 
             day: '2-digit',
             hour: '2-digit',
-            minute: '2-digit'
-        });
+            minute: '2-digit',
+            hour12: false
+        };
+        
+        const formatted = date.toLocaleString('vi-VN', options);
+        
+        // ✅ FALLBACK FORMATTING if Intl not supported
+        if (!formatted || formatted === 'Invalid Date') {
+            const vietnamOffset = 7 * 60; // UTC+7
+            const localOffset = date.getTimezoneOffset();
+            const vietnamTime = new Date(date.getTime() + (vietnamOffset + localOffset) * 60000);
+            
+            const day = vietnamTime.getDate().toString().padStart(2, '0');
+            const month = (vietnamTime.getMonth() + 1).toString().padStart(2, '0');
+            const year = vietnamTime.getFullYear();
+            const hours = vietnamTime.getHours().toString().padStart(2, '0');
+            const minutes = vietnamTime.getMinutes().toString().padStart(2, '0');
+            
+            return `${day}/${month}/${year} ${hours}:${minutes}`;
+        }
+        
+        return formatted;
+        
     } catch (error) {
         console.error('Error formatting time:', error);
-        return 'Không xác định';
+        return 'Lỗi định dạng ngày';
     }
 }
-
 /**
  * Format money to Vietnamese currency
  */
@@ -232,35 +273,53 @@ function escapeHtml(text) {
  * Loading state management
  */
 function setLoadingState(element, isLoading) {
-    if (!element) return;
+    if (!element) {
+        console.warn('setLoadingState: element is null');
+        return;
+    }
     
     if (isLoading) {
+        // ✅ STORE ORIGINAL STATE
+        if (!element.hasAttribute('data-original-disabled')) {
+            element.setAttribute('data-original-disabled', element.disabled);
+        }
+        if (!element.hasAttribute('data-original-text')) {
+            element.setAttribute('data-original-text', element.innerHTML);
+        }
+        
+        // ✅ SET LOADING STATE
         element.disabled = true;
         element.classList.add('opacity-50', 'cursor-not-allowed');
         
-        // Add loading spinner if button
+        // Add loading spinner for buttons
         if (element.tagName === 'BUTTON') {
             const originalText = element.innerHTML;
-            element.setAttribute('data-original-text', originalText);
+            const buttonText = originalText.includes('Lưu nháp') ? 'Đang lưu...' : 
+                              originalText.includes('Gửi') ? 'Đang gửi...' : 'Đang xử lý...';
+            
             element.innerHTML = `
                 <div class="flex items-center justify-center">
                     <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Đang xử lý...
+                    ${buttonText}
                 </div>
             `;
         }
     } else {
-        element.disabled = false;
+        // ✅ RESTORE ORIGINAL STATE
+        const originalDisabled = element.getAttribute('data-original-disabled');
+        const originalText = element.getAttribute('data-original-text');
+        
+        element.disabled = originalDisabled === 'true';
         element.classList.remove('opacity-50', 'cursor-not-allowed');
         
-        // Restore original text if button
-        if (element.tagName === 'BUTTON') {
-            const originalText = element.getAttribute('data-original-text');
-            if (originalText) {
-                element.innerHTML = originalText;
-                element.removeAttribute('data-original-text');
-            }
+        // Restore original text
+        if (originalText && element.tagName === 'BUTTON') {
+            element.innerHTML = originalText;
         }
+        
+        // ✅ CLEAN UP ATTRIBUTES
+        element.removeAttribute('data-original-disabled');
+        element.removeAttribute('data-original-text');
     }
 }
 // ✅ THÊM FUNCTION MỚI - View Notification Detail
@@ -317,21 +376,49 @@ class SellerNotificationManager {
     }
 
     async init() {
+        // ✅ PREVENT DUPLICATE INITIALIZATION
+        if (this.isInitialized) {
+            console.log('⚠️ Already initialized, skipping');
+            return;
+        }
+        
+        this.isInitialized = true;
+        this.isSaving = false; // Initialize saving flag
+        
         try {
             console.log('🔔 Initializing Seller Notification Manager...');
             
+            // ✅ LOAD DEPENDENCIES SEQUENTIALLY
             await this.loadTemplates();
             await this.loadCustomers();
             await this.loadNotifications();
             
+            // ✅ SETUP UI COMPONENTS
             this.setupEventListeners();
             this.setupPreview();
             
-            console.log('✅ Seller Notification Manager initialized');
+            console.log('✅ Seller Notification Manager initialized successfully');
+            
         } catch (error) {
             console.error('❌ Error initializing notification manager:', error);
             showToast('Không thể tải dữ liệu thông báo', 'error');
+            this.isInitialized = false; // Allow retry
         }
+    }
+    
+    // ✅ ADD CLEANUP METHOD
+    cleanup() {
+        console.log('🧹 Cleaning up Seller Notification Manager...');
+        
+        this.removeEventListeners();
+        this.isInitialized = false;
+        this.isSaving = false;
+        this.editingNotificationId = null;
+        
+        // Clear data
+        this.notifications = [];
+        this.customers = [];
+        this.templates = [];
     }
     async loadNotifications() {
         try {
@@ -866,65 +953,126 @@ async goToPage(page) {
     }
     
     setupEventListeners() {
+        this.removeEventListeners();
+        
         // Modal controls
-        document.getElementById('create-notification-btn')?.addEventListener('click', () => this.openNotificationModal());
-        document.getElementById('close-notification-modal')?.addEventListener('click', () => this.closeNotificationModal());
-        document.getElementById('cancel-notification')?.addEventListener('click', () => this.closeNotificationModal());
-
-        // Form controls
-        document.getElementById('save-draft-notification')?.addEventListener('click', () => this.saveNotification('draft'));
-        document.getElementById('send-notification')?.addEventListener('click', () => this.saveNotification('send'));
-
-        // Search and filter
-        document.getElementById('search-notifications-btn')?.addEventListener('click', () => this.loadNotifications());
-        document.getElementById('notification-search')?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.loadNotifications();
-        });
-        // ✅ ENHANCED SEARCH AND FILTER WITH PAGINATION RESET
-    document.getElementById('search-notifications-btn')?.addEventListener('click', () => {
-        this.currentPage = 1; // Reset to first page when searching
-        this.loadNotifications();
-    });
-    
-    document.getElementById('notification-search')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            this.currentPage = 1; // Reset to first page
-            this.loadNotifications();
-        }
-    });
-    
-    document.getElementById('notification-type-filter')?.addEventListener('change', () => {
-        this.currentPage = 1; // Reset to first page when filtering
-        this.loadNotifications();
-    });
-
-    // ✅ PAGE SIZE SELECTOR (if exists)
-    document.getElementById('page-size-selector')?.addEventListener('change', (e) => {
-        const newPageSize = parseInt(e.target.value);
-        if (newPageSize && newPageSize !== this.pageSize) {
-            this.pageSize = newPageSize;
-            this.currentPage = 1; // Reset to first page
-            this.loadNotifications();
-        }
-    });
-        // Template selection
-        document.getElementById('notification-template')?.addEventListener('change', (e) => this.applyTemplate(e.target.value));
-
-        // Target customers change
-        document.getElementById('target-customers')?.addEventListener('change', (e) => this.handleTargetChange(e.target.value));
-
-        // Schedule toggle
-        document.getElementById('schedule-notification')?.addEventListener('change', (e) => {
-            const section = document.getElementById('schedule-section');
-            if (section) {
-                section.classList.toggle('hidden', !e.target.checked);
+        const createBtn = document.getElementById('create-notification-btn');
+        const closeBtn = document.getElementById('close-notification-modal');
+        const cancelBtn = document.getElementById('cancel-notification');
+        
+        // ✅ STORE BOUND FUNCTIONS để có thể remove later
+        this.boundEventHandlers = {
+            openModal: () => this.openNotificationModal(),
+            closeModal: () => this.closeNotificationModal(),
+            cancelModal: () => this.closeNotificationModal(),
+            saveDraft: (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.saveNotification('draft');
+            },
+            sendNotification: (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.saveNotification('send');
+            },
+            searchClick: () => {
+                this.currentPage = 1; // Reset to first page
+                this.loadNotifications();
+            },
+            searchEnter: (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.currentPage = 1;
+                    this.loadNotifications();
+                }
+            },
+            filterChange: () => {
+                this.currentPage = 1;
+                this.loadNotifications();
+            },
+            templateChange: (e) => this.applyTemplate(e.target.value),
+            targetChange: (e) => this.handleTargetChange(e.target.value),
+            scheduleChange: (e) => {
+                const scheduleSection = document.getElementById('schedule-section');
+                if (scheduleSection) {
+                    if (e.target.checked) {
+                        scheduleSection.classList.remove('hidden');
+                    } else {
+                        scheduleSection.classList.add('hidden');
+                    }
+                }
             }
-        });
-
+        };
+        
+        // ✅ ADD EVENT LISTENERS WITH BOUND FUNCTIONS
+        createBtn?.addEventListener('click', this.boundEventHandlers.openModal);
+        closeBtn?.addEventListener('click', this.boundEventHandlers.closeModal);
+        cancelBtn?.addEventListener('click', this.boundEventHandlers.cancelModal);
+        
+        // Form controls - ✅ PREVENT DUPLICATE CALLS
+        const saveDraftBtn = document.getElementById('save-draft-notification');
+        const sendBtn = document.getElementById('send-notification');
+        
+        if (saveDraftBtn) {
+            saveDraftBtn.addEventListener('click', this.boundEventHandlers.saveDraft);
+        }
+        
+        if (sendBtn) {
+            sendBtn.addEventListener('click', this.boundEventHandlers.sendNotification);
+        }
+        
+        // Search and filter
+        const searchBtn = document.getElementById('search-notifications-btn');
+        const searchInput = document.getElementById('notification-search');
+        const typeFilter = document.getElementById('notification-type-filter');
+        
+        searchBtn?.addEventListener('click', this.boundEventHandlers.searchClick);
+        searchInput?.addEventListener('keypress', this.boundEventHandlers.searchEnter);
+        typeFilter?.addEventListener('change', this.boundEventHandlers.filterChange);
+        
+        // Template and target
+        const templateSelect = document.getElementById('notification-template');
+        const targetSelect = document.getElementById('target-customers');
+        const scheduleCheckbox = document.getElementById('schedule-notification');
+        
+        templateSelect?.addEventListener('change', this.boundEventHandlers.templateChange);
+        targetSelect?.addEventListener('change', this.boundEventHandlers.targetChange);
+        scheduleCheckbox?.addEventListener('change', this.boundEventHandlers.scheduleChange);
+        
         // Character counting
         this.setupCharacterCounting();
+        
+        console.log('✅ Event listeners setup completed (with duplicate prevention)');
     }
-
+    removeEventListeners() {
+        if (!this.boundEventHandlers) return;
+        
+        // Remove existing event listeners
+        const elements = [
+            { id: 'create-notification-btn', handler: 'openModal' },
+            { id: 'close-notification-modal', handler: 'closeModal' },
+            { id: 'cancel-notification', handler: 'cancelModal' },
+            { id: 'save-draft-notification', handler: 'saveDraft' },
+            { id: 'send-notification', handler: 'sendNotification' },
+            { id: 'search-notifications-btn', handler: 'searchClick' },
+            { id: 'notification-search', handler: 'searchEnter' },
+            { id: 'notification-type-filter', handler: 'filterChange' },
+            { id: 'notification-template', handler: 'templateChange' },
+            { id: 'target-customers', handler: 'targetChange' },
+            { id: 'schedule-notification', handler: 'scheduleChange' }
+        ];
+        
+        elements.forEach(({ id, handler }) => {
+            const element = document.getElementById(id);
+            const boundHandler = this.boundEventHandlers[handler];
+            
+            if (element && boundHandler) {
+                element.removeEventListener('click', boundHandler);
+                element.removeEventListener('keypress', boundHandler);
+                element.removeEventListener('change', boundHandler);
+            }
+        });
+    }
     setupCharacterCounting() {
         const titleInput = document.getElementById('notification-title');
         const contentTextarea = document.getElementById('notification-content');
@@ -1046,61 +1194,109 @@ async goToPage(page) {
     }
 
     async saveNotification(action) {
+        // ✅ PREVENT DUPLICATE CALLS
+        if (this.isSaving) {
+            console.log('⚠️ Save already in progress, ignoring duplicate call');
+            return;
+        }
+        
+        this.isSaving = true;
+        
         const saveButton = document.getElementById(action === 'send' ? 'send-notification' : 'save-draft-notification');
+        const allButtons = document.querySelectorAll('#notification-modal button');
         
         try {
-            const formData = this.getFormData();
+            console.log(`💾 [SAVE] Starting save process: ${action}`);
             
+            // ✅ DISABLE ALL BUTTONS
+            allButtons.forEach(btn => setLoadingState(btn, true));
+            
+            // ✅ VALIDATE FORM
+            const formData = this.getFormData();
             if (!this.validateForm(formData)) {
-                return;
+                return; // Validation error already shown
             }
-
-            setLoadingState(saveButton, true);
+            
+            // ✅ PREPARE REQUEST DATA
+            const requestData = {
+                title: formData.title,
+                content: formData.content,
+                type: formData.type,
+                actionText: formData.actionText,
+                actionUrl: formData.actionUrl,
+                targetAudience: formData.targetCustomers,
+                specificCustomerIds: formData.specificCustomerIds,
+                scheduledAt: formData.scheduledAt
+            };
+            
+            console.log('📤 [SAVE] Request data:', requestData);
             
             let response;
             
+            // ✅ CREATE OR UPDATE
             if (this.editingNotificationId) {
-                // ✅ API: PUT /api/notifications/seller/{id}
-                console.log('📝 Updating notification:', this.editingNotificationId);
+                console.log(`📝 [SAVE] Updating notification ${this.editingNotificationId}`);
                 response = await apiRequest(`/notifications/seller/${this.editingNotificationId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(requestData)
                 });
-                showToast('Thông báo đã được cập nhật!', 'success');
             } else {
-                // ✅ API: POST /api/notifications/seller
-                console.log('📤 Creating notification:', formData);
+                console.log('📝 [SAVE] Creating new notification');
                 response = await apiRequest('/notifications/seller', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(requestData)
                 });
             }
-
-            console.log('✅ Notification saved:', response);
-
-            if (action === 'send') {
-                // ✅ API: POST /api/notifications/seller/{id}/send
-                const notificationId = response.notificationID || this.editingNotificationId;
-                console.log('📨 Sending notification immediately...');
-                await apiRequest(`/notifications/seller/${notificationId}/send`, {
+            
+            console.log('✅ [SAVE] Response:', response);
+            
+            // ✅ SEND IF REQUESTED
+            if (action === 'send' && response.notificationID) {
+                console.log(`📤 [SEND] Sending notification ${response.notificationID}`);
+                
+                await apiRequest(`/notifications/seller/${response.notificationID}/send`, {
                     method: 'POST'
                 });
-                showToast('Thông báo đã được gửi thành công!', 'success');
+                
+                showToast('Thông báo đã được tạo và gửi thành công!', 'success');
             } else {
-                showToast('Thông báo đã được lưu nháp!', 'success');
+                const message = this.editingNotificationId ? 
+                    'Thông báo đã được cập nhật thành công!' : 
+                    'Thông báo đã được lưu thành công!';
+                showToast(message, 'success');
             }
-
+            
+            // ✅ CLOSE MODAL AND REFRESH
             this.closeNotificationModal();
-            await this.loadNotifications();
-
+            
+            // ✅ RELOAD NOTIFICATIONS (with delay to ensure server updated)
+            setTimeout(() => {
+                this.loadNotifications();
+            }, 500);
+            
         } catch (error) {
-            console.error('❌ Error saving notification:', error);
-            const errorMessage = error.message || 'Có lỗi xảy ra khi lưu thông báo';
+            console.error('❌ [SAVE] Error:', error);
+            
+            let errorMessage = 'Có lỗi xảy ra khi lưu thông báo';
+            
+            if (error.message.includes('400')) {
+                errorMessage = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.';
+            } else if (error.message.includes('401')) {
+                errorMessage = 'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.';
+            } else if (error.message.includes('403')) {
+                errorMessage = 'Bạn không có quyền thực hiện hành động này.';
+            } else if (error.message.includes('network')) {
+                errorMessage = 'Lỗi kết nối mạng. Vui lòng thử lại.';
+            }
+            
             showToast(errorMessage, 'error');
+            
         } finally {
-            setLoadingState(saveButton, false);
+            // ✅ ALWAYS RESTORE BUTTONS
+            allButtons.forEach(btn => setLoadingState(btn, false));
+            this.isSaving = false;
+            
+            console.log('🔄 [SAVE] Process completed, buttons restored');
         }
     }
 // Show view notification modal (read-only)
@@ -2746,11 +2942,4 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('unhandledrejection', event => {
     console.error('Unhandled promise rejection:', event.reason);
     showToast('Có lỗi không mong muốn xảy ra. Vui lòng thử lại.', 'error');
-});
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize only when on notifications section
-    if (document.getElementById('notifications-section')) {
-        window.sellerNotificationManager = new SellerNotificationManager();
-    }
 });

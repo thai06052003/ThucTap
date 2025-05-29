@@ -1,230 +1,237 @@
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using ShopxEX1.Models;
+using ShopxEX1.Services.Interfaces;
 using ShopxEX1.Dtos.Sellers;
-using ShopxEX1.Dtos.Users;
-using ShopxEX1.Data;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using ShopxEX1.Services;
-using ShopxEX1.Services.Implementations;
+using Microsoft.Extensions.Logging;
 
 namespace ShopxEX1.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class SellerController : ControllerBase
+    public class SellerPublicController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ISellerPublicService _sellerPublicService;
+        private readonly ILogger<SellerPublicController> _logger;
 
-        public SellerController(AppDbContext context)
+        public SellerPublicController(
+            ISellerPublicService sellerPublicService,
+            ILogger<SellerPublicController> logger)
         {
-            _context = context;
+            _sellerPublicService = sellerPublicService;
+            _logger = logger;
         }
 
-        [HttpPost("convert-to-seller")]
-        public async Task<IActionResult> ConvertToSeller([FromBody] ConvertToSellerDto convertDto)
+        /// <summary>
+        /// 🔥 GET SELLER PUBLIC PROFILE
+        /// GET /api/SellerPublic/{sellerId}/profile
+        /// </summary>
+        [HttpGet("{sellerId}/profile")]
+        public async Task<IActionResult> GetSellerProfile(int sellerId)
         {
-            var userId = convertDto.UserId;
-
-            // Kiểm tra xem người dùng đã từng là Seller chưa
-            var existingSeller = await _context.Sellers.FirstOrDefaultAsync(s => s.UserID == userId);
-
-            if (existingSeller != null)
-            {
-                // Nếu đã tồn tại bản ghi Seller
-                if (existingSeller.IsActive)
-                {
-                    // Nếu Seller đang active
-                    return BadRequest(new { message = "Người dùng đã là Seller." });
-                }
-                else
-                {
-                    // Nếu Seller không active, kích hoạt lại
-                    existingSeller.IsActive = true;
-                    existingSeller.ShopName = !string.IsNullOrEmpty(convertDto.ShopName)
-                        ? convertDto.ShopName
-                        : existingSeller.ShopName;
-
-                    // Cập nhật role trong bảng Users
-                    var user = await _context.Users.FindAsync(userId);
-                    if (user != null)
-                    {
-                        user.Role = "Seller";
-                        _context.Entry(user).Property(u => u.Role).IsModified = true;
-                    }
-
-                    await _context.SaveChangesAsync();
-                    return Ok(new
-                    {
-                        message = "Kích hoạt lại tài khoản Seller thành công.",
-                        SellerId = existingSeller.SellerID
-                    });
-                }
-            }
-
-            // Tạo mới Seller nếu chưa từng tồn tại
-            var seller = new Seller
-            {
-                UserID = userId,
-                ShopName = convertDto.ShopName,
-                CreatedAt = DateTime.UtcNow,
-                IsActive = true
-            };
-
-            _context.Sellers.Add(seller);
-
-            // Cập nhật role trong bảng Users
-            var newUser = await _context.Users.FindAsync(userId);
-            if (newUser != null)
-            {
-                newUser.Role = "Seller";
-                _context.Entry(newUser).Property(u => u.Role).IsModified = true;
-            }
-
             try
             {
-                await _context.SaveChangesAsync();
-                return Ok(new { message = "Chuyển đổi thành Seller thành công.", SellerId = seller.SellerID });
+                _logger.LogInformation("API: Getting public profile for seller {SellerId}", sellerId);
+
+                if (sellerId <= 0)
+                {
+                    return BadRequest(new { message = "Invalid seller ID" });
+                }
+
+                var sellerProfile = await _sellerPublicService.GetSellerPublicProfileAsync(sellerId);
+
+                if (sellerProfile == null)
+                {
+                    return NotFound(new { message = "Seller not found or inactive" });
+                }
+
+                _logger.LogInformation("API: Successfully retrieved profile for seller {SellerId}", sellerId);
+                return Ok(sellerProfile);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Lỗi khi chuyển đổi thành Seller: " + ex.Message });
+                _logger.LogError(ex, "API: Error getting seller profile for {SellerId}", sellerId);
+                return StatusCode(500, new { 
+                    message = "Internal server error", 
+                    error = ex.Message 
+                });
             }
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSeller(int id, [FromBody] SellerUpdateDto sellerDto)
+        /// <summary>
+        /// 🔥 GET SELLER PRODUCTS WITH FILTERS & PAGINATION
+        /// GET /api/SellerPublic/{sellerId}/products?page=1&pageSize=12&search=&categoryId=&sortBy=newest&minPrice=&maxPrice=
+        /// </summary>
+        [HttpGet("{sellerId}/products")]
+        public async Task<IActionResult> GetSellerProducts(
+            int sellerId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 12,
+            [FromQuery] string? search = null,
+            [FromQuery] int? categoryId = null,
+            [FromQuery] string? sortBy = "newest",
+            [FromQuery] decimal? minPrice = null,
+            [FromQuery] decimal? maxPrice = null)
         {
-            var seller = await _context.Sellers.FindAsync(id);
-            if (seller == null)
-            {
-                return NotFound(new { message = "Không tìm thấy người bán." });
-            }
-
-            if (!string.IsNullOrEmpty(sellerDto.ShopName))
-                seller.ShopName = sellerDto.ShopName;
-
             try
             {
-                await _context.SaveChangesAsync();
-                return Ok(new { message = "Cập nhật thông tin người bán thành công." });
+                _logger.LogInformation("API: Getting products for seller {SellerId}, page {Page}, filters: search='{Search}', category={CategoryId}, sort={SortBy}", 
+                    sellerId, page, search, categoryId, sortBy);
+
+                if (sellerId <= 0)
+                {
+                    return BadRequest(new { message = "Invalid seller ID" });
+                }
+
+                // Check if seller exists and is active
+                var isSellerActive = await _sellerPublicService.IsSellerActiveAsync(sellerId);
+                if (!isSellerActive)
+                {
+                    return NotFound(new { message = "Seller not found or inactive" });
+                }
+
+                var result = await _sellerPublicService.GetSellerProductsAsync(
+                    sellerId, page, pageSize, search, categoryId, sortBy, minPrice, maxPrice);
+
+                var response = new
+                {
+                    products = result.Items,
+                    pagination = new
+                    {
+                        currentPage = result.PageNumber,
+                        pageSize = result.PageSize,
+                        totalCount = result.TotalCount,
+                        totalPages = result.TotalPages,
+                        hasNextPage = result.HasNextPage,
+                        hasPreviousPage = result.HasPreviousPage
+                    },
+                    filters = new
+                    {
+                        search = search,
+                        categoryId = categoryId,
+                        sortBy = sortBy,
+                        minPrice = minPrice,
+                        maxPrice = maxPrice
+                    },
+                    sellerId = sellerId
+                };
+
+                return Ok(response);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Lỗi khi cập nhật thông tin người bán: " + ex.Message });
+                _logger.LogError(ex, "API: Error getting products for seller {SellerId}", sellerId);
+                return StatusCode(500, new { 
+                    message = "Internal server error", 
+                    error = ex.Message 
+                });
             }
         }
 
-        [HttpPut("toggle-maintenance")]
-        [Authorize(Roles = "Seller")]
-        public async Task<IActionResult> ToggleMaintenanceMode()
+        /// <summary>
+        /// 🔥 GET SELLER PUBLIC STATISTICS
+        /// GET /api/SellerPublic/{sellerId}/stats
+        /// </summary>
+        [HttpGet("{sellerId}/stats")]
+        public async Task<IActionResult> GetSellerStats(int sellerId)
         {
             try
             {
-                // Lấy UserID từ token
-                int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+                _logger.LogInformation("API: Getting public stats for seller {SellerId}", sellerId);
 
-                // Lấy thông tin seller
-                var seller = await _context.Sellers
-                    .FirstOrDefaultAsync(s => s.UserID == userId);
-
-                if (seller == null)
+                if (sellerId <= 0)
                 {
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Không tìm thấy thông tin shop"
-                    });
+                    return BadRequest(new { message = "Invalid seller ID" });
                 }
 
-                // Chuyển đổi trạng thái shop: active <-> maintenance
-                seller.IsActive = !seller.IsActive; // Đảo ngược trạng thái
+                var stats = await _sellerPublicService.GetSellerPublicStatsAsync(sellerId);
 
-                await _context.SaveChangesAsync();
+                _logger.LogInformation("API: Successfully retrieved stats for seller {SellerId}", sellerId);
+                return Ok(stats);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("API: {Message}", ex.Message);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "API: Error getting stats for seller {SellerId}", sellerId);
+                return StatusCode(500, new { 
+                    message = "Internal server error", 
+                    error = ex.Message 
+                });
+            }
+        }
 
-                // Tạo lại token với thông tin mới
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.UserID == userId);
+        /// <summary>
+        /// 🔥 GET SELLER CATEGORIES
+        /// GET /api/SellerPublic/{sellerId}/categories
+        /// </summary>
+        [HttpGet("{sellerId}/categories")]
+        public async Task<IActionResult> GetSellerCategories(int sellerId)
+        {
+            try
+            {
+                _logger.LogInformation("API: Getting categories for seller {SellerId}", sellerId);
 
-                // Tạo token mới với GenerateJwtToken đã có
-                var authService = HttpContext.RequestServices.GetRequiredService<IAuthService>();
-                var tokenResult = authService.GenerateJwtToken(user);
+                if (sellerId <= 0)
+                {
+                    return BadRequest(new { message = "Invalid seller ID" });
+                }
 
-                string statusName = seller.IsActive ? "Hoạt động" : "Bảo trì";
+                var categories = await _sellerPublicService.GetSellerCategoriesAsync(sellerId);
+
+                var response = new
+                {
+                    sellerId = sellerId,
+                    categories = categories,
+                    totalCategories = categories.Count,
+                    totalProducts = categories.Sum(c => c.ProductCount)
+                };
+
+                _logger.LogInformation("API: Retrieved {Count} categories for seller {SellerId}", categories.Count, sellerId);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "API: Error getting categories for seller {SellerId}", sellerId);
+                return StatusCode(500, new { 
+                    message = "Internal server error", 
+                    error = ex.Message 
+                });
+            }
+        }
+
+        /// <summary>
+        /// 🔥 CHECK SELLER STATUS
+        /// GET /api/SellerPublic/{sellerId}/status
+        /// </summary>
+        [HttpGet("{sellerId}/status")]
+        public async Task<IActionResult> CheckSellerStatus(int sellerId)
+        {
+            try
+            {
+                if (sellerId <= 0)
+                {
+                    return BadRequest(new { message = "Invalid seller ID" });
+                }
+
+                var isActive = await _sellerPublicService.IsSellerActiveAsync(sellerId);
 
                 return Ok(new
                 {
-                    success = true,
-                    message = $"Đã chuyển trạng thái shop sang {statusName}",
-                    isActive = seller.IsActive,
-                    statusName = statusName,
-                    token = tokenResult.Token,
-                    expiration = tokenResult.Expiration
+                    sellerId = sellerId,
+                    isActive = isActive,
+                    status = isActive ? "active" : "inactive"
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Lỗi hệ thống khi chuyển đổi trạng thái shop"
+                _logger.LogError(ex, "API: Error checking status for seller {SellerId}", sellerId);
+                return StatusCode(500, new { 
+                    message = "Internal server error", 
+                    error = ex.Message 
                 });
             }
         }
-
-        [HttpGet("status")]
-        [Authorize(Roles = "Seller")]
-        public async Task<IActionResult> GetShopStatus()
-        {
-            try
-            {
-                // Lấy UserID từ token
-                int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-
-                // Lấy thông tin seller
-                var seller = await _context.Sellers
-                    .FirstOrDefaultAsync(s => s.UserID == userId);
-
-                if (seller == null)
-                {
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Không tìm thấy thông tin shop"
-                    });
-                }
-
-                string statusName = seller.IsActive ? "Hoạt động" : "Bảo trì";
-
-                return Ok(new
-                {
-                    success = true,
-                    isActive = seller.IsActive,
-                    statusName = statusName
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Lỗi hệ thống khi lấy trạng thái shop"
-                });
-            }
-        }
-        public class ConvertToSellerDto
-
-        {
-            public int UserId { get; set; }
-            public string ShopName { get; set; } = string.Empty;
-        }
-
-
-
     }
 }

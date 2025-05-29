@@ -1243,56 +1243,56 @@ function logout() {
 async function loadDashboardData() {
     try {
         const dashboardData = await fetchAPI(`/sellers/${currentSellerId}/dashboard`);
-        renderDashboard(dashboardData);
+        // renderDashboard(dashboardData);
     } catch (error) {
         showToast(`Không thể tải dữ liệu dashboard: ${error.message}`, "error");
     }
 }
 
-function renderDashboard(data) {
-    // Cập nhật tổng doanh thu
-    document.querySelector("#dashboard-section [data-stat='revenue'] .text-2xl").textContent = `${data.totalRevenue.toLocaleString("vi-VN")}đ`;
-    document.querySelector("#dashboard-section [data-stat='revenue'] .text-sm").textContent = `${data.revenueChange}% so với tháng trước`;
+// function renderDashboard(data) {
+//     // Cập nhật tổng doanh thu
+//     // document.querySelector("#dashboard-section [data-stat='revenue'] .text-2xl").textContent = `${data.totalRevenue.toLocaleString("vi-VN")}đ`;
+//     // document.querySelector("#dashboard-section [data-stat='revenue'] .text-sm").textContent = `${data.revenueChange}% so với tháng trước`;
 
-    // Cập nhật tổng đơn hàng
-    document.querySelector("#dashboard-section [data-stat='orders'] .text-2xl").textContent = data.totalOrders;
-    document.querySelector("#dashboard-section [data-stat='orders'] .text-sm").textContent = `${data.ordersChange}% so với tháng trước`;
+//     // Cập nhật tổng đơn hàng
+//     // document.querySelector("#dashboard-section [data-stat='orders'] .text-2xl").textContent = data.totalOrders;
+//     // document.querySelector("#dashboard-section [data-stat='orders'] .text-sm").textContent = `${data.ordersChange}% so với tháng trước`;
 
-    // Cập nhật số sản phẩm
-    document.querySelector("#dashboard-section [data-stat='products'] .text-2xl").textContent = data.totalProducts;
-    document.querySelector("#dashboard-section [data-stat='products'] .text-sm").textContent = `${data.newProducts} sản phẩm mới`;
+//     // Cập nhật số sản phẩm
+//     // document.querySelector("#dashboard-section [data-stat='products'] .text-2xl").textContent = data.totalProducts;
+//     // document.querySelector("#dashboard-section [data-stat='products'] .text-sm").textContent = `${data.newProducts} sản phẩm mới`;
 
-    // Cập nhật doanh thu 7 ngày (giả định dữ liệu biểu đồ)
-    renderRevenueChart(data.recentRevenue);
+//     // Cập nhật doanh thu 7 ngày (giả định dữ liệu biểu đồ)
+//     // renderRevenueChart(data.recentRevenue);
 
-    // Cập nhật sản phẩm bán chạy
-    const topProducts = document.querySelector("#dashboard-section .grid > div:nth-child(2) > div");
-    topProducts.innerHTML = data.topProducts.map(product => `
-        <div class="flex items-center p-4 border rounded-lg">
-            <img src="${product.image}" alt="${product.name}" class="w-12 h-12 object-cover mr-4">
-            <div>
-                <p class="font-semibold">${product.name}</p>
-                <p class="text-sm text-gray-600">${product.orders} đơn • ${product.revenue.toLocaleString("vi-VN")}đ</p>
-            </div>
-        </div>
-    `).join("");
+//     // Cập nhật sản phẩm bán chạy
+//     const topProducts = document.querySelector("#dashboard-section .grid > div:nth-child(2) > div");
+//     topProducts.innerHTML = data.topProducts.map(product => `
+//         <div class="flex items-center p-4 border rounded-lg">
+//             <img src="${product.image}" alt="${product.name}" class="w-12 h-12 object-cover mr-4">
+//             <div>
+//                 <p class="font-semibold">${product.name}</p>
+//                 <p class="text-sm text-gray-600">${product.orders} đơn • ${product.revenue.toLocaleString("vi-VN")}đ</p>
+//             </div>
+//         </div>
+//     `).join("");
 
-    // Cập nhật đơn hàng gần đây
-    const recentOrders = document.querySelector("#dashboard-section table tbody");
-    recentOrders.innerHTML = data.recentOrders.map(order => `
-        <tr>
-            <td class="px-6 py-4">${order.orderId}</td>
-            <td class="px-6 py-4">${order.customerName}</td>
-            <td class="px-6 py-4">${order.date}</td>
-            <td class="px-6 py-4">${order.quantity}</td>
-            <td class="px-6 py-4">${order.total.toLocaleString("vi-VN")}đ</td>
-            <td class="px-6 py-4">${order.status}</td>
-            <td class="px-6 py-4">
-                <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
-            </td>
-        </tr>
-    `).join("");
-}
+//     // Cập nhật đơn hàng gần đây
+//     const recentOrders = document.querySelector("#dashboard-section table tbody");
+//     recentOrders.innerHTML = data.recentOrders.map(order => `
+//         <tr>
+//             <td class="px-6 py-4">${order.orderId}</td>
+//             <td class="px-6 py-4">${order.customerName}</td>
+//             <td class="px-6 py-4">${order.date}</td>
+//             <td class="px-6 py-4">${order.quantity}</td>
+//             <td class="px-6 py-4">${order.total.toLocaleString("vi-VN")}đ</td>
+//             <td class="px-6 py-4">${order.status}</td>
+//             <td class="px-6 py-4">
+//                 <a href="#" class="text-blue-600 hover:text-blue-900">Chi tiết</a>
+//             </td>
+//         </tr>
+//     `).join("");
+// }
 
 function renderRevenueChart(revenueData) {
     // Giả định revenueData là mảng các giá trị doanh thu trong 7 ngày

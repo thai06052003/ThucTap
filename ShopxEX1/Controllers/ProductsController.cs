@@ -261,55 +261,168 @@ namespace ShopxEX1.Controllers
             }
         }
 
-        /// <summary>
-        /// Lấy thông tin chi tiết của một sản phẩm theo ID.
-        /// </summary>
-        /// <param name="productId">ID của sản phẩm.</param>
-        /// <returns>Chi tiết sản phẩm.</returns>
-        [HttpGet("{productId}")]
-        public async Task<ActionResult<ProductDto>> GetProductById(int productId, [FromQuery] bool includeInactive = false)
+     /// <summary>
+/// ✅ SECURED: Get product by ID with strict permission control
+/// </summary>
+[HttpGet("{productId}")]
+public async Task<ActionResult<ProductDto>> GetProductById(int productId, [FromQuery] bool includeInactive = false)
+{
+    try
+    {
+        if (productId <= 0)
         {
-            try
+            return BadRequest("ID sản phẩm không hợp lệ.");
+        }
+
+        // ✅ SECURITY: Check user authentication and role for includeInactive permission
+        if (includeInactive)
+        {
+            bool isAuthenticated = User?.Identity?.IsAuthenticated ?? false;
+            
+            if (!isAuthenticated)
             {
-                // Kiểm tra quyền truy cập - chỉ Seller hoặc Admin mới thấy sản phẩm đã ngừng bán
-                bool isSellerOrAdmin = User.Identity != null && User.Identity.IsAuthenticated &&
-                                      (User.IsInRole("Seller") || User.IsInRole("Admin"));
-
-                // Nếu là seller, cần kiểm tra xem sản phẩm có thuộc về họ không
-                int? sellerId = _getId.GetSellerId();
-
-                // Chỉ lấy sản phẩm không hoạt động khi:
-                // 1. Người dùng yêu cầu bằng tham số includeInactive=true
-                // 2. Người dùng có quyền (là Seller hoặc Admin)
-                bool showInactive = includeInactive && isSellerOrAdmin;
-
-                var product = await _productService.GetProductByIdAsync(productId, showInactive);
-
-                if (product == null)
-                {
-                    return NotFound("Không tìm thấy sản phẩm.");
-                }
-
-                // Nếu sản phẩm không active, kiểm tra xem người dùng có phải seller của sản phẩm này không
-                if (product.Status == "inactive" || !product.IsActive)
-                {
-                    // Kiểm tra cả Status và IsActive để đảm bảo tính nhất quán
-                    if (sellerId.HasValue && product.SellerID != sellerId.Value && !User.IsInRole("Admin"))
-                    {
-                        // Nếu không phải admin và không phải seller của sản phẩm này
-                        return NotFound("Không tìm thấy sản phẩm.");
-                    }
-                }
-
-                return Ok(product);
+                _logger.LogWarning("Anonymous user attempted to access inactive product {ProductId}", productId);
+                return BadRequest("Bạn không có quyền truy cập sản phẩm đã ngừng bán.");
             }
-            catch (Exception ex)
+
+            bool isAdmin = User.IsInRole("Admin");
+            bool isSeller = User.IsInRole("Seller");
+            
+            if (!isAdmin && !isSeller)
             {
-                _logger.LogError(ex, "Lỗi xảy ra khi lấy chi tiết sản phẩm.");
-                return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi trong quá trình xử lý yêu cầu.");
+                _logger.LogWarning("Customer user {User} attempted to access inactive product {ProductId}", 
+                    User.Identity.Name, productId);
+                return Forbid("Bạn không có quyền truy cập sản phẩm đã ngừng bán.");
             }
         }
 
+        var product = await _productService.GetProductByIdAsync(productId, includeInactive);
+
+        if (product == null)
+        {
+            return NotFound("Không tìm thấy sản phẩm.");
+        }
+
+        return Ok(product);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error getting product {ProductId}", productId);
+        return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi trong quá trình xử lý yêu cầu.");
+    }
+}
+
+/// <summary>
+/// ✅ CUSTOMER-SAFE: Dedicated endpoint for customers - NO inactive access
+/// </summary>
+[HttpGet("Customer/{productId}")]
+[AllowAnonymous]
+public async Task<ActionResult<ProductDto>> GetProductByIdForCustomer(int productId)
+{
+    try
+    {
+        if (productId <= 0)
+        {
+            return BadRequest("ID sản phẩm không hợp lệ.");
+        }
+
+        // ✅ SECURITY: Force includeInactive = false for customer endpoint
+        var product = await _productService.GetProductByIdAsync(productId, includeInactive: false);
+
+        if (product == null)
+        {
+            return NotFound("Sản phẩm không tồn tại hoặc đã ngừng bán.");
+        }
+
+        // ✅ SECURITY: Double-check active status
+        if (!product.IsActive)
+        {
+            _logger.LogWarning("Inactive product {ProductId} leaked to customer endpoint", productId);
+            return NotFound("Sản phẩm không tồn tại hoặc đã ngừng bán.");
+        }
+
+        return Ok(product);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error getting product {ProductId} for customer", productId);
+        return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi trong quá trình xử lý yêu cầu.");
+    }
+}
+
+/// <summary>
+/// ✅ ADMIN-ONLY: Admin can access all products including inactive
+/// </summary>
+[HttpGet("Admin/{productId}")]
+[Authorize(Roles = "Admin")]
+public async Task<ActionResult<ProductDto>> GetProductByIdForAdmin(int productId, [FromQuery] bool includeInactive = true)
+{
+    try
+    {
+        if (productId <= 0)
+        {
+            return BadRequest("ID sản phẩm không hợp lệ.");
+        }
+
+        var product = await _productService.GetProductByIdAsync(productId, includeInactive);
+
+        if (product == null)
+        {
+            return NotFound("Không tìm thấy sản phẩm.");
+        }
+
+        return Ok(product);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error getting product {ProductId} for admin", productId);
+        return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi trong quá trình xử lý yêu cầu.");
+    }
+}
+
+/// <summary>
+/// ✅ SELLER-ONLY: Seller can access their inactive products
+/// </summary>
+[HttpGet("Seller/{productId}")]
+[Authorize(Roles = "Seller")]
+public async Task<ActionResult<ProductDto>> GetProductByIdForSeller(int productId, [FromQuery] bool includeInactive = true)
+{
+    try
+    {
+        if (productId <= 0)
+        {
+            return BadRequest("ID sản phẩm không hợp lệ.");
+        }
+
+        var product = await _productService.GetProductByIdAsync(productId, includeInactive);
+
+        if (product == null)
+        {
+            return NotFound("Không tìm thấy sản phẩm.");
+        }
+
+        // ✅ SECURITY: Verify seller ownership for inactive products
+        if (!product.IsActive)
+        {
+            var currentSellerId = _getId.GetSellerId();
+            if (!currentSellerId.HasValue || product.SellerID != currentSellerId.Value)
+            {
+                _logger.LogWarning("Seller {SellerId} attempted to access inactive product {ProductId} not owned by them", 
+                    currentSellerId, productId);
+                return NotFound("Không tìm thấy sản phẩm.");
+            }
+        }
+
+        return Ok(product);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error getting product {ProductId} for seller", productId);
+        return StatusCode(StatusCodes.Status500InternalServerError, "Đã xảy ra lỗi trong quá trình xử lý yêu cầu.");
+    }
+}
+
+       
         /// <summary>
         /// Tạo một sản phẩm mới (yêu cầu xác thực là Seller).
         /// </summary>

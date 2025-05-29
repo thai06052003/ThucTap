@@ -103,7 +103,7 @@ namespace ShopxEX1 // Namespace gốc
             builder.Services.AddScoped<ISessionService, SessionService>();
             builder.Services.AddScoped<IStatisticsService, StatisticsService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
-
+            builder.Services.AddScoped<ISellerPublicService, SellerPublicService>();
 
             // 6. Controller Configuration
             builder.Services.AddControllers()

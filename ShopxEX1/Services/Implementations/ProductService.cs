@@ -133,37 +133,148 @@ namespace ShopxEX1.Services.Implementations
             return new PagedResult<ProductSummaryDto>(productDtos, pageNumber, pageSize, totalCount);
         }
         // Cập nhật method signature để hỗ trợ tham số includeInactive (thêm overload mới)
-        public async Task<ProductDto?> GetProductByIdAsync(int productId, bool includeInactive = false)
+       // ✅ SECURED: GetProductByIdAsync with strict permission check
+public async Task<ProductDto?> GetProductByIdAsync(int productId, bool includeInactive = false)
+{
+    try
+    {
+        _logger.LogInformation("Getting product {ProductId}, includeInactive: {IncludeInactive}, User: {User}", 
+            productId, includeInactive, _httpContextAccessor.HttpContext?.User?.Identity?.Name ?? "Anonymous");
+
+        // ✅ SECURITY: Validate productId
+        if (productId <= 0)
         {
-            var query = _context.Products
-                                .Include(p => p.Category)
-                                .Include(p => p.Seller)
-                                .AsNoTracking();
-
-            // Nếu includeInactive = false, chỉ lấy sản phẩm đang hoạt động
-            if (!includeInactive)
-            {
-                query = query.Where(p => p.IsActive);
-            }
-
-            var product = await query.FirstOrDefaultAsync(p => p.ProductID == productId);
-
-            if (product == null)
-            {
-                return null;
-            }
-
-            var productDto = _mapper.Map<ProductDto>(product);
-            // Đồng bộ Status với IsActive để đảm bảo tính nhất quán
-            productDto.Status = product.IsActive ? "active" : "inactive";
-            return productDto;
+            _logger.LogWarning("Invalid product ID: {ProductId}", productId);
+            return null;
         }
 
+        // ✅ SECURITY: Check if user is authenticated and authorized for includeInactive
+        bool canIncludeInactive = false;
+        
+        if (includeInactive)
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            bool isAuthenticated = user?.Identity?.IsAuthenticated ?? false;
+            
+            if (!isAuthenticated)
+            {
+                _logger.LogWarning("Anonymous user attempted to access inactive products for ProductID: {ProductId}", productId);
+                includeInactive = false; // ✅ Force to false for anonymous users
+            }
+            else
+            {
+                bool isAdmin = user.IsInRole("Admin");
+                bool isSeller = user.IsInRole("Seller");
+                
+                if (isAdmin)
+                {
+                    canIncludeInactive = true;
+                    _logger.LogInformation("Admin access granted for inactive products");
+                }
+                else if (isSeller)
+                {
+                    // ✅ Seller can only see their own inactive products - we'll verify ownership later
+                    canIncludeInactive = true;
+                    _logger.LogInformation("Seller checking product {ProductId}", productId);
+                }
+                else
+                {
+                    _logger.LogWarning("Customer user {User} attempted to access inactive products for ProductID: {ProductId}", 
+                        user.Identity.Name, productId);
+                    includeInactive = false; // ✅ Force to false for customers
+                    canIncludeInactive = false;
+                }
+            }
+        }
+
+        // ✅ SECURITY: Build query with strict filtering
+        var query = _context.Products
+                            .Include(p => p.Category)
+                            .Include(p => p.Seller)
+                            .AsNoTracking();
+
+        // ✅ SECURITY: Always filter by ProductID first
+        query = query.Where(p => p.ProductID == productId);
+
+        // ✅ SECURITY: Apply active filter unless specifically authorized
+        if (!canIncludeInactive)
+        {
+            query = query.Where(p => p.IsActive == true);
+            _logger.LogInformation("Applied active-only filter for product {ProductId}", productId);
+        }
+
+        var product = await query.FirstOrDefaultAsync();
+
+        if (product == null)
+        {
+            _logger.LogInformation("Product {ProductId} not found or not accessible", productId);
+            return null;
+        }
+
+        // ✅ SECURITY: Additional ownership check for sellers accessing inactive products
+        if (!product.IsActive && canIncludeInactive)
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            bool isAdmin = user?.IsInRole("Admin") ?? false;
+            bool isSeller = user?.IsInRole("Seller") ?? false;
+            
+            if (!isAdmin && isSeller)
+            {
+                // Verify seller ownership
+                var userIdClaim = user?.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int currentUserId))
+                {
+                    var sellerInfo = await _context.Sellers
+                        .FirstOrDefaultAsync(s => s.UserID == currentUserId);
+                    
+                    if (sellerInfo == null || product.SellerID != sellerInfo.SellerID)
+                    {
+                        _logger.LogWarning("Seller {UserId} attempted to access inactive product {ProductId} not owned by them", 
+                            currentUserId, productId);
+                        return null;
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("Could not verify seller identity for inactive product access");
+                    return null;
+                }
+            }
+        }
+
+        // ✅ SECURITY: Final check - customers should never see inactive products
+        var currentUser = _httpContextAccessor.HttpContext?.User;
+        bool isCurrentUserCustomer = currentUser?.Identity?.IsAuthenticated == true && 
+                                   !currentUser.IsInRole("Admin") && 
+                                   !currentUser.IsInRole("Seller");
+        
+        if (!product.IsActive && (currentUser?.Identity?.IsAuthenticated != true || isCurrentUserCustomer))
+        {
+            _logger.LogWarning("Blocked access to inactive product {ProductId} for customer/anonymous user", productId);
+            return null;
+        }
+
+        var productDto = _mapper.Map<ProductDto>(product);
+        productDto.Status = product.IsActive ? "active" : "inactive";
+        productDto.SellerStoreName = product.Seller?.ShopName ?? "Cửa hàng";
+        productDto.CategoryName = product.Category?.CategoryName ?? "Danh mục";
+        
+        _logger.LogInformation("Successfully returned product {ProductName} (ID: {ProductId}, Active: {IsActive}) to user {User}", 
+            productDto.ProductName, productId, productDto.IsActive, currentUser?.Identity?.Name ?? "Anonymous");
+
+        return productDto;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error getting product by ID: {ProductId}", productId);
+        throw new Exception($"Failed to retrieve product {productId}: {ex.Message}", ex);
+    }
+}
         // Giữ lại phương thức cũ để tương thích ngược
-        public async Task<ProductDto?> GetProductByIdAsync(int productId)
-        {
-            return await GetProductByIdAsync(productId, false);
-        }
+        // public async Task<ProductDto?> GetProductByIdAsync(int productId)
+        // {
+        //     return await GetProductByIdAsync(productId, false);
+        // }
         public async Task<ProductDto> CreateProductAsync(int sellerId, ProductCreateDto createDto)
         {
             var categoryExists = await _context.Categories.FindAsync(createDto.CategoryID);
