@@ -213,7 +213,10 @@ namespace ShopxEX1.Data
                 entity.Property(e => e.DiscountCode).IsRequired().HasMaxLength(50);
                 entity.HasIndex(e => e.DiscountCode).IsUnique(); // Đảm bảo DiscountCode là duy nhất
 
-                entity.Property(e => e.DiscountPercent).HasColumnType("decimal(5, 2)").IsRequired(); // Ví dụ về độ chính xác
+                entity.Property(e => e.DiscountPercent).HasColumnType("decimal(18, 2)").IsRequired(); // Ví dụ về độ chính xác
+                entity.Property(e => e.Budget).IsRequired(); // Ví dụ về độ chính xác
+                entity.Property(e => e.MaxDiscountPercent).IsRequired(); // Ví dụ về độ chính xác
+                entity.Property(e => e.RemainingBudget).HasColumnType("decimal(18, 2)").IsRequired(); // Ví dụ về độ chính xác
                 entity.Property(e => e.StartDate).IsRequired();
                 entity.Property(e => e.EndDate).IsRequired();
                 entity.Property(e => e.IsActive).IsRequired();
@@ -239,6 +242,7 @@ namespace ShopxEX1.Data
 
                 entity.Property(e => e.OrderDate).HasDefaultValueSql("GETDATE()");
                 entity.Property(e => e.TotalAmount).HasColumnType("decimal(18, 2)").IsRequired();
+                entity.Property(e => e.TotalPayment).HasColumnType("decimal(18, 2)").IsRequired();
                 entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.DiscountCode).HasMaxLength(50); // Cho phép null
                 entity.Property(e => e.ShippingAddress).IsRequired().HasMaxLength(500);

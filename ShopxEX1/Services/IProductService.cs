@@ -35,7 +35,7 @@ namespace ShopxEX1.Services
         /// </summary>
         /// <param name="productId">ID của sản phẩm.</param>
         /// <returns>ProductDto nếu tìm thấy, ngược lại trả về null hoặc ném NotFoundException.</returns>
-        Task<ProductDto?> GetProductByIdAsync(int productId, bool includeInactive = false);// Hoặc Task<ProductDto> và ném exception
+        Task<ProductDto?> GetProductByIdAsync(int productId, bool showInactive);
 
         /// <summary>
         /// Tạo một sản phẩm mới cho một người bán cụ thể.

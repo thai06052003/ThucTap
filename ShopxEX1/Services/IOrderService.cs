@@ -56,7 +56,7 @@ namespace ShopxEX1.Services
         Task<OrderDto?> GetOrderDetailsByIdAsync(int orderId, int requestingUserId, string userRole);
 
         /// <summary>
-        /// Cập nhật trạng thái của một đơn hàng.
+        /// Cập nhật trạng thái của một đơn hàng. (Admin, Seller)
         /// </summary>
         /// <param name="orderId">ID của đơn hàng.</param>
         /// <param name="statusUpdateDto">Thông tin trạng thái mới.</param>
@@ -68,12 +68,16 @@ namespace ShopxEX1.Services
         /// <exception cref="InvalidOperationException">Ném ra nếu việc chuyển trạng thái không hợp lệ.</exception>
         Task<bool> UpdateOrderStatusAsync(int orderId, OrderStatusUpdateDto statusUpdateDto, int requestingUserId, string userRole);
         /// <summary>
-        /// Người dùng hủy đơn hàng nếu đơn hàng chưa được gửi
+        /// Cập nhật trạng thái của một đơn hàng. (Customer)
         /// </summary>
-        /// <param name="orderId">Id đơn hàng</param>
-        /// <param name="userId">Id người dùng (người hủy đơn hàng)</param>
-        /// <returns></returns>
-        //Task<bool> CancelOrderAsync(int orderId, int userId);
+        /// <param name="orderId">ID của đơn hàng.</param>
+        /// <param name="statusUpdateDto">Thông tin trạng thái mới.</param>
+        /// <param name="requestingUserId">ID của người dùng thực hiện cập nhật (Seller hoặc Admin).</param>
+        /// <returns>True nếu cập nhật thành công, false nếu thất bại (ví dụ: không tìm thấy đơn hàng, không có quyền, trạng thái không hợp lệ).</returns>
+        /// <exception cref="KeyNotFoundException">Ném ra nếu không tìm thấy đơn hàng.</exception>
+        /// <exception cref="UnauthorizedAccessException">Ném ra nếu người dùng không có quyền cập nhật.</exception>
+        /// <exception cref="InvalidOperationException">Ném ra nếu việc chuyển trạng thái không hợp lệ.</exception>
+        Task<bool> UpdateOrderStatusForCustomerAsync(int orderId, OrderStatusUpdateDto statusUpdateDto, int userId);
     }
     
 }

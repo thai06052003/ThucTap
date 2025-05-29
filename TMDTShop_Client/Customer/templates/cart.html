@@ -14,23 +14,15 @@
         /* --- Quantity Controls --- */
         .quantity-input {
             width: 3.5rem;
-            /* w-14 */
             text-align: center;
             border-top: 1px solid #d1d5db;
-            /* gray-300 */
             border-bottom: 1px solid #d1d5db;
-            /* gray-300 */
-            /* Loại bỏ border trái/phải để liền mạch với nút */
             border-left: none;
             border-right: none;
             padding-left: 0.25rem;
-            /* px-1 */
             padding-right: 0.25rem;
-            /* px-1 */
             appearance: textfield;
-            /* Firefox */
             -moz-appearance: textfield;
-            /* Firefox */
         }
 
         input[type="number"]::-webkit-outer-spin-button,
@@ -41,21 +33,15 @@
 
         .quantity-btn {
             background-color: #f3f4f6;
-            /* gray-100 */
             border: 1px solid #d1d5db;
-            /* gray-300 */
             padding: 0.5rem 0.75rem;
-            /* py-2 px-3 */
             font-weight: 600;
-            /* font-semibold */
             color: #374151;
-            /* gray-700 */
             transition: background-color 0.15s ease-in-out;
         }
 
         .quantity-btn:hover:not(:disabled) {
             background-color: #e5e7eb;
-            /* gray-200 */
         }
 
         .quantity-btn:disabled {
@@ -69,9 +55,7 @@
             height: 80px;
             object-fit: cover;
             border-radius: 0.375rem;
-            /* rounded-md */
             border: 1px solid #e5e7eb;
-            /* gray-200 */
         }
 
         .product-item-container.unavailable,
@@ -80,16 +64,11 @@
             position: relative;
         }
 
-        /* Thông báo thay thế checkbox */
         .item-status-notice {
             font-size: 0.75rem;
-            /* text-xs */
             font-weight: 500;
-            /* font-medium */
             padding: 0.125rem 0.5rem;
-            /* py-0.5 px-2 */
             border-radius: 9999px;
-            /* rounded-full */
             display: inline-block;
             white-space: nowrap;
         }
@@ -99,21 +78,15 @@
             color: #4b5563;
         }
 
-        /* gray-200, gray-600 */
         .item-status-out-of-stock {
             background-color: #fee2e2;
             color: #b91c1c;
         }
 
-        /* red-100, red-700 */
-
-
         /* --- General Loader --- */
         .loader {
             border: 4px solid #f3f3f3;
-            /* gray-100 */
             border-top: 4px solid #4f46e5;
-            /* indigo-600 */
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -130,7 +103,7 @@
             }
         }
 
-        /* --- Custom Checkbox (Tailwind Forms Plugin like) --- */
+        /* --- Custom Checkbox --- */
         .form-checkbox {
             appearance: none;
             padding: 0;
@@ -143,13 +116,10 @@
             height: 1.25rem;
             width: 1.25rem;
             color: #4f46e5;
-            /* indigo-600 */
             background-color: #fff;
             border-color: #6b7280;
-            /* gray-500 */
             border-width: 1px;
             border-radius: 0.25rem;
-            /* rounded */
         }
 
         .form-checkbox:checked {
@@ -166,7 +136,6 @@
             outline-offset: 2px;
             --tw-ring-offset-width: 2px;
             --tw-ring-color: rgba(79, 70, 229, 0.5);
-            /* indigo-600 with opacity */
             box-shadow: 0 0 0 var(--tw-ring-offset-width) #fff, 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
         }
 
@@ -174,19 +143,13 @@
             opacity: 0.5;
             cursor: not-allowed;
             border-color: #d1d5db;
-            /* gray-300 */
             background-color: #f3f4f6;
-            /* gray-100 */
         }
 
         .form-checkbox:disabled:checked {
-            /* Style khi disabled và checked (hiếm khi xảy ra nếu logic đúng) */
             background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='%239ca3af' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
-            /* Màu tick xám */
             background-color: #e5e7eb;
-            /* gray-200 */
         }
-
 
         /* --- Modal Styles --- */
         .modal-overlay {
@@ -196,7 +159,6 @@
             right: 0;
             bottom: 0;
             background-color: rgba(0, 0, 0, 0.6);
-            /* Tăng độ mờ */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -204,7 +166,6 @@
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0s linear 0.3s;
-            /* Delay visibility transition */
         }
 
         .modal-overlay.active {
@@ -218,9 +179,9 @@
             padding: 1.5rem;
             border-radius: 0.5rem;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            /* shadow-2xl */
             width: 90%;
-            max-width: 450px;
+            max-width: 500px;
+            /* Tăng độ rộng modal một chút */
             max-height: 85vh;
             overflow-y: auto;
             position: relative;
@@ -254,40 +215,55 @@
             margin-bottom: 0.75rem;
             cursor: pointer;
             transition: background-color 0.2s, border-color 0.2s;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
-        .discount-item-modal:hover {
+        .discount-item-modal:hover:not(.selected-discount) {
             background-color: #f9fafb;
-            border-color: #6366f1;
+            border-color: #818cf8;
+            /* indigo-400 */
         }
 
-        /* indigo-500 */
         .discount-item-modal.selected-discount {
             background-color: #e0e7ff;
             /* indigo-100 */
             border-color: #4f46e5;
             /* indigo-600 */
+            box-shadow: 0 0 0 2px #c7d2fe;
+            /* ring-indigo-300 */
+        }
+
+        .discount-item-modal .discount-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
         }
 
         .discount-item-modal .discount-code {
             font-weight: 600;
             color: #3730a3;
+            /* indigo-800 */
         }
 
-        /* indigo-800 */
-        .discount-item-modal .discount-percent {
-            font-size: 0.875rem;
+        .discount-item-modal .discount-percent-main {
+            font-size: 0.9rem;
+            font-weight: 500;
             color: #16a34a;
+            /* green-600 */
         }
 
-        /* green-600 */
-        .discount-item-modal .discount-expiry {
-            font-size: 0.75rem;
-            color: #6b7280;
-            margin-top: 0.125rem;
+        .discount-item-modal .discount-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.25rem 0.75rem;
+            font-size: 0.8rem;
+            color: #4b5563;
+            /* gray-600 */
+            margin-top: 0.375rem;
+        }
+
+        .discount-item-modal .discount-detail-label {
+            font-weight: 500;
         }
     </style>
 </head>
@@ -421,9 +397,9 @@
             <div id="discountModalLoading" class="text-center py-5">
                 <div class="loader mx-auto"></div>
             </div>
-            <div id="discountModalListContainer" class="hidden"> <!-- Container cho list và no-message -->
-                <div id="discountModalList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                    <!-- Discount items will be populated here -->
+            <div id="discountModalListContainer" class="hidden">
+                <div id="discountModalList" class="space-y-2 max-h-72 overflow-y-auto pr-2">
+                    <!-- Discount items populated here -->
                 </div>
                 <div id="noDiscountsMessageModal" class="hidden text-center text-gray-500 py-5">
                     Hiện không có mã giảm giá nào phù hợp.
@@ -437,12 +413,10 @@
         </div>
     </div>
 
-
     <script src="../assets/js/index.js"></script>
     <script type="module" src="../assets/js/components.js"></script>
     <script>
         function initializeCustomerCartPage() {
-            // ... (Khai báo DOM elements giữ nguyên)
             const cartLoadingEl = document.getElementById('cartLoading');
             const cartContentEl = document.getElementById('cartContent');
             const cartItemsContainerEl = document.getElementById('cartItemsContainer');
@@ -473,20 +447,21 @@
             const applySelectedDiscountBtn = document.getElementById('applySelectedDiscountBtn');
 
             let currentCartData = null;
-            let appliedDiscountDetails = null;
-            let selectedDiscountInModal = null;
+            // Lưu trữ chi tiết hơn về discount đã áp dụng
+            let appliedDiscountDetails = null; // Sẽ có dạng { code, percent, maxDiscountPercent, remainingBudget, discountId }
+            let selectedDiscountInModal = null; // Lưu trữ đầy đủ thông tin của discount được chọn trong modal
 
+
+            // ... (Kiểm tra hàm, biến toàn cục)
             if (typeof formatDate !== 'function' || typeof formatCurrency !== 'function' || typeof getSession !== 'function' || typeof API_BASE_URL === 'undefined' || typeof getImageUrl !== 'function') {
                 console.error("Một số hàm hoặc biến toàn cục từ index.js chưa sẵn sàng.");
-                cartLoadingEl.innerHTML = '<p class="text-red-500 text-center">Lỗi tải trang. Vui lòng thử lại.</p>';
+                if (cartLoadingEl) cartLoadingEl.innerHTML = '<p class="text-red-500 text-center">Lỗi tải trang. Vui lòng thử lại.</p>';
                 return;
             }
 
-            const ORDER_STATUSES = Object.freeze({ /* ... (giữ nguyên) ... */ }); // Chỉ cần nếu bạn có logic liên quan trạng thái ở đây
-
-            function getStatusClass(status) { /* ... (giữ nguyên) ... */ } // Có thể không cần trong cart.html
 
             function renderCartItem(item) {
+                // ... (Logic render item giữ nguyên, chỉ cần đảm bảo nó không bị lỗi nếu item.product là null)
                 const imageUrl = window.getImageUrl(item.imageURL);
                 const priceFormatted = window.formatCurrency(item.price);
 
@@ -513,11 +488,10 @@
                 } else if (item.availableStock === 0) {
                     itemClasses += " out-of-stock";
                     checkboxReplacementHtml = `<span class="item-status-notice item-status-out-of-stock" title="Sản phẩm đã hết hàng">Hết hàng</span>`;
-                    quantityControlsDisabled = true; // Không cho thay đổi SL nếu đã hết sạch
-                    // Giữ quantityInputValue nếu người dùng đã có trong giỏ, để họ có thể xóa
+                    quantityControlsDisabled = true;
                     isActuallyUnavailableForPurchase = true;
                 } else if (item.quantity > item.availableStock) {
-                    quantityInputValue = item.availableStock;
+                    quantityInputValue = item.availableStock; // Tự động điều chỉnh số lượng về tồn kho tối đa
                 }
 
                 const lineTotalForItem = item.price * quantityInputValue;
@@ -585,36 +559,24 @@
             }
 
             function renderCart(cartData) {
+                // ... (phần đầu giữ nguyên)
                 currentCartData = cartData;
                 cartItemsContainerEl.innerHTML = '';
-                // Reset discount khi tải lại giỏ hàng, trừ khi nó được giữ lại từ session/local storage
-                // appliedDiscountDetails = null; 
-                // discountCodeInput.value = appliedDiscountDetails ? appliedDiscountDetails.code : '';
-                // discountMessageEl.textContent = appliedDiscountDetails ? `Đang áp dụng: ${appliedDiscountDetails.code} (-${appliedDiscountDetails.percent}%)` : '';
-                // discountMessageEl.className = appliedDiscountDetails ? 'text-xs mt-1 text-green-600' : 'text-xs mt-1';
-
+                // Không reset appliedDiscountDetails ở đây nữa, nó sẽ được quản lý khi người dùng chọn hoặc xóa mã.
 
                 if (cartData && cartData.cartItems && cartData.cartItems.length > 0) {
-                    var totalItem = 0;
-                    cartData.cartItems.forEach(item => {
-                        if (item.isActive && item.availableStock > 0) {
-                            totalItem++
-                            console.log(totalItem)
-                            console.log(item)
-                        }
-                    });
-                    totalCartItemsCountEl.textContent = totalItem
+                    let displayableItemCount = 0;
                     cartData.cartItems.forEach(item => {
                         cartItemsContainerEl.innerHTML += renderCartItem(item);
+                        if (item.isActive && item.availableStock > 0) {
+                            displayableItemCount++;
+                        }
                     });
+                    totalCartItemsCountEl.textContent = displayableItemCount;
                     emptyCartMessageEl.classList.add('hidden');
                     cartHasItemsEl.classList.remove('hidden');
                     cartSummaryEl.classList.remove('hidden');
-
-                    // Kiểm tra xem có item nào có thể chọn không để enable/disable selectAllCheckbox
-                    const canSelectAny = cartData.cartItems.some(item => item.isActive && item.availableStock > 0);
-                    selectAllCheckbox.disabled = !canSelectAny;
-
+                    selectAllCheckbox.disabled = displayableItemCount === 0;
                 } else {
                     totalCartItemsCountEl.textContent = '0';
                     emptyCartMessageEl.classList.remove('hidden');
@@ -622,6 +584,9 @@
                     cartSummaryEl.classList.add('hidden');
                     selectAllCheckbox.checked = false;
                     selectAllCheckbox.disabled = true;
+                    appliedDiscountDetails = null; // Reset discount nếu giỏ hàng trống
+                    discountCodeInput.value = '';
+                    discountMessageEl.textContent = '';
                 }
                 updateSelectedSummary();
                 attachEventListeners();
@@ -629,197 +594,188 @@
                 cartContentEl.classList.remove('hidden');
             }
 
-            function handleSelectAllChange() {
+            function handleSelectAllChange() { /* ... (giữ nguyên) ... */
                 const isChecked = selectAllCheckbox.checked;
-                // Chỉ tác động lên các checkbox của item không bị disable (tức là item hợp lệ để chọn)
                 document.querySelectorAll('.cart-item-checkbox:not([disabled])').forEach(checkbox => {
                     checkbox.checked = isChecked;
                 });
-                updateSelectedSummary(); // Cập nhật lại tổng tiền và trạng thái các nút
+                updateSelectedSummary();
             }
 
-            function attachEventListeners() {
+            function attachEventListeners() { /* ... (giữ nguyên) ... */
                 selectAllCheckbox.removeEventListener('change', handleSelectAllChange);
                 selectAllCheckbox.addEventListener('change', handleSelectAllChange);
 
                 cartItemsContainerEl.querySelectorAll('.cart-item-checkbox').forEach(checkbox => {
+                    checkbox.removeEventListener('change', handleCheckboxChange); // Tránh gắn nhiều lần
                     checkbox.addEventListener('change', handleCheckboxChange);
                 });
 
-                cartItemsContainerEl.querySelectorAll('.decrease-quantity').forEach(button => {
-                    button.addEventListener('click', handleQuantityChange);
-                });
-                cartItemsContainerEl.querySelectorAll('.increase-quantity').forEach(button => {
+                cartItemsContainerEl.querySelectorAll('.decrease-quantity, .increase-quantity').forEach(button => {
+                    button.removeEventListener('click', handleQuantityChange);
                     button.addEventListener('click', handleQuantityChange);
                 });
                 cartItemsContainerEl.querySelectorAll('.update-quantity-input').forEach(input => {
+                    input.removeEventListener('change', handleQuantityChange);
                     input.addEventListener('change', handleQuantityChange);
                 });
                 cartItemsContainerEl.querySelectorAll('.remove-item').forEach(button => {
+                    button.removeEventListener('click', handleRemoveItem);
                     button.addEventListener('click', handleRemoveItem);
                 });
             }
 
-            function handleCheckboxChange() {
-                updateSelectedSummary();
-            }
+            function handleCheckboxChange() { /* ... (giữ nguyên) ... */ updateSelectedSummary(); }
 
-            function handleQuantityChange(event) {
-                const triggeredElement = event.target;
-                let itemId;
+            function handleQuantityChange(event) { /* ... (giữ nguyên, logic API gọi sau) ... */
+                const triggeredElement = event.target.closest('button, input'); // Đảm bảo lấy đúng element
+                if (!triggeredElement) return;
+
+                const itemId = triggeredElement.dataset.itemId;
+                const cartItemDiv = document.querySelector(`div[data-cart-item-id="${itemId}"]`);
+                if (!cartItemDiv || cartItemDiv.dataset.isActive !== 'true') return;
+
+
                 let quantityInput;
                 let actionType;
 
-                if (triggeredElement.dataset.itemId) {
-                    itemId = triggeredElement.dataset.itemId;
-                    if (triggeredElement.classList.contains('decrease-quantity')) {
-                        actionType = 'decrease';
-                        quantityInput = triggeredElement.nextElementSibling;
-                    } else if (triggeredElement.classList.contains('increase-quantity')) {
-                        actionType = 'increase';
-                        quantityInput = triggeredElement.previousElementSibling;
-                    } else if (triggeredElement.classList.contains('update-quantity-input')) {
-                        actionType = 'input';
-                        quantityInput = triggeredElement;
-                    }
+                if (triggeredElement.classList.contains('decrease-quantity')) {
+                    actionType = 'decrease';
+                    quantityInput = triggeredElement.nextElementSibling;
+                } else if (triggeredElement.classList.contains('increase-quantity')) {
+                    actionType = 'increase';
+                    quantityInput = triggeredElement.previousElementSibling;
+                } else if (triggeredElement.classList.contains('update-quantity-input')) {
+                    actionType = 'input';
+                    quantityInput = triggeredElement;
                 } else {
-                    const button = triggeredElement.closest('.quantity-btn');
-                    if (button && button.dataset.itemId) {
-                        itemId = button.dataset.itemId;
-                        if (button.classList.contains('decrease-quantity')) {
-                            actionType = 'decrease';
-                            quantityInput = button.nextElementSibling;
-                        } else if (button.classList.contains('increase-quantity')) {
-                            actionType = 'increase';
-                            quantityInput = button.previousElementSibling;
-                        }
-                    }
+                    return; // Không phải element mong muốn
                 }
 
-                // Nếu không tìm thấy itemId hoặc actionType, thoát sớm
-                if (!itemId || !actionType || !quantityInput) {
-                    console.error('Lỗi: Không thể xác định itemId, actionType hoặc quantityInput trong handleQuantityChange.', { triggeredElement, itemId, actionType });
-                    return;
-                }
-
-                const cartItemDiv = document.querySelector(`div[data-cart-item-id="${itemId}"]`);
-                if (!cartItemDiv) { /* ... */ return; }
-
-                const isActive = cartItemDiv.dataset.isActive === 'true';
-                if (!isActive) return; // Không cho thay đổi SL của sp không active
 
                 const stock = parseInt(cartItemDiv.dataset.stock);
-                let newQuantity;
+                let currentInputValue = parseInt(quantityInput.value);
+                let newQuantity = currentInputValue;
 
-                if (actionType === 'decrease') {
-                    newQuantity = parseInt(quantityInput.value) - 1;
-                } else if (actionType === 'increase') {
-                    newQuantity = parseInt(quantityInput.value) + 1;
-                } else if (actionType === 'input') {
-                    newQuantity = parseInt(quantityInput.value);
-                }
 
-                if (isNaN(newQuantity)) { // Xử lý nếu nhập không phải số
-                    newQuantity = 0; // Hoặc quantityInput.value = currentCartData.cartItems.find(i => i.cartItemID == itemId).quantity; (reset về giá trị cũ)
-                }
+                if (actionType === 'decrease') newQuantity = Math.max(0, currentInputValue - 1); // Cho phép giảm về 0
+                else if (actionType === 'increase') newQuantity = Math.min(stock, currentInputValue + 1);
+                else if (actionType === 'input') newQuantity = Math.max(0, Math.min(stock, parseInt(quantityInput.value) || 0));
 
-                // Cho phép giảm về 0, nhưng không cho phép âm
-                if (newQuantity < 0) {
-                    newQuantity = 0;
-                }
 
-                // Không cho phép tăng quá số lượng tồn kho
-                if (stock > 0 && newQuantity > stock) {
-                    alert(`Sản phẩm này chỉ còn tối đa ${stock} sản phẩm trong kho.`);
-                    newQuantity = stock;
-                } else if (stock === 0 && newQuantity > 0) {
-                    // Nếu sản phẩm đã hết hàng (stock=0) nhưng người dùng cố tăng số lượng từ 0
-                    alert(`Sản phẩm này đã hết hàng.`);
-                    newQuantity = 0; // Giữ nguyên là 0
-                }
+                quantityInput.value = newQuantity;
 
-                quantityInput.value = newQuantity; // Cập nhật UI input
+                // Cập nhật line total ngay lập tức trên UI
+                const price = parseFloat(cartItemDiv.dataset.price);
+                const lineTotalEl = cartItemDiv.querySelector('.text-md.lg\\:text-lg.font-semibold.text-gray-700');
+                if (lineTotalEl) lineTotalEl.textContent = formatCurrency(price * newQuantity);
 
+
+                // Logic gọi API
                 const currentItemData = currentCartData.cartItems.find(item => item.cartItemID == itemId);
-                // Chỉ gọi API nếu số lượng thực sự thay đổi, hoặc nếu là từ input trực tiếp
-                if (currentItemData && (currentItemData.quantity !== newQuantity || actionType === 'input')) {
-                    // Nếu newQuantity là 0, coi như xóa (hoặc API của bạn xử lý quantity=0 là xóa)
+                if (currentItemData && currentItemData.quantity !== newQuantity) {
                     if (newQuantity === 0) {
-                        removeCartItem(itemId, true); // Xóa ngầm
+                        removeCartItem(itemId, true); // Xóa ngầm, không confirm
                     } else {
                         updateCartItemQuantity(itemId, newQuantity);
                     }
-                } else if (actionType === 'input' && newQuantity === 0) { // Xử lý khi người dùng nhập trực tiếp số 0
+                } else if (actionType === 'input' && newQuantity === 0 && currentItemData && currentItemData.quantity !== 0) {
                     removeCartItem(itemId, true);
                 }
-
-                updateCartItemQuantity(itemId, newQuantity);
+                // Không cần gọi updateSelectedSummary() ở đây nữa, vì updateCartItemQuantity/removeCartItem sẽ gọi fetchCart() => renderCart() => updateSelectedSummary()
             }
 
-            function handleRemoveItem(event) {
+            function handleRemoveItem(event) { /* ... (giữ nguyên) ... */
                 const itemId = event.target.closest('.remove-item').dataset.itemId;
                 removeCartItem(itemId);
             }
 
             function updateSelectedSummary() {
+                // ... (phần lấy selectedCheckboxes, selectedItemsCount, subtotal giữ nguyên) ...
                 const allVisibleAndEnabledCheckboxes = document.querySelectorAll('.cart-item-checkbox:not([disabled])');
                 const selectedAndEnabledCheckboxes = document.querySelectorAll('.cart-item-checkbox:checked:not([disabled])');
 
                 let selectedItemsCount = 0;
                 let subtotal = 0;
-                let canProceedToCheckout = true;
+                let canProceedToCheckout = true; // Biến cờ kiểm tra
 
-                // Tính toán dựa trên selectedAndEnabledCheckboxes
                 selectedAndEnabledCheckboxes.forEach(checkbox => {
                     const itemId = checkbox.dataset.itemId;
                     const itemRow = document.querySelector(`div[data-cart-item-id="${itemId}"]`);
                     if (!itemRow) return;
 
-                    const isActive = itemRow.dataset.isActive === 'true'; // Nên là true vì checkbox không disabled
+                    const isActive = itemRow.dataset.isActive === 'true';
                     const stock = parseInt(itemRow.dataset.stock);
                     const quantityInput = itemRow.querySelector('.update-quantity-input');
                     const quantity = parseInt(quantityInput.value);
                     const price = parseFloat(itemRow.dataset.price);
 
-                    // Không cần kiểm tra isActive và stock ở đây nữa vì checkbox đã được lọc
-                    // Chỉ cần đảm bảo quantity > 0
-                    if (quantity > 0) {
+                    if (isActive && stock > 0 && quantity > 0 && quantity <= stock) {
                         selectedItemsCount++;
                         subtotal += price * quantity;
-                    } else if (quantity <= 0) {
-                        // Nếu vì lý do nào đó item được chọn mà quantity là 0, không cho checkout
-                        canProceedToCheckout = false;
-                        itemRow.classList.add('border-red-300', 'ring-1', 'ring-red-300');
-                    }
-                    // Kiểm tra lại tồn kho một lần nữa cho chắc chắn
-                    if (quantity > stock && stock > 0) { // Nếu SL > tồn kho (và tồn kho > 0)
-                        canProceedToCheckout = false;
-                        itemRow.classList.add('border-yellow-400', 'ring-1', 'ring-yellow-400'); // Highlight khác
-                    } else if (stock === 0 && quantity > 0) { // Nếu hết hàng mà vẫn có số lượng > 0
-                        canProceedToCheckout = false;
-                        itemRow.classList.add('border-red-300', 'ring-1', 'ring-red-300');
-                    }
-                    else if (stock > 0 && quantity > 0 && quantity <= stock) {
                         itemRow.classList.remove('border-red-300', 'ring-1', 'ring-red-300', 'border-yellow-400', 'ring-yellow-400');
+                    } else {
+                        canProceedToCheckout = false; // Nếu có bất kỳ item nào được chọn mà không hợp lệ
+                        // Highlight item không hợp lệ
+                        if (!isActive || (stock === 0 && quantity > 0)) {
+                            itemRow.classList.add('border-red-300', 'ring-1', 'ring-red-300');
+                        } else if (quantity > stock) {
+                            itemRow.classList.add('border-yellow-400', 'ring-1', 'ring-yellow-400');
+                        } else if (quantity <= 0 && isActive) {
+                            itemRow.classList.add('border-red-300', 'ring-1', 'ring-red-300');
+                        }
                     }
                 });
+
 
                 selectedItemsCountEl.textContent = selectedItemsCount;
                 subtotalPriceEl.textContent = formatCurrency(subtotal);
 
                 let finalTotal = subtotal;
+                let calculatedDiscountAmount = 0;
+
                 if (appliedDiscountDetails && subtotal > 0) {
-                    const discountValue = subtotal * (appliedDiscountDetails.percent / 100);
-                    discountAmountEl.textContent = `-${formatCurrency(discountValue)}`;
-                    discountAppliedTextEl.textContent = `Giảm giá (${appliedDiscountDetails.code} - ${appliedDiscountDetails.percent}%):`;
-                    finalTotal -= discountValue;
+                    const potentialDiscount = (subtotal * appliedDiscountDetails.percent) / 100;
+                    calculatedDiscountAmount = potentialDiscount; // Giữ nguyên giá trị %
+                    // Áp dụng MaxDiscountPercent (nếu có và > 0)
+                    if (appliedDiscountDetails.maxDiscountPercent && appliedDiscountDetails.maxDiscountPercent > 0) {
+                        calculatedDiscountAmount = Math.min(calculatedDiscountAmount, appliedDiscountDetails.maxDiscountPercent);
+                    }
+
+                    // Làm tròn số tiền giảm
+                    calculatedDiscountAmount = Math.round(calculatedDiscountAmount);
+
+
+                    // Kiểm tra với RemainingBudget (chỉ để hiển thị, backend sẽ quyết định cuối cùng)
+                    // Nếu không muốn hiển thị cảnh báo này, có thể bỏ qua
+                    if (appliedDiscountDetails.remainingBudget < calculatedDiscountAmount && appliedDiscountDetails.remainingBudget > 0) {
+                        discountMessageEl.textContent = `LƯU Ý: Mã ${appliedDiscountDetails.code} chỉ còn ${formatCurrency(appliedDiscountDetails.remainingBudget)} ngân sách. Số tiền giảm có thể bị điều chỉnh khi thanh toán.`;
+                        discountMessageEl.className = 'text-xs mt-1 text-yellow-600 font-medium';
+                        // Có thể giới hạn calculatedDiscountAmount ở đây để người dùng thấy trước, nhưng backend vẫn là quyết định cuối
+                        // calculatedDiscountAmount = Math.min(calculatedDiscountAmount, appliedDiscountDetails.remainingBudget);
+                    } else if (appliedDiscountDetails.remainingBudget <= 0) {
+                        // Trường hợp này lẽ ra không xảy ra nếu loadDiscountsForModal lọc đúng
+                        discountMessageEl.textContent = `Mã ${appliedDiscountDetails.code} đã hết ngân sách.`;
+                        discountMessageEl.className = 'text-xs mt-1 text-red-600 font-medium';
+                        calculatedDiscountAmount = 0; // Không giảm nữa
+                    } else {
+                        discountMessageEl.textContent = `Đang áp dụng: ${appliedDiscountDetails.code} (-${appliedDiscountDetails.percent}%, tối đa ${formatCurrency(appliedDiscountDetails.maxDiscountPercent)}).`;
+                        discountMessageEl.className = 'text-xs mt-1 text-green-600';
+                    }
+
+
+                    discountAmountEl.textContent = `-${formatCurrency(calculatedDiscountAmount)}`;
+                    finalTotal -= calculatedDiscountAmount;
                 } else {
                     discountAmountEl.textContent = '-0đ';
                     discountAppliedTextEl.textContent = `Giảm giá:`;
+                    if (!discountCodeInput.value) { // Chỉ xóa message nếu không có code nào đang được nhập/chọn
+                        discountMessageEl.textContent = '';
+                    }
                 }
-                selectedCartPriceEl.textContent = formatCurrency(finalTotal < 0 ? 0 : finalTotal);
 
-                checkoutSelectedButton.disabled = selectedItemsCount === 0 || !canProceedToCheckout;
+                selectedCartPriceEl.textContent = formatCurrency(finalTotal < 0 ? 0 : finalTotal);
+                checkoutSelectedButton.disabled = selectedItemsCount === 0 || !canProceedToCheckout; // Thêm !canProceedToCheckout
                 if (!canProceedToCheckout && selectedItemsCount > 0) {
                     checkoutSelectedButton.title = "Có sản phẩm hết hàng hoặc số lượng không hợp lệ trong các mục đã chọn.";
                 } else {
@@ -828,44 +784,55 @@
                 checkoutButtonSelectedCount.textContent = selectedItemsCount;
                 clearSelectedItemsBtn.disabled = selectedItemsCount === 0;
 
-                // Cập nhật trạng thái của selectAllCheckbox
                 if (allVisibleAndEnabledCheckboxes.length > 0) {
                     selectAllCheckbox.checked = selectedAndEnabledCheckboxes.length === allVisibleAndEnabledCheckboxes.length;
                     selectAllCheckbox.indeterminate = selectedAndEnabledCheckboxes.length > 0 && selectedAndEnabledCheckboxes.length < allVisibleAndEnabledCheckboxes.length;
                 } else {
-                    // Nếu không có item nào có thể chọn, selectAll cũng nên là unchecked và disabled
                     selectAllCheckbox.checked = false;
                     selectAllCheckbox.indeterminate = false;
-                    selectAllCheckbox.disabled = true; // Đã có logic này trong renderCart
+                    selectAllCheckbox.disabled = true;
                 }
             }
 
-            async function fetchCart() {
+
+            async function fetchCart() { /* ... (giữ nguyên, nhưng renderCart sẽ gọi updateSelectedSummary) ... */
                 cartLoadingEl.classList.remove('hidden');
                 cartContentEl.classList.add('hidden');
                 const token = getSession('token');
-                if (!token) { window.location.href = 'login.html'; return; }
+                if (!token) { window.location.href = '/Customer/templates/login.html'; return; } // Đảm bảo URL đúng
                 try {
                     const response = await fetch(`${API_BASE_URL}/Cart`, { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (response.ok) renderCart(await response.json());
-                    else if (response.status === 401) { sessionStorage.removeItem('token'); window.location.href = 'login.html'; }
-                    else renderCart({ cartItems: [], totalItems: 0, totalPrice: 0 }); // Xử lý lỗi khác như giỏ hàng trống
+                    if (response.ok) {
+                        renderCart(await response.json());
+                    }
+                    else if (response.status === 401) { sessionStorage.removeItem('token'); window.location.href = '/Customer/templates/login.html'; }
+                    else {
+                        // Nếu API trả về lỗi khác 401 mà không phải là giỏ hàng trống thực sự
+                        const errorData = await response.json().catch(() => null);
+                        console.error("Lỗi tải giỏ hàng từ API:", errorData?.message || response.statusText);
+                        renderCart({ cartItems: [], totalItems: 0, totalPrice: 0 }); // Hiển thị giỏ hàng trống
+                        alert(`Không thể tải giỏ hàng: ${errorData?.message || "Lỗi không xác định."}`);
+                    }
                     const mainContentElement = document.getElementById('mainContent');
                     if (mainContentElement) {
                         mainContentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 } catch (error) {
-                    console.error("Lỗi tải giỏ hàng:", error);
-                    cartItemsContainerEl.innerHTML = `<p class="text-red-500 text-center col-span-full py-4">Lỗi tải giỏ hàng.</p>`;
-                    renderCart({ cartItems: [], totalItems: 0, totalPrice: 0 });
+                    console.error("Lỗi mạng hoặc lỗi khác khi tải giỏ hàng:", error);
+                    cartItemsContainerEl.innerHTML = `<p class="text-red-500 text-center col-span-full py-4">Lỗi tải giỏ hàng. Vui lòng kiểm tra kết nối và thử lại.</p>`;
+                    renderCart({ cartItems: [], totalItems: 0, totalPrice: 0 }); // Hiển thị giỏ hàng trống
                 }
             }
 
-            async function updateCartItemQuantity(cartItemId, newQuantity) {
-                // ... (như trước, sau khi response.ok, gọi fetchCart() để đảm bảo UI đồng bộ hoàn toàn)
+            async function updateCartItemQuantity(cartItemId, newQuantity) { /* ... (giữ nguyên) ... */
                 const token = getSession('token');
                 if (!token) return;
-                if (newQuantity < 1) { await removeCartItem(cartItemId); return; }
+
+                // Không cho phép cập nhật thành 0 qua hàm này, nếu muốn 0 thì phải gọi remove
+                if (newQuantity < 1) {
+                    await removeCartItem(cartItemId, true); // Xóa ngầm nếu số lượng là 0
+                    return;
+                }
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/Cart/items/${cartItemId}`, {
@@ -874,23 +841,29 @@
                         body: JSON.stringify({ quantity: newQuantity })
                     });
                     if (response.ok) {
-                        // Thay vì chỉ renderCart, fetch lại toàn bộ để đảm bảo tính nhất quán cao nhất
-                        await fetchCart();
-                        // Sau khi fetchCart, updateSelectedSummary sẽ được gọi bên trong renderCart
+                        await fetchCart(); // Tải lại toàn bộ giỏ hàng để đảm bảo đồng bộ
                     } else {
-                        const errorData = await response.json().catch(() => ({ message: "Lỗi không xác định." }));
+                        const errorData = await response.json().catch(() => ({ message: "Lỗi không xác định khi cập nhật số lượng." }));
                         alert(`Lỗi cập nhật số lượng: ${errorData.message || response.statusText}`);
-                        await fetchCart(); // Tải lại nếu lỗi để đồng bộ
+                        await fetchCart(); // Tải lại để khôi phục trạng thái UI đúng
                     }
-                } catch (error) { /* ... */ await fetchCart(); }
+                } catch (error) {
+                    console.error("Lỗi mạng khi cập nhật số lượng:", error);
+                    alert("Lỗi mạng khi cập nhật số lượng. Vui lòng thử lại.");
+                    await fetchCart(); // Tải lại
+                }
             }
 
-            async function removeCartItem(cartItemId, silent = false) {
-                // ... (như trước, sau khi response.ok, gọi fetchCart())
+            async function removeCartItem(cartItemId, silent = false) { /* ... (giữ nguyên) ... */
                 const token = getSession('token');
                 if (!token) return;
 
-                if (!silent && !confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?")) return;
+                if (!silent) { // Chỉ hỏi confirm nếu không phải là xóa ngầm (ví dụ khi số lượng về 0)
+                    const itemToRemove = currentCartData?.cartItems?.find(item => item.cartItemID == cartItemId);
+                    const productName = itemToRemove?.productName || "sản phẩm này";
+                    if (!confirm(`Bạn có chắc chắn muốn xóa "${productName}" khỏi giỏ hàng?`)) return;
+                }
+
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/Cart/items/${cartItemId}`, {
@@ -900,53 +873,119 @@
                     if (response.ok) {
                         if (!silent) alert("Đã xóa sản phẩm khỏi giỏ hàng.");
                         await fetchCart();
-                    } else { /* ... */ await fetchCart(); }
-                } catch (error) { /* ... */ await fetchCart(); }
+                        document.dispatchEvent(new CustomEvent('cartUpdated')); // Thông báo cho header cập nhật
+                    } else {
+                        const errorData = await response.json().catch(() => ({ message: "Lỗi không xác định khi xóa sản phẩm." }));
+                        if (!silent) alert(`Lỗi xóa sản phẩm: ${errorData.message || response.statusText}`);
+                        await fetchCart(); // Tải lại để đồng bộ
+                    }
+                } catch (error) {
+                    console.error("Lỗi mạng khi xóa sản phẩm:", error);
+                    if (!silent) alert("Lỗi mạng khi xóa sản phẩm. Vui lòng thử lại.");
+                    await fetchCart();
+                }
             }
+
+            clearSelectedItemsBtn.addEventListener('click', async () => {
+                const selectedCheckboxes = document.querySelectorAll('.cart-item-checkbox:checked:not([disabled])');
+                if (selectedCheckboxes.length === 0) return;
+
+                if (!confirm(`Bạn có chắc muốn xóa ${selectedCheckboxes.length} mục đã chọn khỏi giỏ hàng?`)) return;
+
+                const token = getSession('token');
+                if (!token) { window.location.href = 'login.html'; return; }
+
+                const itemIdsToDelete = Array.from(selectedCheckboxes).map(cb => parseInt(cb.dataset.itemId));
+
+                // Gọi API xóa hàng loạt (nếu backend hỗ trợ) hoặc lặp qua từng item
+                // Giả sử backend có endpoint /Cart/items/batch-delete (Body: { cartItemIds: [...] })
+                try {
+                    const response = await fetch(`${API_BASE_URL}/Cart/items/batch-delete`, { // Thay bằng endpoint thực tế của bạn
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ cartItemIds: itemIdsToDelete })
+                    });
+
+                    if (response.ok) {
+                        alert("Đã xóa các mục đã chọn.");
+                        fetchCart(); // Tải lại giỏ hàng
+                        document.dispatchEvent(new CustomEvent('cartUpdated'));
+                    } else {
+                        const errorData = await response.json().catch(() => ({ message: "Lỗi không xác định." }));
+                        alert(`Lỗi xóa hàng loạt: ${errorData.message || response.statusText}`);
+                        fetchCart(); // Tải lại để đồng bộ
+                    }
+                } catch (error) {
+                    console.error("Lỗi mạng khi xóa hàng loạt:", error);
+                    alert("Lỗi mạng khi xóa hàng loạt. Vui lòng thử lại.");
+                    fetchCart();
+                }
+            });
 
             // --- LOGIC CHO DISCOUNT MODAL ---
             async function loadDiscountsForModal() {
+                // ... (phần loading, reset giữ nguyên) ...
                 discountModalLoading.style.display = 'block';
                 discountModalList.innerHTML = '';
                 noDiscountsMessageModal.classList.add('hidden');
                 discountModalListContainer.classList.add('hidden');
                 applySelectedDiscountBtn.disabled = true;
-                selectedDiscountInModal = null;
+                selectedDiscountInModal = null; // Reset lựa chọn trong modal
+
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/Discounts/all`, {
+                    const response = await fetch(`${API_BASE_URL}/Discounts/all`, { // Endpoint này nên trả về DiscountDto
                         headers: { 'Authorization': `Bearer ${getSession('token')}` }
                     });
-                    if (!response.ok) throw new Error("Không thể tải danh sách mã giảm giá.");
+                    if (!response.ok) throw new Error(`Không thể tải danh sách mã giảm giá (${response.status})`);
 
-                    const discounts = await response.json();
+                    const discounts = await response.json(); // Đây là List<DiscountDto>
 
                     if (discounts && discounts.length > 0) {
                         let validDiscountsExist = false;
-                        discounts.forEach(discount => {
+                        discounts.forEach(discount => { // discount ở đây là DiscountDto
                             const now = new Date();
+                            // Parse lại ngày tháng từ DTO vì có thể là string
                             const startDate = new Date(discount.startDate);
                             const endDate = new Date(discount.endDate);
-                            endDate.setHours(23, 59, 59, 999);
+                            endDate.setHours(23, 59, 59, 999); // Đảm bảo so sánh đến cuối ngày
 
-                            if (discount.isActive && now >= startDate && now <= endDate) {
+                            // **THÊM KIỂM TRA RemainingBudget > 0**
+                            if (discount.isActive && now >= startDate && now <= endDate && discount.remainingBudget > 0) {
                                 validDiscountsExist = true;
                                 const discountDiv = document.createElement('div');
                                 discountDiv.className = 'discount-item-modal';
+                                // Lưu trữ đầy đủ thông tin cần thiết vào dataset
+                                discountDiv.dataset.discountId = discount.discountID;
                                 discountDiv.dataset.code = discount.discountCode;
                                 discountDiv.dataset.percent = discount.discountPercent;
+                                discountDiv.dataset.maxDiscountPercent = discount.maxDiscountPercent; // Số tiền giảm tối đa
+                                discountDiv.dataset.remainingBudget = discount.remainingBudget;
 
                                 discountDiv.innerHTML = `
                                     <div>
-                                        <span class="discount-code">${discount.discountCode}</span>
+                                        <div class="discount-header">
+                                            <span class="discount-code">${discount.discountCode}</span>
+                                            <span class="discount-percent-main">Giảm ${discount.discountPercent}%</span>
+                                        </div>
+                                        <div class="discount-details-grid">
+                                            <div><span class="discount-detail-label">Tối đa:</span> ${formatCurrency(discount.maxDiscountPercent)}</div>
+                                            <div><span class="discount-detail-label">Ngân sách còn:</span> ${formatCurrency(discount.remainingBudget)}</div>
+                                        </div>
                                         <p class="discount-expiry">HSD: ${formatDate(endDate)}</p>
                                     </div>
-                                    <span class="discount-percent">Giảm ${discount.discountPercent}%</span>
                                 `;
                                 discountDiv.addEventListener('click', () => {
                                     discountModalList.querySelectorAll('.selected-discount').forEach(el => el.classList.remove('selected-discount'));
                                     discountDiv.classList.add('selected-discount');
-                                    selectedDiscountInModal = { code: discount.discountCode, percent: discount.discountPercent };
+                                    // Lưu trữ đầy đủ thông tin của discount được chọn
+                                    selectedDiscountInModal = {
+                                        discountId: discount.discountID,
+                                        code: discount.discountCode,
+                                        percent: discount.discountPercent,
+                                        maxDiscountPercent: discount.maxDiscountPercent,
+                                        remainingBudget: discount.remainingBudget
+                                    };
                                     applySelectedDiscountBtn.disabled = false;
                                 });
                                 discountModalList.appendChild(discountDiv);
@@ -955,51 +994,50 @@
                         if (validDiscountsExist) {
                             discountModalListContainer.classList.remove('hidden');
                         } else {
-                            noDiscountsMessageModal.classList.remove('hidden');
+                            noDiscountsMessageModal.classList.remove('hidden'); // Hiện thông báo không có mã
                         }
                     } else {
                         noDiscountsMessageModal.classList.remove('hidden');
                     }
-                } catch (error) {
+                } catch (error) { /* ... (xử lý lỗi giữ nguyên) ... */
                     console.error("Lỗi tải mã giảm giá cho modal:", error);
                     discountModalList.innerHTML = `<p class="text-red-500 text-sm p-3">Lỗi: ${error.message}</p>`;
-                    discountModalListContainer.classList.remove('hidden'); // Vẫn hiện container để thấy lỗi
+                    discountModalListContainer.classList.remove('hidden');
                 } finally {
                     discountModalLoading.style.display = 'none';
                 }
             }
 
-            if (openDiscountModalBtn) {
+            if (openDiscountModalBtn) { /* ... (giữ nguyên) ... */
                 openDiscountModalBtn.addEventListener('click', () => {
                     discountModal.classList.add('active');
                     loadDiscountsForModal();
                 });
             }
-            if (closeDiscountModalBtn) {
+            if (closeDiscountModalBtn) { /* ... (giữ nguyên) ... */
                 closeDiscountModalBtn.addEventListener('click', () => {
                     discountModal.classList.remove('active');
                 });
             }
-            // Đóng modal khi click ra ngoài
-            if (discountModal) {
+            if (discountModal) { /* ... (giữ nguyên) ... */
                 discountModal.addEventListener('click', (event) => {
-                    if (event.target === discountModal) { // Chỉ đóng khi click vào overlay, không phải content
+                    if (event.target === discountModal) {
                         discountModal.classList.remove('active');
                     }
                 });
             }
+
             if (applySelectedDiscountBtn) {
                 applySelectedDiscountBtn.addEventListener('click', () => {
                     if (selectedDiscountInModal) {
                         discountCodeInput.value = selectedDiscountInModal.code;
-                        appliedDiscountDetails = { // Lưu lại thông tin chi tiết để tính toán
-                            code: selectedDiscountInModal.code,
-                            percent: selectedDiscountInModal.percent
-                        };
-                        discountMessageEl.textContent = `Đã chọn mã: ${selectedDiscountInModal.code} (-${selectedDiscountInModal.percent}%).`;
+                        // Lưu trữ chi tiết hơn
+                        appliedDiscountDetails = { ...selectedDiscountInModal }; // Sao chép object
+
+                        discountMessageEl.textContent = `Đã chọn: ${appliedDiscountDetails.code} (-${appliedDiscountDetails.percent}%, tối đa ${formatCurrency(appliedDiscountDetails.maxDiscountPercent)}).`;
                         discountMessageEl.className = 'text-xs mt-1 text-green-600';
-                        updateSelectedSummary(); // Cập nhật lại tổng tiền
-                        discountModal.classList.remove('active'); // Đóng modal
+                        updateSelectedSummary();
+                        discountModal.classList.remove('active');
                     } else {
                         alert("Vui lòng chọn một mã giảm giá.");
                     }
@@ -1007,14 +1045,11 @@
             }
 
             // Event listener cho nút Thanh toán
-            if (checkoutSelectedButton) {
+            if (checkoutSelectedButton) { /* ... (giữ nguyên, chỉ cần đảm bảo payload gửi đi đúng) ... */
                 checkoutSelectedButton.addEventListener('click', async () => {
                     const selectedCheckboxes = document.querySelectorAll('.cart-item-checkbox:checked:not([disabled])');
 
-                    if (selectedCheckboxes.length === 0) {
-                        alert("Vui lòng chọn ít nhất một sản phẩm để thanh toán.");
-                        return;
-                    }
+                    if (selectedCheckboxes.length === 0) { /* ... */ return; }
 
                     let proceedWithCheckout = true;
                     const problematicItemsMessages = [];
@@ -1028,22 +1063,16 @@
                             const stock = parseInt(itemRow.dataset.stock);
                             const quantityInput = itemRow.querySelector('.update-quantity-input');
                             const quantity = parseInt(quantityInput.value);
-                            const productName = itemRow.querySelector('.text-md.font-semibold')?.textContent || `Sản phẩm ID ${itemRow.dataset.productId}`;
+                            const productName = itemRow.querySelector('.text-md.lg\\:text-lg.font-semibold')?.textContent || `Sản phẩm ID ${itemRow.dataset.productId}`;
 
-                            if (!isActive) {
-                                problematicItemsMessages.push(`- "${productName}": không còn kinh doanh.`);
+                            if (!isActive || (stock === 0 && quantity > 0) || (quantity > stock && stock > 0) || (quantity <= 0 && isActive)) {
                                 proceedWithCheckout = false;
-                            } else if (stock === 0 && quantity > 0) {
-                                problematicItemsMessages.push(`- "${productName}": đã hết hàng.`);
-                                proceedWithCheckout = false;
-                            } else if (quantity > stock) {
-                                problematicItemsMessages.push(`- "${productName}": số lượng (${quantity}) vượt quá tồn kho (${stock}).`);
-                                proceedWithCheckout = false;
-                            } else if (quantity <= 0 && isActive) { // Nếu active mà SL là 0 thì không nên được chọn
-                                problematicItemsMessages.push(`- "${productName}": số lượng phải lớn hơn 0.`);
-                                proceedWithCheckout = false;
-                            }
-                            else if (quantity > 0 && isActive && stock > 0) {
+                                // Build message cụ thể hơn
+                                if (!isActive) problematicItemsMessages.push(`- "${productName}": không còn kinh doanh.`);
+                                else if (stock === 0 && quantity > 0) problematicItemsMessages.push(`- "${productName}": đã hết hàng.`);
+                                else if (quantity > stock) problematicItemsMessages.push(`- "${productName}": số lượng (${quantity}) vượt quá tồn kho (${stock}).`);
+                                else if (quantity <= 0) problematicItemsMessages.push(`- "${productName}": số lượng phải lớn hơn 0.`);
+                            } else {
                                 selectedCartItemIdsForOrder.push(parseInt(itemId));
                             }
                         } else {
@@ -1059,30 +1088,24 @@
                         return;
                     }
 
-                    if (selectedCartItemIdsForOrder.length === 0) {
-                        alert("Không có sản phẩm hợp lệ nào được chọn để thanh toán.");
-                        return;
-                    }
+
+                    if (selectedCartItemIdsForOrder.length === 0) { /* ... */ return; }
 
                     let isValidAddress = true;
                     shippingAddressError.classList.add('hidden');
                     const shippingAddress = shippingAddressInput.value.trim();
-                    if (!shippingAddress) {
-                        shippingAddressError.textContent = "Vui lòng nhập địa chỉ giao hàng.";
-                        shippingAddressError.classList.remove('hidden');
-                        shippingAddressInput.focus();
-                        isValidAddress = false;
-                    }
+                    if (!shippingAddress) { /* ... */ isValidAddress = false; }
                     if (!isValidAddress) return;
 
                     const orderPayload = {
                         shippingAddress: shippingAddress,
+                        // Gửi discountCode, backend sẽ xử lý logic còn lại
                         discountCode: appliedDiscountDetails ? appliedDiscountDetails.code : null,
                         selectedCartItemIds: selectedCartItemIdsForOrder
                     };
 
                     const token = getSession('token');
-                    if (!token) { window.location.href = '/Customer/templates/login.html'; return; }
+                    if (!token) { /* ... */ return; }
 
                     checkoutSelectedButton.disabled = true;
                     checkoutSelectedButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang xử lý...';
@@ -1094,40 +1117,39 @@
                             body: JSON.stringify(orderPayload)
                         });
                         if (response.ok) {
+                            // ... (xử lý thành công như cũ)
                             const createdOrdersData = await response.json();
                             let successMessage = "Đặt hàng thành công!";
                             if (createdOrdersData && Array.isArray(createdOrdersData) && createdOrdersData.length > 0) {
                                 if (createdOrdersData.length === 1) {
                                     successMessage = `Đặt hàng thành công! Mã đơn hàng của bạn là #${createdOrdersData[0].orderID}.`;
                                 } else {
-                                    successMessage = `Đặt hàng thành công! ${createdOrdersData.length} đơn hàng đã được tạo.`;
+                                    const orderIds = createdOrdersData.map(o => `#${o.orderID}`).join(', ');
+                                    successMessage = `Đặt hàng thành công! ${createdOrdersData.length} đơn hàng đã được tạo: ${orderIds}.`;
                                 }
-                            } else if (createdOrdersData && createdOrdersData.orderID) {
+                            } else if (createdOrdersData && createdOrdersData.orderID) { // Xử lý trường hợp API trả về một OrderDto duy nhất
                                 successMessage = `Đặt hàng thành công! Mã đơn hàng của bạn là #${createdOrdersData.orderID}.`;
                             }
                             alert(successMessage);
-                            appliedDiscountDetails = null;
+                            appliedDiscountDetails = null; // Reset sau khi đặt hàng thành công
                             discountCodeInput.value = '';
                             discountMessageEl.textContent = '';
                             fetchCart();
                             document.dispatchEvent(new CustomEvent('cartUpdated'));
                         } else {
+                            // ... (xử lý lỗi như cũ)
                             let errorMessage = "Lỗi đặt hàng không xác định.";
                             try {
                                 const errorData = await response.json();
-                                errorMessage = errorData.message || `Lỗi ${response.status}: ${response.statusText}`;
+                                errorMessage = errorData.message || (errorData.errors ? JSON.stringify(errorData.errors) : `Lỗi ${response.status}: ${response.statusText}`);
                             } catch (e) {
                                 errorMessage = `Lỗi ${response.status}: ${response.statusText || "Không thể xử lý yêu cầu."}`;
                             }
                             alert(`Lỗi đặt hàng: ${errorMessage}`);
                         }
-                    } catch (error) {
-                        console.error("Lỗi mạng hoặc lỗi khác khi tạo đơn hàng:", error);
-                        alert("Đã xảy ra lỗi kết nối khi tạo đơn hàng. Vui lòng thử lại.");
-                    } finally {
-                        // updateSelectedSummary sẽ cập nhật lại trạng thái nút
+                    } catch (error) { /* ... */ } finally { /* ... */
                         const currentSelectedCount = document.querySelectorAll('.cart-item-checkbox:checked:not([disabled])').length;
-                        checkoutSelectedButton.disabled = currentSelectedCount === 0; // Disable nếu không còn gì để chọn
+                        checkoutSelectedButton.disabled = currentSelectedCount === 0;
                         checkoutSelectedButton.innerHTML = `Thanh toán (<span id="checkoutButtonSelectedCount">${currentSelectedCount}</span>)`;
                         if (typeof updateSelectedSummary === 'function') {
                             updateSelectedSummary();
@@ -1138,12 +1160,19 @@
 
             // Initial Load
             fetchCart();
+            // Load địa chỉ giao hàng từ User (nếu có)
+            const currentUser = getSession('currentUser');
+            if (currentUser && currentUser.address && shippingAddressInput) {
+                shippingAddressInput.value = currentUser.address;
+            }
         }
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeCustomerCartPage);
         } else {
-            setTimeout(initializeCustomerCartPage, 150);
+            // Để đảm bảo các hàm từ index.js đã được load
+            // Có thể cần một cơ chế tốt hơn để đảm bảo thứ tự load script nếu index.js load bất đồng bộ
+            setTimeout(initializeCustomerCartPage, 200);
         }
     </script>
 </body>

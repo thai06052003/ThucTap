@@ -97,7 +97,7 @@ namespace ShopxEX1.Services.Implementations
                                         p.CategoryID,
                                         p.ProductName,
                                         p.Description   AS Product_Description,
-                                        p.Price         AS Product_Price,
+                                        p.Price,
                                         p.StockQuantity AS Product_StockQuantity,
                                         p.CreatedAt     AS Product_CreatedAt,
                                         p.IsActive      AS Product_IsActive,
@@ -178,17 +178,39 @@ namespace ShopxEX1.Services.Implementations
             try
             {
                 Discount? globalAppliedDiscount = null;
+                decimal actualDiscountAmountForEntireOrder = 0m; // Tổng số tiền giảm cho tất cả các đơn con
                 if (!string.IsNullOrWhiteSpace(createDto.DiscountCode))
                 {
                     // Lấy discount vẫn có thể dùng EF Core hoặc Dapper
                     globalAppliedDiscount = await _context.Discounts
-                        .AsNoTracking()
                         .FirstOrDefaultAsync(d => d.DiscountCode.ToUpper() == createDto.DiscountCode.ToUpper() &&
-                                             d.IsActive && d.StartDate <= DateTime.UtcNow && d.EndDate >= DateTime.UtcNow);
+                                             d.IsActive && d.StartDate <= DateTime.UtcNow && d.EndDate >= DateTime.UtcNow && d.MaxDiscountPercent > 0);
                     if (globalAppliedDiscount == null)
                     {
                         throw new InvalidOperationException($"Mã giảm giá '{createDto.DiscountCode}' không hợp lệ.");
                     }
+                }
+                
+                decimal grandTotalAmountForAllSelectedItems = 0m;   // để tính toán số tiền giảm giá tối đa cho toàn bộ các đơn hàng con.
+
+                foreach (var sellerGroup in itemsGroupedBySeller)
+                {
+                    foreach (var cartItemDapper in sellerGroup)
+                    {
+                        grandTotalAmountForAllSelectedItems += (cartItemDapper.Product?.Price ?? 0) * cartItemDapper.Quantity;
+                    }
+                }
+
+                if (globalAppliedDiscount != null)
+                {
+                    decimal potentialDiscountAmount = (grandTotalAmountForAllSelectedItems * globalAppliedDiscount.DiscountPercent) / 100;
+                    actualDiscountAmountForEntireOrder = Math.Min(potentialDiscountAmount, globalAppliedDiscount.MaxDiscountPercent > 0 ? globalAppliedDiscount.MaxDiscountPercent : potentialDiscountAmount); // Nếu MaxDiscountPercent <= 0 thì không giới hạn
+
+                    if (globalAppliedDiscount.RemainingBudget < actualDiscountAmountForEntireOrder)
+                    {
+                        throw new InvalidOperationException($"Ngân sách còn lại của mã giảm giá '{createDto.DiscountCode}' không đủ cho đơn hàng này. Cần {actualDiscountAmountForEntireOrder:N0}đ, còn lại {globalAppliedDiscount.RemainingBudget:N0}đ.");
+                    }
+                    // Sẽ trừ RemainingBudget sau khi tất cả các đơn hàng con đã được xác nhận
                 }
 
                 foreach (var sellerGroup in itemsGroupedBySeller)
@@ -198,43 +220,47 @@ namespace ShopxEX1.Services.Implementations
                     decimal subTotalAmountForSellerOrder = 0;
                     var orderDetailsForThisSellerOrder = new List<OrderDetail>();
 
-                    foreach (var cartItemDapper in cartItemsForThisSeller) // cartItemDapper là từ Dapper query
+                    foreach (var cartItemDapper in cartItemsForThisSeller)
                     {
-                        // CẦN LẤY LẠI PRODUCT ENTITY ĐỂ EF CORE THEO DÕI THAY ĐỔI STOCK
                         var productEntity = await _context.Products.FindAsync(cartItemDapper.ProductID);
-                        if (productEntity == null)
-                        {
-                            throw new KeyNotFoundException($"Sản phẩm ID {cartItemDapper.ProductID} không tìm thấy trong DB khi tạo OrderDetail.");
-                        }
-
+                        if (productEntity == null) { throw new KeyNotFoundException($"Sản phẩm ID {cartItemDapper.ProductID} không tìm thấy."); }
                         if (productEntity.StockQuantity < cartItemDapper.Quantity)
                         {
-                            throw new InvalidOperationException($"Sản phẩm '{productEntity.ProductName}' của shop '{cartItemDapper.Product?.Seller?.ShopName ?? "Không rõ"}' không đủ hàng ({productEntity.StockQuantity} còn lại, cần {cartItemDapper.Quantity}).");
+                            throw new InvalidOperationException($"Sản phẩm '{productEntity.ProductName}' của shop '{cartItemDapper.Product?.Seller?.ShopName ?? "Không rõ"}' không đủ hàng.");
                         }
 
                         var orderDetail = new OrderDetail
                         {
                             ProductID = productEntity.ProductID,
                             Quantity = cartItemDapper.Quantity,
-                            UnitPrice = productEntity.Price // Giá tại thời điểm đặt hàng
+                            UnitPrice = productEntity.Price
                         };
                         orderDetailsForThisSellerOrder.Add(orderDetail);
                         subTotalAmountForSellerOrder += orderDetail.Quantity * orderDetail.UnitPrice;
 
                         productEntity.StockQuantity -= cartItemDapper.Quantity;
-                        _context.Products.Update(productEntity); // EF Core theo dõi thay đổi này
+                        _context.Products.Update(productEntity);
                     }
 
-                    decimal finalTotalAmountForSellerOrder = subTotalAmountForSellerOrder;
+                    decimal discountAmountForThisSellerOrder = 0m;
+                    if (globalAppliedDiscount != null && grandTotalAmountForAllSelectedItems > 0)
+                    {
+                        // Phân bổ số tiền giảm giá cho đơn hàng con này dựa trên tỷ lệ giá trị của nó so với tổng giá trị
+                        decimal proportion = subTotalAmountForSellerOrder / grandTotalAmountForAllSelectedItems;
+                        discountAmountForThisSellerOrder = Math.Round(actualDiscountAmountForEntireOrder * proportion, 0); // Làm tròn đến đồng
+                    }
+
+                    decimal finalPaymentForSellerOrder = subTotalAmountForSellerOrder - discountAmountForThisSellerOrder;
+                    if (finalPaymentForSellerOrder < 0) finalPaymentForSellerOrder = 0; // Đảm bảo không âm
 
 
                     var newOrder = new Order
                     {
                         UserID = userId,
                         OrderDate = DateTime.UtcNow,
-                        TotalAmount = finalTotalAmountForSellerOrder,
-                        TotalPayment = (globalAppliedDiscount != null && globalAppliedDiscount.DiscountPercent != null) ? finalTotalAmountForSellerOrder / 100 * (100 - globalAppliedDiscount.DiscountPercent) : finalTotalAmountForSellerOrder,
-                        Status = "Đang xử lý",
+                        TotalAmount = subTotalAmountForSellerOrder, // Tổng tiền gốc của các sản phẩm trong đơn này
+                        TotalPayment = finalPaymentForSellerOrder,   // Số tiền thực tế khách trả sau khi trừ phần giảm giá đã phân bổ
+                        Status = "Chờ xác nhận",
                         ShippingAddress = createDto.ShippingAddress,
                         DiscountCode = globalAppliedDiscount?.DiscountCode,
                         DiscountID = globalAppliedDiscount?.DiscountID,
@@ -242,7 +268,16 @@ namespace ShopxEX1.Services.Implementations
                     };
                     _context.Orders.Add(newOrder);
                     tempNewOrders.Add(newOrder);
-                    // Lưu tất cả các Order mới, OrderDetail mới, và cập nhật Product stock bằng EF Core
+                }
+
+                // Sau khi tất cả các đơn hàng con đã được chuẩn bị và không có lỗi
+                if (globalAppliedDiscount != null && actualDiscountAmountForEntireOrder > 0)
+                {
+                    globalAppliedDiscount.RemainingBudget -= (int)Math.Ceiling(actualDiscountAmountForEntireOrder); // Làm tròn lên và trừ đi
+                    if (globalAppliedDiscount.RemainingBudget < 0) globalAppliedDiscount.RemainingBudget = 0; // Đảm bảo không âm
+                    _context.Discounts.Update(globalAppliedDiscount);
+                    _logger.LogInformation("UserID {UserId}: Cập nhật RemainingBudget cho DiscountID {DiscountId} thành {RemainingBudget} sau khi áp dụng {ActualDiscount}đ.",
+                        userId, globalAppliedDiscount.DiscountID, globalAppliedDiscount.RemainingBudget, actualDiscountAmountForEntireOrder);
                 }
                 await _context.SaveChangesAsync();
 
@@ -257,6 +292,7 @@ namespace ShopxEX1.Services.Implementations
                         if (detail.Product != null)
                         {
                             await _context.Entry(detail.Product).Reference(p => p.Seller).LoadAsync();
+                            await _context.Entry(detail.Product).Reference(p => p.Category).LoadAsync();
                         }
                     }
                     if (orderEntity.DiscountID.HasValue)
@@ -712,6 +748,71 @@ namespace ShopxEX1.Services.Implementations
 
             order.Status = statusUpdateDto.NewStatus;
             if (order.Status == "Đã giao") order.OrderDate = DateTime.UtcNow;
+
+            _context.Orders.Update(order);
+            int affectedRows = await _context.SaveChangesAsync();
+
+            if (affectedRows > 0)
+            {
+                _logger.LogInformation("Cập nhật trạng thái thành công cho OrderID {OrderId} thành {NewStatus}.", orderId, statusUpdateDto.NewStatus);
+                return true;
+            }
+            else
+            {
+                _logger.LogWarning("Cập nhật trạng thái cho OrderID {OrderId}: SaveChanges không ảnh hưởng đến dòng nào (có thể trạng thái không đổi).", orderId);
+                return false; // Không có gì được cập nhật (có thể trạng thái đã là NewStatus)
+            }
+        }
+        public async Task<bool> UpdateOrderStatusForCustomerAsync(int orderId, OrderStatusUpdateDto statusUpdateDto, int userId)
+
+        {
+            _logger.LogInformation("Bắt đầu cập nhật trạng thái cho OrderID {OrderId} bởi UserID {userId} thành {NewStatus}",
+                orderId, userId, statusUpdateDto.NewStatus);
+
+            if (!ValidOrderStatuses.Contains(statusUpdateDto.NewStatus, StringComparer.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Trạng thái mới '{NewStatus}' không hợp lệ.", orderId, statusUpdateDto.NewStatus);
+                throw new InvalidOperationException($"Trạng thái '{statusUpdateDto.NewStatus}' không hợp lệ.");
+            }
+
+            var order = await _context.Orders
+                                    .Include(o => o.OrderDetails)
+                                    .FirstOrDefaultAsync(o => o.OrderID == orderId);
+
+            if (order == null)
+            {
+                _logger.LogWarning("Cập nhật trạng thái thất bại: Không tìm thấy OrderID {OrderId}", orderId);
+                throw new KeyNotFoundException($"Đơn hàng với ID {orderId} không tồn tại.");
+            }
+
+            // Kiểm tra quyền (Customer sở hữu sản phẩm trong đơn hàng)
+            bool canUpdate = false;
+            if (userId == order.UserID)
+            {
+                canUpdate = true;
+            }
+
+            if (!canUpdate)
+            {
+                _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: UserID {userId} ({UserRole}) không có quyền.", orderId, userId);
+                throw new UnauthorizedAccessException("Bạn không có quyền cập nhật trạng thái cho đơn hàng này.");
+            }
+
+            // Logic chuyển đổi trạng thái
+            if (order.Status != "Đã giao")
+            {
+                _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Không thể thay đổi trạng thái từ '{OldStatus}' thành '{NewStatus}'.", orderId, order.Status, statusUpdateDto.NewStatus);
+                throw new InvalidOperationException($"Không thể thay đổi trạng thái từ '{order.Status}' thành '{statusUpdateDto.NewStatus}'.");
+            }
+            // Chỉ có thể chuyển đổi trạng thái đã giao -> Yêu cầu trả hàng/ hoàn tiền
+            // Đơn hàng không được quá 3 ngày
+            if (order.Status == "Đã giao" && !(statusUpdateDto.NewStatus == "Yêu cầu trả hàng/ hoàn tiền") && (DateTime.UtcNow - order.OrderDate).TotalDays > 3)
+            {
+                _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Không thể thay đổi trạng thái từ 'Đã giao' thành '{NewStatus}'.", orderId, statusUpdateDto.NewStatus);
+                throw new InvalidOperationException($"Không thể thay đổi trạng thái từ '{order.Status}' thành '{statusUpdateDto.NewStatus}'.");
+            }
+
+            order.Status = statusUpdateDto.NewStatus;
 
             _context.Orders.Update(order);
             int affectedRows = await _context.SaveChangesAsync();

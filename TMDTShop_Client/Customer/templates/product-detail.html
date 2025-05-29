@@ -222,8 +222,10 @@
                     document.getElementById('productDetailContainer').innerHTML = '<p class="text-center text-red-500 col-span-full">Không tìm thấy ID sản phẩm.</p>';
                     return;
                 }
+                var url = `${API_BASE_URL}/Products/${productIdParam}`
+                console.log(url)
                 try {
-                    const response = await fetch(`${API_BASE_URL}/Products/${productIdParam}`);
+                    const response = await fetch(url);
                     if (!response.ok) {
                         if (response.status === 404) {
                             throw new Error('Sản phẩm không tồn tại.');

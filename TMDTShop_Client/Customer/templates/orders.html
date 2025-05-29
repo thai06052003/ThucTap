@@ -287,7 +287,7 @@
                     window.location.assign('/Customer/templates/login.html')
                 }
                 try {
-                    const response = await fetch(`${API_BASE_URL}/Orders/${orderId}/status`, {
+                    const response = await fetch(`${API_BASE_URL}/Orders/${orderId}/order-status`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                         body: JSON.stringify({ newStatus: newStatus })

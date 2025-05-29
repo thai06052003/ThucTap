@@ -249,11 +249,14 @@ namespace ShopxEX1.Mappings
             CreateMap<Discount, DiscountDto>();
 
             CreateMap<DiscountCreateDto, Discount>()
-                .ForMember(dest => dest.DiscountID, opt => opt.Ignore());
+                .ForMember(dest => dest.DiscountID, opt => opt.Ignore())
+                .ForMember(dest => dest.Orders, opt => opt.Ignore()) // Thêm dòng này để bỏ qua Orders
+                .ForMember(dest => dest.RemainingBudget, opt => opt.MapFrom(src => src.Budget));
 
             CreateMap<DiscountUpdateDto, Discount>()
                 .ForMember(dest => dest.DiscountID, opt => opt.Ignore())
-                .ForMember(dest => dest.DiscountCode, opt => opt.Ignore());
+                .ForMember(dest => dest.DiscountCode, opt => opt.Ignore())
+                .ForMember(dest => dest.Orders, opt => opt.Ignore());
             // === User Notification Mappings ===
             CreateMap<Notification, NotificationDto>();
             

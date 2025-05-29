@@ -197,6 +197,11 @@ namespace ShopxEX1.Services.Implementations
                 _logger.LogInformation("Kiểm tra thất bại: Mã giảm giá '{DiscountCode}' (ID: {DiscountID}) đã hết hạn (Hết hạn vào: {EndDate:dd/MM/yyyy}).", discountCode, discount.DiscountID, discount.EndDate);
                 return new DiscountValidationResultDto(false, $"Mã giảm giá '{discountCode}' đã hết hạn (Hết hạn vào: {discount.EndDate:dd/MM/yyyy}).");
             }
+            if (discount.RemainingBudget <= 0)
+            {
+                _logger.LogInformation("Kiểm tra thất bại: Mã giảm giá '{DiscountCode}' (ID: {DiscountID}) đã hết ngân sách (RemainingBudget: {RemainingBudget}).", discountCode, discount.DiscountID, discount.RemainingBudget);
+                return new DiscountValidationResultDto(false, $"Mã giảm giá '{discountCode}' đã hết ngân sách sử dụng.");
+            }
 
             // Các logic kiểm tra nâng cao khác (số lần sử dụng, user, sản phẩm) có thể thêm ở đây.
 
@@ -230,6 +235,10 @@ namespace ShopxEX1.Services.Implementations
             }
 
             _mapper.Map(updateDto, discount);
+            if (discount.RemainingBudget > discount.Budget)
+            {
+                discount.RemainingBudget = discount.Budget; // Điều chỉnh nếu cần
+            }
             try
             {
                 await _context.SaveChangesAsync();

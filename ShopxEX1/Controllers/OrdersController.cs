@@ -14,7 +14,7 @@ namespace ShopxEX1.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Yêu cầu xác thực cho tất cả các action
+    [Authorize]
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
@@ -32,99 +32,101 @@ namespace ShopxEX1.Controllers
         /// Tạo một đơn hàng mới từ giỏ hàng của người dùng hiện tại.
         /// </summary>
         [HttpPost]
-[HttpPost]
-[HttpPost]
-public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] OrderCreateDto createDto)
-{
-    if (!ModelState.IsValid)
-    {
-        return BadRequest(ModelState);
-    }
-    try
-    {
-        var userId = _getID.GetCurrentUserId();
-        
-        // Kiểm tra trạng thái của các shop trước khi tạo đơn hàng
-        if (createDto.SelectedCartItemIds?.Any() == true)
+        public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] OrderCreateDto createDto)
         {
-            try {
-                // Thử cách tiếp cận khác - lấy dữ liệu từ database theo cách an toàn hơn
-                // Thay vì gọi service, sử dụng ADO.NET trực tiếp (hoặc Dapper) để kiểm soát hoàn toàn SQL
-                using (var scope = HttpContext.RequestServices.CreateScope())
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            try
+            {
+                var userId = _getID.GetCurrentUserId();
+
+                // Kiểm tra trạng thái của các shop trước khi tạo đơn hàng
+                if (createDto.SelectedCartItemIds?.Any() == true)
                 {
-                    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    var connectionString = dbContext.Database.GetConnectionString();
-                    
-                    var inactiveShops = new List<object>();
-                    using (var connection = new SqlConnection(connectionString))
+                    try
                     {
-                        await connection.OpenAsync();
-                        
-                        // Bước 1: Lấy product IDs từ cart items
-                        var productIdsSql = @"
+                        // Thử cách tiếp cận khác - lấy dữ liệu từ database theo cách an toàn hơn
+                        // Thay vì gọi service, sử dụng ADO.NET trực tiếp (hoặc Dapper) để kiểm soát hoàn toàn SQL
+                        using (var scope = HttpContext.RequestServices.CreateScope())
+                        {
+                            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                            var connectionString = dbContext.Database.GetConnectionString();
+
+                            var inactiveShops = new List<object>();
+                            using (var connection = new SqlConnection(connectionString))
+                            {
+                                await connection.OpenAsync();
+
+                                // Bước 1: Lấy product IDs từ cart items
+                                var productIdsSql = @"
                             SELECT DISTINCT p.ProductID 
                             FROM Products p
                             JOIN CartItems ci ON p.ProductID = ci.ProductID
                             WHERE ci.CartItemID IN (SELECT value FROM STRING_SPLIT(@cartItemIds, ','))";
-                        
-                        var cartItemIdsParam = string.Join(",", createDto.SelectedCartItemIds);
-                        using (var command1 = new SqlCommand(productIdsSql, connection))
-                        {
-                            command1.Parameters.Add(new SqlParameter("@cartItemIds", cartItemIdsParam));
-                            using (var reader1 = await command1.ExecuteReaderAsync())
-                            {
-                                var productIds = new List<int>();
-                                while (await reader1.ReadAsync())
+
+                                var cartItemIdsParam = string.Join(",", createDto.SelectedCartItemIds);
+                                using (var command1 = new SqlCommand(productIdsSql, connection))
                                 {
-                                    productIds.Add(reader1.GetInt32(0));
-                                }
-                                
-                                // Đóng reader1 để có thể sử dụng connection cho câu lệnh tiếp theo
-                                reader1.Close();
-                                
-                                if (productIds.Any())
-                                {
-                                    // Bước 2: Lấy seller IDs từ products
-                                    var sellerIdsSql = @"
+                                    command1.Parameters.Add(new SqlParameter("@cartItemIds", cartItemIdsParam));
+                                    using (var reader1 = await command1.ExecuteReaderAsync())
+                                    {
+                                        var productIds = new List<int>();
+                                        while (await reader1.ReadAsync())
+                                        {
+                                            productIds.Add(reader1.GetInt32(0));
+                                        }
+
+                                        // Đóng reader1 để có thể sử dụng connection cho câu lệnh tiếp theo
+                                        reader1.Close();
+
+                                        if (productIds.Any())
+                                        {
+                                            // Bước 2: Lấy seller IDs từ products
+                                            var sellerIdsSql = @"
                                         SELECT DISTINCT SellerID
                                         FROM Products
                                         WHERE ProductID IN (SELECT value FROM STRING_SPLIT(@productIds, ','))";
-                                    
-                                    var productIdsParam = string.Join(",", productIds);
-                                    using (var command2 = new SqlCommand(sellerIdsSql, connection))
-                                    {
-                                        command2.Parameters.Add(new SqlParameter("@productIds", productIdsParam));
-                                        using (var reader2 = await command2.ExecuteReaderAsync())
-                                        {
-                                            var sellerIds = new List<int>();
-                                            while (await reader2.ReadAsync())
+
+                                            var productIdsParam = string.Join(",", productIds);
+                                            using (var command2 = new SqlCommand(sellerIdsSql, connection))
                                             {
-                                                sellerIds.Add(reader2.GetInt32(0));
-                                            }
-                                            
-                                            reader2.Close();
-                                            
-                                            if (sellerIds.Any())
-                                            {
-                                                // Bước 3: Lấy các inactive sellers
-                                                var inactiveSellersSql = @"
+                                                command2.Parameters.Add(new SqlParameter("@productIds", productIdsParam));
+                                                using (var reader2 = await command2.ExecuteReaderAsync())
+                                                {
+                                                    var sellerIds = new List<int>();
+                                                    while (await reader2.ReadAsync())
+                                                    {
+                                                        sellerIds.Add(reader2.GetInt32(0));
+                                                    }
+
+                                                    reader2.Close();
+
+                                                    if (sellerIds.Any())
+                                                    {
+                                                        // Bước 3: Lấy các inactive sellers
+                                                        var inactiveSellersSql = @"
                                                     SELECT SellerID, ShopName
                                                     FROM Sellers
                                                     WHERE SellerID IN (SELECT value FROM STRING_SPLIT(@sellerIds, ','))
                                                     AND IsActive = 0";
-                                                
-                                                var sellerIdsParam = string.Join(",", sellerIds);
-                                                using (var command3 = new SqlCommand(inactiveSellersSql, connection))
-                                                {
-                                                    command3.Parameters.Add(new SqlParameter("@sellerIds", sellerIdsParam));
-                                                    using (var reader3 = await command3.ExecuteReaderAsync())
-                                                    {
-                                                        while (await reader3.ReadAsync())
+
+                                                        var sellerIdsParam = string.Join(",", sellerIds);
+                                                        using (var command3 = new SqlCommand(inactiveSellersSql, connection))
                                                         {
-                                                            inactiveShops.Add(new { 
-                                                                SellerID = reader3.GetInt32(0),
-                                                                ShopName = reader3.GetString(1)
-                                                            });
+                                                            command3.Parameters.Add(new SqlParameter("@sellerIds", sellerIdsParam));
+                                                            using (var reader3 = await command3.ExecuteReaderAsync())
+                                                            {
+                                                                while (await reader3.ReadAsync())
+                                                                {
+                                                                    inactiveShops.Add(new
+                                                                    {
+                                                                        SellerID = reader3.GetInt32(0),
+                                                                        ShopName = reader3.GetString(1)
+                                                                    });
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -133,44 +135,44 @@ public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] OrderCreateDto 
                                     }
                                 }
                             }
+
+                            if (inactiveShops.Any())
+                            {
+                                return BadRequest(new
+                                {
+                                    success = false,
+                                    message = "Không thể đặt hàng vì một số shop đang trong chế độ bảo trì",
+                                    shops = inactiveShops
+                                });
+                            }
                         }
                     }
-                    
-                    if (inactiveShops.Any())
+                    catch (SqlException sqlEx)
                     {
-                        return BadRequest(new {
-                            success = false,
-                            message = "Không thể đặt hàng vì một số shop đang trong chế độ bảo trì",
-                            shops = inactiveShops
-                        });
+                        _logger.LogError(sqlEx, "Lỗi SQL khi kiểm tra trạng thái shop: {Message}", sqlEx.Message);
+                        // Trong trường hợp khẩn cấp, bỏ qua bước kiểm tra shop bảo trì và tiếp tục tạo đơn hàng
+                        // Không return error mà chỉ log lỗi
                     }
                 }
-            }
-            catch (SqlException sqlEx) {
-                _logger.LogError(sqlEx, "Lỗi SQL khi kiểm tra trạng thái shop: {Message}", sqlEx.Message);
-                // Trong trường hợp khẩn cấp, bỏ qua bước kiểm tra shop bảo trì và tiếp tục tạo đơn hàng
-                // Không return error mà chỉ log lỗi
-            }
-        }
-        
-        // Tiếp tục logic tạo đơn hàng hiện có
-        var createdOrders = await _orderService.CreateOrderFromCartAsync(userId, createDto);
 
-        if (createdOrders.Any())
-        {
-            return Ok(createdOrders);
+                // Tiếp tục logic tạo đơn hàng hiện có
+                var createdOrders = await _orderService.CreateOrderFromCartAsync(userId, createDto);
+
+                if (createdOrders.Any())
+                {
+                    return Ok(createdOrders);
+                }
+                else
+                {
+                    return BadRequest("Không thể tạo đơn hàng từ giỏ hàng hiện tại.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi không mong muốn khi tạo đơn hàng.");
+                return StatusCode(500, "Đã xảy ra lỗi khi xử lý yêu cầu của bạn.");
+            }
         }
-        else
-        {
-            return BadRequest("Không thể tạo đơn hàng từ giỏ hàng hiện tại.");
-        }
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Lỗi không mong muốn khi tạo đơn hàng.");
-        return StatusCode(500, "Đã xảy ra lỗi khi xử lý yêu cầu của bạn.");
-    }
-}
 
         /// <summary>
         /// [Customer] Lấy lịch sử đơn hàng của người dùng hiện tại.
@@ -310,6 +312,7 @@ public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] OrderCreateDto 
 
                 // Nếu là Seller, cần lấy SellerID từ UserID. Giả sử GetSellerId() làm việc đó.
                 int idForService = userRole == "Seller" ? (_getID.GetSellerId() ?? 0) : requestingUserId;
+
                 if (userRole == "Seller" && idForService == 0)
                 {
                     return Unauthorized("Không thể xác định thông tin người bán hợp lệ.");
@@ -317,6 +320,50 @@ public async Task<ActionResult<OrderDto>> CreateOrder([FromBody] OrderCreateDto 
 
 
                 var success = await _orderService.UpdateOrderStatusAsync(orderId, statusUpdateDto, idForService, userRole);
+                if (success)
+                {
+                    return NoContent(); // 204 No Content
+                }
+                // Trường hợp service trả về false (ví dụ: trạng thái không đổi) nhưng không ném exception
+                return BadRequest("Không thể cập nhật trạng thái đơn hàng hoặc trạng thái không thay đổi.");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Lỗi cập nhật trạng thái đơn hàng: Không tìm thấy OrderID {OrderId}.", orderId);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Lỗi cập nhật trạng thái đơn hàng: Không có quyền cho OrderID {OrderId}.", orderId);
+                return Forbid(ex.Message);
+            } 
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Lỗi cập nhật trạng thái đơn hàng: Thao tác không hợp lệ cho OrderID {OrderId}.", orderId);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi không mong muốn khi cập nhật trạng thái đơn hàng OrderID {OrderId}.", orderId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "Lỗi xử lý yêu cầu.");
+            }
+        }
+        /// <summary>
+        /// [Seller, Admin] Cập nhật trạng thái của một đơn hàng.
+        /// </summary>
+        [HttpPut("{orderId}/order-status")]
+        public async Task<IActionResult> UpdateOrderStatusForCustomer(int orderId, [FromBody] OrderStatusUpdateDto statusUpdateDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            try
+            {
+                var requestingUserId = _getID.GetCurrentUserId();
+
+
+                var success = await _orderService.UpdateOrderStatusForCustomerAsync(orderId, statusUpdateDto, requestingUserId);
                 if (success)
                 {
                     return NoContent(); // 204 No Content
