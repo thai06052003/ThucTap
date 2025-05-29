@@ -279,31 +279,80 @@
                 });
             }
 
-            async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refreshCallback) {
-                const token = getSession('token');
-                if (!token && token != null) {
-                    alert('Bạn cần đăng nhập để có thể sử dụng chức năng này')
-                    sessionStorage.clear();
-                    window.location.assign('/Customer/templates/login.html')
-                }
-                try {
-                    const response = await fetch(`${API_BASE_URL}/Orders/${orderId}/order-status`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                        body: JSON.stringify({ newStatus: newStatus })
-                    });
-                    if (response.ok) {
-                        alert(successMessage || `Cập nhật trạng thái đơn hàng #${orderId} thành công!`);
-                        if (refreshCallback) refreshCallback();
-                    } else {
-                        const errorData = await response.json();
-                        alert(`Lỗi: ${errorData.message || response.statusText}`);
-                    }
-                } catch (error) {
-                    alert(`Lỗi kết nối: ${error.message}`);
-                }
-            }
+           
 
+async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refreshCallback) {
+    const token = getSession('token');
+    if (!token && token != null) { 
+        alert('Bạn cần đăng nhập để có thể sử dụng chức năng này')
+        sessionStorage.clear();
+        window.location.assign('/Customer/templates/login.html')
+        return;
+    }
+    
+    try {
+        // ✅ FIXED: Sử dụng endpoint đúng cho Customer
+        let apiEndpoint;
+        let requestData;
+        
+        if (newStatus === 'Yêu cầu trả hàng/ hoàn tiền' || newStatus === 'Đã hủy') {
+            // ✅ Customer requests (hoàn tiền, hủy)
+            apiEndpoint = `${API_BASE_URL}/Orders/${orderId}/customer-status`;
+            requestData = { newStatus: newStatus };
+        } else {
+            // ✅ General status updates (cho seller/admin - không dành cho customer)
+            apiEndpoint = `${API_BASE_URL}/Orders/${orderId}/status`;
+            requestData = { newStatus: newStatus };
+        }
+        
+        console.log(`🌐 Calling API: ${apiEndpoint}`, requestData);
+        
+        const response = await fetch(apiEndpoint, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        console.log('📦 API Response Status:', response.status);
+        
+        if (response.ok) {
+            const responseData = await response.json();
+            console.log('✅ API Response Data:', responseData);
+            
+            alert(successMessage || responseData.message || `Cập nhật trạng thái đơn hàng #${orderId} thành công!`);
+            if (refreshCallback) refreshCallback();
+        } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('❌ API Error Response:', errorData);
+            
+            // ✅ Enhanced error handling
+            let errorMessage = 'Có lỗi xảy ra khi cập nhật đơn hàng';
+            
+            if (response.status === 400) {
+                errorMessage = errorData.message || 'Yêu cầu không hợp lệ. Vui lòng kiểm tra lại thông tin đơn hàng.';
+            } else if (response.status === 401) {
+                errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+                sessionStorage.clear();
+                window.location.assign('/Customer/templates/login.html');
+                return;
+            } else if (response.status === 403) {
+                errorMessage = 'Bạn không có quyền thực hiện thao tác này.';
+            } else if (response.status === 404) {
+                errorMessage = 'Không tìm thấy đơn hàng hoặc đơn hàng đã bị xóa.';
+            } else {
+                errorMessage = errorData.message || `Lỗi ${response.status}: ${response.statusText}`;
+            }
+            
+            alert(`Lỗi: ${errorMessage}`);
+        }
+    } catch (error) {
+        console.error('❌ Network/Request Error:', error);
+        alert(`Lỗi kết nối: ${error.message}`);
+    }
+}
 
             window.customerRequestReturn = (orderId) => {
                 if (confirm(`Bạn có muốn gửi Yêu cầu trả hàng/ hoàn tiền cho đơn hàng #${orderId} không?`)) {
@@ -466,7 +515,7 @@
                                     </button>` : ''
                         }
                                 <!-- Nút Mua lại: có thể dẫn đến trang sản phẩm hoặc thêm lại vào giỏ (cần logic phức tạp) -->
-                                <button onclick="window.rebuyOrder(${order.orderID})" class="w-full sm:w-auto bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded-sm text-sm font-medium transition-colors">
+                                <button onclick="window.location.href='/Customer/templates/cart.html?rebuyOrderId=${order.orderID}'" class="w-full sm:w-auto bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded-sm text-sm font-medium transition-colors">
                                     Mua Lại
                                 </button>
                                 <a href="/Customer/templates/order-detail.html?id=${order.orderID}" 
@@ -566,6 +615,7 @@
             setTimeout(initializeCustomerOrdersPage, 200); // Chờ 200ms để components load xong
         }
     </script>
+    
 </body>
 
 </html>

@@ -552,6 +552,30 @@ body.modal-open {
         min-width: 45px !important;
     }
 }
+/* ===== MODAL RESET - PREVENT CONFLICTS ===== */
+body.modal-open {
+        overflow: hidden !important;
+    }
+    
+    /* ===== ENSURE SMOOTH SCROLL RESTORATION ===== */
+    html {
+        scroll-behavior: auto !important; /* Override smooth scroll during modal */
+    }
+    
+    /* ===== STATISTICS MODAL SPECIFIC OVERRIDES ===== */
+    #order-details-modal {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 99999 !important;
+    }
+    
+    /* ===== ENSURE MODAL DOESN'T INTERFERE WITH SIDEBAR ===== */
+    #order-details-modal * {
+        margin-left: 0 !important;
+    }
     </style>
 </head>
 

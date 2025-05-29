@@ -2528,10 +2528,23 @@ sortOrders(sortType) {
  * Đóng modal chi tiết đơn hàng - NEW METHOD
  */
 closeOrderDetailsModal() {
+    console.log('🔒 Closing order details modal');
+    
     const modal = document.getElementById('order-details-modal');
     if (modal) {
+        // ✅ Ẩn modal
         modal.classList.add('hidden');
+        
+        // ✅ CRITICAL: Remove modal-open class from body
+        document.body.classList.remove('modal-open');
+        
+        // ✅ CRITICAL: Restore body overflow
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.paddingRight = '';
     }
+    
+    
 }
 
 /**

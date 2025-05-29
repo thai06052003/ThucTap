@@ -46,6 +46,24 @@ namespace ShopxEX1.Dtos.Statistics
 
         // Phần trăm tăng trưởng doanh thu (so với tháng trước)
         public decimal RevenueTrendPercentage { get; set; }
+        // ✅ NEW: Additional realistic metrics
+    public int DeliveredOrdersCount { get; set; } // Đã giao nhưng chưa hoàn thành
+    public decimal PotentialRevenue { get; set; } // Doanh thu tiềm năng từ đơn đã giao
+    public int RefundRequestedCount { get; set; } // Số đơn yêu cầu hoàn tiền
+    public int ShippingOrdersCount { get; set; } // Đơn đang giao
+
+    // ✅ COMPUTED: Business insights
+    public decimal CompletionRate => TotalOrderCount > 0 ? 
+        (decimal)CompletedOrdersCount / TotalOrderCount * 100 : 0;
+        
+    public decimal DeliveryToCompletionRate => DeliveredOrdersCount > 0 ? 
+        (decimal)CompletedOrdersCount / (CompletedOrdersCount + DeliveredOrdersCount) * 100 : 0;
+        
+    public decimal RefundRate => TotalOrderCount > 0 ? 
+        (decimal)(CancelledOrdersCount + RefundRequestedCount) / TotalOrderCount * 100 : 0;
+        
+    public decimal AverageOrderValue => CompletedOrdersCount > 0 ? 
+        TotalRevenue / CompletedOrdersCount : 0;
     }
 
     /// <summary>
@@ -102,32 +120,32 @@ namespace ShopxEX1.Dtos.Statistics
     public class OrderStatusStatsDto
     {
         public int Pending { get; set; }                // "Chờ xác nhận"
-            public int Processing { get; set; }             // "Đang xử lý" 
-            public int Shipping { get; set; }               // "Đang giao"
-            public int Delivered { get; set; }              // "Đã giao"
-            public int RefundRequested { get; set; }        // "Yêu cầu trả hàng/ hoàn tiền"
-            public int Cancelled { get; set; }              // "Đã hủy"
-            public int Refunded { get; set; }               // "Đã hoàn tiền"
-            public int Completed { get; set; }              // "Hoàn thành" 
-            
-                // ✅ COMPUTED PROPERTIES
-            public int Total => Pending + Processing + Shipping + Delivered + RefundRequested + Cancelled + Refunded + Completed;
-            
-            // ✅ PERCENTAGES
-            public decimal PendingPercentage => Total > 0 ? (decimal)Pending / Total * 100 : 0;
-            public decimal ProcessingPercentage => Total > 0 ? (decimal)Processing / Total * 100 : 0;
-            public decimal ShippingPercentage => Total > 0 ? (decimal)Shipping / Total * 100 : 0;
-            public decimal DeliveredPercentage => Total > 0 ? (decimal)Delivered / Total * 100 : 0;
-            public decimal CompletedPercentage => Total > 0 ? (decimal)Completed / Total * 100 : 0;
-            
-            // ✅ BUSINESS METRICS
-            public decimal CompletionRate => Total > 0 ? (decimal)(Delivered + Completed) / Total * 100 : 0;
-            public decimal CancellationRate => Total > 0 ? (decimal)(Cancelled + Refunded) / Total * 100 : 0;
-            public decimal RefundRate => Total > 0 ? (decimal)(RefundRequested + Refunded) / Total * 100 : 0;
-            
-            // ✅ ACTIVE ORDERS (cần xử lý)
-            public int ActiveOrders => Pending + Processing + Shipping + RefundRequested;
-            public int FinalizedOrders => Delivered + Completed + Cancelled + Refunded;
+        public int Processing { get; set; }             // "Đang xử lý" 
+        public int Shipping { get; set; }               // "Đang giao"
+        public int Delivered { get; set; }              // "Đã giao"
+        public int RefundRequested { get; set; }        // "Yêu cầu trả hàng/ hoàn tiền"
+        public int Cancelled { get; set; }              // "Đã hủy"
+        public int Refunded { get; set; }               // "Đã hoàn tiền"
+        public int Completed { get; set; }              // "Hoàn thành" 
+
+        // ✅ COMPUTED PROPERTIES
+        public int Total => Pending + Processing + Shipping + Delivered + RefundRequested + Cancelled + Refunded + Completed;
+
+        // ✅ PERCENTAGES
+        public decimal PendingPercentage => Total > 0 ? (decimal)Pending / Total * 100 : 0;
+        public decimal ProcessingPercentage => Total > 0 ? (decimal)Processing / Total * 100 : 0;
+        public decimal ShippingPercentage => Total > 0 ? (decimal)Shipping / Total * 100 : 0;
+        public decimal DeliveredPercentage => Total > 0 ? (decimal)Delivered / Total * 100 : 0;
+        public decimal CompletedPercentage => Total > 0 ? (decimal)Completed / Total * 100 : 0;
+
+        // ✅ BUSINESS METRICS
+        public decimal CompletionRate => Total > 0 ? (decimal)(Delivered + Completed) / Total * 100 : 0;
+        public decimal CancellationRate => Total > 0 ? (decimal)(Cancelled + Refunded) / Total * 100 : 0;
+        public decimal RefundRate => Total > 0 ? (decimal)(RefundRequested + Refunded) / Total * 100 : 0;
+
+        // ✅ ACTIVE ORDERS (cần xử lý)
+        public int ActiveOrders => Pending + Processing + Shipping + RefundRequested;
+        public int FinalizedOrders => Delivered + Completed + Cancelled + Refunded;
     }
 
     /// <summary>
@@ -293,6 +311,41 @@ namespace ShopxEX1.Dtos.Statistics
         public string ShippingAddress { get; set; } = string.Empty;
         public int TotalItems { get; set; }
         public bool CreatedToday { get; set; }
-    
+
+    }
+// ✅ SỬA: StatisticsDtos.cs
+
+public static class OrderStatuses
+{
+    public const string PENDING = "Chờ xác nhận";
+    public const string PROCESSING = "Đang xử lý";
+    public const string SHIPPING = "Đang giao";
+    public const string DELIVERED = "Đã giao";
+    public const string REFUND_REQUESTED = "Yêu cầu trả hàng/ hoàn tiền";
+    public const string CANCELLED = "Đã hủy";
+    public const string REFUNDED = "Đã hoàn tiền";
+    public const string COMPLETED = "Hoàn thành";
+
+
+    public static readonly string[] REVENUE_COUNTING_STATUSES = { COMPLETED }; // CHỈ "Hoàn thành"
+    public static readonly string[] PENDING_STATUSES = { PENDING, PROCESSING, SHIPPING };
+    public static readonly string[] IN_PROGRESS_STATUSES = { DELIVERED }; // Đã giao nhưng chưa hoàn thành
+    public static readonly string[] CANCELLED_STATUSES = { CANCELLED, REFUNDED, REFUND_REQUESTED };
+    public static readonly string[] ALL_STATUSES = { 
+        PENDING, PROCESSING, SHIPPING, DELIVERED, 
+        REFUND_REQUESTED, CANCELLED, REFUNDED, COMPLETED 
+    };
+
+    // ✅ Business logic helpers
+    public static bool IsRevenueCountable(string status) => 
+        REVENUE_COUNTING_STATUSES.Contains(status, StringComparer.OrdinalIgnoreCase);
+        
+    public static bool IsPending(string status) => 
+        PENDING_STATUSES.Contains(status, StringComparer.OrdinalIgnoreCase);
+        
+    public static bool IsCancelled(string status) => 
+        CANCELLED_STATUSES.Contains(status, StringComparer.OrdinalIgnoreCase);
 }
+
 }
+

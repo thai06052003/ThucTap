@@ -8,6 +8,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json;
 using System.ComponentModel.DataAnnotations;
+using ShopxEX1.Models;
+using ShopxEX1.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace ShopxEX1.Controllers
 {
@@ -18,9 +21,10 @@ namespace ShopxEX1.Controllers
         private readonly IAuthService _authService;
         private readonly ISessionService _sessionService;
         private readonly ILogger<AuthController> _logger; // Inject nếu cần log chi tiết
-
-        public AuthController(IAuthService authService, ISessionService sessionService, ILogger<AuthController> logger)
+        private readonly AppDbContext _context;
+        public AuthController(IAuthService authService, ISessionService sessionService, ILogger<AuthController> logger, AppDbContext context)
         {
+            _context = context ?? throw new ArgumentNullException(nameof(context));
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -50,7 +54,7 @@ namespace ShopxEX1.Controllers
             try
             {
                 // Service trả về AuthResultDto (có thể success=false nếu sai pass/user)
-                    var result = await _authService.LoginAsync(loginDto);
+                var result = await _authService.LoginAsync(loginDto);
 
                 if (result == null || !result.Success)
                 {
@@ -64,7 +68,7 @@ namespace ShopxEX1.Controllers
             {
                 // _logger.LogError(ex, "Lỗi hệ thống khi đăng nhập.");
                 Console.WriteLine($"Lỗi Login: {ex}");
-                return StatusCode(StatusCodes.Status500InternalServerError, new AuthResultDto { Success = false, Message = "Đã xảy ra lỗi hệ thống khi đăng nhập: " + ex.Message + " *** " + ex.Source});
+                return StatusCode(StatusCodes.Status500InternalServerError, new AuthResultDto { Success = false, Message = "Đã xảy ra lỗi hệ thống khi đăng nhập: " + ex.Message + " *** " + ex.Source });
             }
         }
         [HttpPost("social-login")]
@@ -72,7 +76,7 @@ namespace ShopxEX1.Controllers
         public async Task<ActionResult<AuthResultDto>> SocialLogin([FromBody] SocialLoginRequestDto socialLoginDto)
         {
             if (!ModelState.IsValid)
-            {   
+            {
                 return BadRequest(new AuthResultDto { Success = false, Message = "Dữ liệu social login không hợp lệ." });
             }
 
@@ -174,6 +178,121 @@ namespace ShopxEX1.Controllers
                 user = user
             });
         }
+        // ✅ SỬA: check-social-user endpoint
+
+        [HttpPost("check-social-user")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CheckSocialUser([FromBody] CheckSocialUserRequest request)
+        {
+            // ✅ Validate input
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { success = false, message = "Invalid request data" });
+            }
+
+            try
+            {
+                _logger.LogInformation("Checking social user: Provider={Provider}, UserId={UserId}",
+                    request.Provider, request.UserId);
+
+                // ✅ Check if user exists by provider and userId
+                var existingUser = await _context.Users
+                    .FirstOrDefaultAsync(u => u.SocialProvider == request.Provider &&
+                                            u.SocialID == request.UserId);
+
+                if (existingUser != null)
+                {
+                    _logger.LogInformation("Found existing social user: Email={Email}", existingUser.Email);
+
+                    return Ok(new
+                    {
+                        success = true,
+                        exists = true,
+                        user = new
+                        {
+                            email = existingUser.Email,
+                            fullName = existingUser.FullName,
+                            role = existingUser.Role
+                        }
+                    });
+                }
+                else
+                {
+                    _logger.LogInformation("No existing social user found for Provider={Provider}, UserId={UserId}",
+                        request.Provider, request.UserId);
+
+                    return Ok(new
+                    {
+                        success = true,
+                        exists = false
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking social user: Provider={Provider}, UserId={UserId}",
+                    request.Provider, request.UserId);
+
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "An error occurred while checking social user"
+                });
+            }
+        }
+
+        [HttpPost("check-email-exists")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CheckEmailExists([FromBody] CheckEmailRequest request)
+        {
+            // ✅ Validate input
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { success = false, message = "Invalid email format" });
+            }
+
+            try
+            {
+                _logger.LogInformation("Checking email exists: Email={Email}", request.Email);
+
+                var existingUser = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
+
+                if (existingUser != null)
+                {
+                    _logger.LogInformation("Email exists: Email={Email}, Provider={Provider}",
+                        request.Email, existingUser.SocialProvider ?? "regular");
+
+                    return Ok(new
+                    {
+                        success = true,
+                        exists = true,
+                        isSocialAccount = !string.IsNullOrEmpty(existingUser.SocialProvider),
+                        provider = existingUser.SocialProvider
+                    });
+                }
+                else
+                {
+                    _logger.LogInformation("Email does not exist: Email={Email}", request.Email);
+
+                    return Ok(new
+                    {
+                        success = true,
+                        exists = false
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking email exists: Email={Email}", request.Email);
+
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "An error occurred while checking email"
+                });
+            }
+        }
         // Thay đổi mật khẩu cho người dùng đang đăng nhập.
         [HttpPost("change-password")]
         [Authorize]
@@ -206,12 +325,12 @@ namespace ShopxEX1.Controllers
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("Invalid model state for password reset request: {Email}", requestDto?.Email);
-                
+
                 var errors = ModelState.Values
                     .SelectMany(v => v.Errors)
                     .Select(e => e.ErrorMessage)
                     .ToList();
-                
+
                 return BadRequest(new PasswordResetResultDto
                 {
                     Success = false,
@@ -248,7 +367,7 @@ namespace ShopxEX1.Controllers
             {
                 // 🔥 BƯỚC 6: XỬ LÝ LỖI KHÔNG MONG MUỐN
                 _logger.LogError(ex, "Unexpected error during password reset request for email: {Email}", requestDto?.Email);
-                
+
                 return StatusCode(500, new PasswordResetResultDto
                 {
                     Success = false,
@@ -271,12 +390,12 @@ namespace ShopxEX1.Controllers
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("Invalid model state for password reset: {Email}", resetDto?.Email);
-                
+
                 var errors = ModelState.Values
                     .SelectMany(v => v.Errors)
                     .Select(e => e.ErrorMessage)
                     .ToList();
-                
+
                 return BadRequest(new PasswordResetResultDto
                 {
                     Success = false,
@@ -318,7 +437,7 @@ namespace ShopxEX1.Controllers
             {
                 // 🔥 BƯỚC 6: XỬ LÝ LỖI
                 _logger.LogError(ex, "Unexpected error during password reset for email: {Email}", resetDto?.Email);
-                
+
                 return StatusCode(500, new PasswordResetResultDto
                 {
                     Success = false,
@@ -359,7 +478,7 @@ namespace ShopxEX1.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating reset token for email: {Email}", email);
-                
+
                 return StatusCode(500, new PasswordResetResultDto
                 {
                     Success = false,
@@ -447,40 +566,72 @@ namespace ShopxEX1.Controllers
                 return StatusCode(500, "Không thể gửi lại email.");
             }
         }
-    
+
 
         [HttpPut("update-profile")]
-        [Authorize]
-        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto updateDto)
+[Authorize]
+public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto updateDto)
+{
+    try
+    {
+        // ✅ VALIDATE ModelState first
+        if (!ModelState.IsValid)
         {
-            try
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+                
+            return BadRequest(new { 
+                success = false, 
+                message = "Dữ liệu không hợp lệ", 
+                errors = errors 
+            });
+        }
+
+        // ✅ CONDITIONAL VALIDATION: Check ShopName when role = Seller
+        if (updateDto.Role?.ToLower() == "seller")
+        {
+            if (string.IsNullOrWhiteSpace(updateDto.ShopName))
             {
-                Console.WriteLine($"UpdateProfile request received for user {User.FindFirst(ClaimTypes.NameIdentifier)?.Value}");
-                Console.WriteLine($"Update data: {JsonSerializer.Serialize(updateDto)}");
-
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                if (userId == 0)
-                {
-                    Console.WriteLine("Invalid user ID from token");
-                    return Unauthorized(new { message = "Invalid token" });
-                }
-
-                var result = await _authService.UpdateProfileAsync(userId, updateDto);
-                Console.WriteLine($"Update result: {JsonSerializer.Serialize(result)}");
-
-                if (!result.Success)
-                {
-                    return BadRequest(new { message = result.Message });
-                }
-
-                return Ok(result);
+                return BadRequest(new { 
+                    success = false, 
+                    message = "Tên cửa hàng là bắt buộc khi chọn vai trò Seller",
+                    field = "ShopName"
+                });
             }
-            catch (Exception ex)
+            
+            if (updateDto.ShopName.Trim().Length < 2)
             {
-                Console.WriteLine($"Error in UpdateProfile: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                return StatusCode(500, new { message = "An error occurred while updating profile" });
+                return BadRequest(new { 
+                    success = false, 
+                    message = "Tên cửa hàng phải có ít nhất 2 ký tự",
+                    field = "ShopName"
+                });
             }
         }
+
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        if (userId == 0)
+        {
+            return Unauthorized(new { message = "Token không hợp lệ" });
+        }
+
+        var result = await _authService.UpdateProfileAsync(userId, updateDto);
+
+        if (!result.Success)
+        {
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(result);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error in UpdateProfile");
+        return StatusCode(500, new { message = "Lỗi hệ thống khi cập nhật thông tin" });
+    }
+}
+   
     }
 }
