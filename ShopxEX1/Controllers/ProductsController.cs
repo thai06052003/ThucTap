@@ -327,7 +327,7 @@ public async Task<ActionResult<ProductDto>> GetProductByIdForCustomer(int produc
         }
 
         // ✅ SECURITY: Force includeInactive = false for customer endpoint
-        var product = await _productService.GetProductByIdAsync(productId, includeInactive: false);
+        var product = await _productService.GetProductByIdAsync(productId, false);
 
         if (product == null)
         {
