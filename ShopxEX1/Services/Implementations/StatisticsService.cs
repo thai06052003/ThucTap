@@ -50,35 +50,39 @@ namespace ShopxEX1.Services
 
             // FIXED: ĐƠN GIẢN HÓA QUERY - Lấy OrderDetails trực tiếp
             var orders = await _context.Orders
-                .Where(o => _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId))
-                .Include(o => o.User)
-                .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Product)
-                .AsNoTracking()
-                .ToListAsync();
-            // Lấy danh sách orders duy nhất
-            var orderDetails = orders.SelectMany(o => o.OrderDetails).ToList();
+        .Where(o => _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId))
+        .Include(o => o.User)
+        .Include(o => o.OrderDetails)
+            .ThenInclude(od => od.Product)
+        .AsNoTracking()
+        .ToListAsync();
 
-            // FIXED: Đếm chính xác trạng thái - đồng bộ với GetOrderStatusStatsAsync
-            int pendingCount = orders.Count(o =>
-            string.Equals(o.Status, "Chờ xác nhận", StringComparison.OrdinalIgnoreCase));
+    // ✅ FIXED: Đếm chính xác theo ValidOrderStatuses
+    int pendingCount = orders.Count(o =>
+        string.Equals(o.Status, "Chờ xác nhận", StringComparison.OrdinalIgnoreCase));
 
-            int processingCount = orders.Count(o =>
-                string.Equals(o.Status, "Đang xử lý", StringComparison.OrdinalIgnoreCase));
+    int processingCount = orders.Count(o =>
+        string.Equals(o.Status, "Đang xử lý", StringComparison.OrdinalIgnoreCase));
 
-            // FIXED: Bao gồm cả "Đã giao" và "Đã giao hàng"
-            int completedCount = orders.Count(o =>
-                string.Equals(o.Status, "Đã giao", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(o.Status, "Đã giao hàng", StringComparison.OrdinalIgnoreCase));
+    // ✅ FIXED: Delivered = "Đã giao" ONLY
+    int deliveredCount = orders.Count(o =>
+        string.Equals(o.Status, "Đã giao", StringComparison.OrdinalIgnoreCase));
 
-            int cancelledCount = orders.Count(o =>
-                string.Equals(o.Status, "Đã hủy", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(o.Status, "Đã hoàn tiền", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(o.Status, "Yêu cầu trả hàng/ hoàn tiền", StringComparison.OrdinalIgnoreCase));
-            // Tính doanh thu theo thời gian - chỉ tính các đơn hàng hợp lệ
-            var validOrderDetails = orderDetails
-                .Where(x => !string.Equals(x.Order.Status, "Đã hủy", StringComparison.OrdinalIgnoreCase) &&
-                           !string.Equals(x.Order.Status, "Đã hoàn tiền", StringComparison.OrdinalIgnoreCase));
+    // ✅ FIXED: Completed = "Hoàn thành" ONLY  
+    int completedCount = orders.Count(o =>
+        string.Equals(o.Status, "Hoàn thành", StringComparison.OrdinalIgnoreCase));
+
+    // ✅ FIXED: Cancelled bao gồm tất cả trạng thái "negative"
+    int cancelledCount = orders.Count(o =>
+        string.Equals(o.Status, "Đã hủy", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(o.Status, "Đã hoàn tiền", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(o.Status, "Yêu cầu trả hàng/ hoàn tiền", StringComparison.OrdinalIgnoreCase));
+
+    // ✅ FIXED: Tính doanh thu - LOẠI TRỪ đúng trạng thái
+    var validOrderDetails = orders.SelectMany(o => o.OrderDetails)
+        .Where(od => !string.Equals(od.Order.Status, "Đã hủy", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(od.Order.Status, "Đã hoàn tiền", StringComparison.OrdinalIgnoreCase))
+        .ToList();
 
             decimal totalRevenue = validOrderDetails.Sum(od => od.UnitPrice * od.Quantity);
 
@@ -120,7 +124,7 @@ namespace ShopxEX1.Services
                 AvailableProductCount = availableCount,
                 PendingOrdersCount = pendingCount,
                 ProcessingOrdersCount = processingCount,
-                CompletedOrdersCount = completedCount,
+                CompletedOrdersCount = deliveredCount + completedCount,
                 CancelledOrdersCount = cancelledCount,
                 RevenueToday = revenueToday,
                 RevenueThisWeek = revenueThisWeek,
@@ -293,78 +297,78 @@ namespace ShopxEX1.Services
         /// Lấy số liệu đơn hàng theo trạng thái - FIXED: Mapping đúng trạng thái database
         /// </summary>
         public async Task<OrderStatusStatsDto> GetOrderStatusStatsAsync(int sellerId)
-        {
-            try
             {
-                Console.WriteLine($"=== GetOrderStatusStatsAsync for sellerId: {sellerId} ===");
-
-                // SỬ DỤNG CHÍNH XÁC LOGIC TRONG ORDERSERVICE
-                var query = _context.Orders
-                    .Where(o => _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId))
-                    .Include(o => o.User)
-                    .Include(o => o.OrderDetails)
-                    .AsNoTracking();
-
-                var orders = await query.ToListAsync();
-
-                Console.WriteLine($"Found {orders.Count} unique orders for seller {sellerId}");
-
-                // Debug: Log tất cả orders và trạng thái
-                foreach (var order in orders)
+                try
                 {
-                    Console.WriteLine($"Order {order.OrderID}: Status = '{order.Status}', Date = {order.OrderDate}");
+                    Console.WriteLine($"=== GetOrderStatusStatsAsync for sellerId: {sellerId} ===");
+
+                    // ✅ CHÍNH XÁC: Sử dụng CÙNG LOGIC với OrderService
+                    var query = _context.Orders
+                        .Where(o => _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId))
+                        .Include(o => o.User)
+                        .Include(o => o.OrderDetails)
+                        .AsNoTracking();
+
+                    var orders = await query.ToListAsync();
+
+                    Console.WriteLine($"Found {orders.Count} unique orders for seller {sellerId}");
+
+                    // ✅ DEBUG: Log tất cả trạng thái thực tế
+                    var actualStatuses = orders.GroupBy(o => o.Status).ToDictionary(g => g.Key, g => g.Count());
+                    Console.WriteLine("=== ACTUAL STATUS COUNTS IN DATABASE ===");
+                    foreach (var status in actualStatuses)
+                    {
+                        Console.WriteLine($"  '{status.Key}': {status.Value} orders");
+                    }
+
+                    // ✅ FIXED: MAPPING CHÍNH XÁC VỚI ValidOrderStatuses
+                    var result = new OrderStatusStatsDto
+                    {
+                        // ✅ Mapping 1:1 với ValidOrderStatuses
+                        Pending = orders.Count(o => 
+                            string.Equals(o.Status, "Chờ xác nhận", StringComparison.OrdinalIgnoreCase)),
+
+                        Processing = orders.Count(o => 
+                            string.Equals(o.Status, "Đang xử lý", StringComparison.OrdinalIgnoreCase)),
+
+                        Shipping = orders.Count(o => 
+                            string.Equals(o.Status, "Đang giao", StringComparison.OrdinalIgnoreCase)),
+
+                        Delivered = orders.Count(o => 
+                            string.Equals(o.Status, "Đã giao", StringComparison.OrdinalIgnoreCase)),
+
+                        RefundRequested = orders.Count(o => 
+                            string.Equals(o.Status, "Yêu cầu trả hàng/ hoàn tiền", StringComparison.OrdinalIgnoreCase)),
+
+                        Cancelled = orders.Count(o => 
+                            string.Equals(o.Status, "Đã hủy", StringComparison.OrdinalIgnoreCase)),
+
+                        Refunded = orders.Count(o => 
+                            string.Equals(o.Status, "Đã hoàn tiền", StringComparison.OrdinalIgnoreCase)),
+
+                        Completed = orders.Count(o => 
+                            string.Equals(o.Status, "Hoàn thành", StringComparison.OrdinalIgnoreCase))
+                    };
+
+
+                    // ✅ VALIDATION: Kiểm tra tổng
+                    var expectedTotal = actualStatuses.Values.Sum();
+                    if (result.Total != expectedTotal)
+                    {
+                        Console.WriteLine($"⚠️ WARNING: Mapped total ({result.Total}) != Expected total ({expectedTotal})");
+                    }
+
+                    return result;
                 }
-
-                // Log các trạng thái thực tế trong DB
-                var statusCounts = orders.GroupBy(o => o.Status).ToDictionary(g => g.Key, g => g.Count());
-                Console.WriteLine("Actual statuses in DB:");
-                foreach (var status in statusCounts)
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"  '{status.Key}': {status.Value}");
+                    Console.WriteLine($"ERROR in GetOrderStatusStatsAsync: {ex.Message}");
+                    Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                    
+                    // ✅ Return empty stats instead of null
+                    return new OrderStatusStatsDto();
                 }
-
-                // FIXED: MAPPING ĐÚNG TRẠNG THÁI THỰC TẾ TRONG DATABASE
-                var result = new OrderStatusStatsDto
-                {
-                    Pending = orders.Count(o =>
-                        string.Equals(o.Status, "Chờ xác nhận", StringComparison.OrdinalIgnoreCase)),
-
-                    Processing = orders.Count(o =>
-                        string.Equals(o.Status, "Đang xử lý", StringComparison.OrdinalIgnoreCase)),
-
-                    // FIXED: Bao gồm cả "Đang giao" và "Đang giao hàng"
-                    Shipped = orders.Count(o =>
-                        string.Equals(o.Status, "Đang giao", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(o.Status, "Đang giao hàng", StringComparison.OrdinalIgnoreCase)),
-
-                    // FIXED: Bao gồm cả "Đã giao" và "Đã giao hàng"  
-                    Delivered = orders.Count(o =>
-                        string.Equals(o.Status, "Đã giao", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(o.Status, "Đã giao hàng", StringComparison.OrdinalIgnoreCase)),
-
-                    // FIXED: Completed cũng bao gồm cả hai
-                    Completed = orders.Count(o =>
-                        string.Equals(o.Status, "Đã giao", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(o.Status, "Đã giao hàng", StringComparison.OrdinalIgnoreCase)),
-
-                    Cancelled = orders.Count(o =>
-                        string.Equals(o.Status, "Đã hủy", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(o.Status, "Đã hoàn tiền", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(o.Status, "Yêu cầu trả hàng/ hoàn tiền", StringComparison.OrdinalIgnoreCase))
-                };
-
-                Console.WriteLine($"FINAL Result - Pending: {result.Pending}, Processing: {result.Processing}, Shipped: {result.Shipped}, Delivered: {result.Delivered}, Completed: {result.Completed}, Cancelled: {result.Cancelled}");
-
-                return result;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"ERROR in GetOrderStatusStatsAsync: {ex.Message}");
-                Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                return new OrderStatusStatsDto();
-            }
-        }
-
         /// <summary>
         /// Lấy dữ liệu biểu đồ doanh thu với multiple metrics - THAY THẾ GetLast7DaysStatsAsync
         /// </summary>

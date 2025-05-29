@@ -9,6 +9,7 @@ using Microsoft.OpenApi.Models; // Cho Swagger JWT
 using ShopxEX1.Data;          // Namespace Data
 using ShopxEX1.Mappings;      // Namespace Mappings
 using ShopxEX1.Services;      // Namespace Interfaces
+using ShopxEX1.Services.BackgroundServices;
 using ShopxEX1.Services.Implementations; // Namespace Implementations
 using ShopxEX1.Services.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
@@ -146,6 +147,7 @@ namespace ShopxEX1 // Namespace gốc
             //ĐĂNG KÝ SERVICES CHO PASSWORD RESET
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+                builder.Services.AddHostedService<OrderAutoCompleteService>();
 
             // 9. Swagger/OpenAPI Configuration
             builder.Services.AddEndpointsApiExplorer();

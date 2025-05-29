@@ -507,6 +507,51 @@
             flex-shrink: 0;
             min-width: 100px;
         }
+    /* ===== MODAL OVERRIDE - HIGHEST PRIORITY ===== */
+body.modal-open {
+    overflow: hidden;
+}
+
+#order-details-modal.active {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    z-index: 999999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* ===== ENSURE MODAL KHÔNG BỊ SIDEBAR AFFECT ===== */
+#order-details-modal .modal-container {
+    position: relative !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+}
+
+/* ===== RESPONSIVE MOBILE FIXES ===== */
+@media (max-width: 640px) {
+    #order-details-modal .product-item {
+        padding: 0.5rem !important;
+    }
+    
+    #order-details-modal .product-pricing {
+        font-size: 0.75rem !important;
+    }
+    
+    #order-details-modal .price-item {
+        min-width: 45px !important;
+    }
+}
     </style>
 </head>
 
@@ -521,6 +566,7 @@
                         <i class="fas fa-store text-white"></i>
                     </div>
                     <span class="logo-text font-bold text-lg">ShopX Seller</span>
+                    
                 </div>
             </div>
             <nav class="p-4 space-y-2">
@@ -556,11 +602,7 @@
                     <i class="fas fa-bell"></i>
                     <span class="sidebar-text">Thông báo</span>
                 </a>
-                <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100"
-                    onclick="handleReturnToHome(event)">
-                    <i class="fas fa-home"></i>
-                    <span class="sidebar-text">Trang chủ</span>
-                </a>
+                
                 <a href="/Customer/templates/login.html"
                     class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100"
                     id="logout-btn">
@@ -582,6 +624,10 @@
         <div class="content" id="mainContent">
             <!-- Header -->
             <header class="py-4 px-6 flex justify-between items-center">
+                <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-lg text-gray-600 hover:bg-gray-100"
+                    onclick="handleReturnToHome(event)">
+                    <i class="fas fa-home"></i>
+                </a>
                 <div class="flex items-center space-x-4">
                     <button class="text-gray-600 md:hidden" id="mobileMenuButton">
                         <i class="fas fa-bars"></i>
@@ -1485,10 +1531,7 @@
                     <!-- Nội dung sẽ được thêm vào bằng JavaScript -->
                 </section>
 
-                <!-- Revenue Section -->
-                <section id="revenue-section" class="section">
-                    <!-- Nội dung sẽ được thêm vào bằng JavaScript -->
-                </section>
+                
             </main>
         </div>
     </div>

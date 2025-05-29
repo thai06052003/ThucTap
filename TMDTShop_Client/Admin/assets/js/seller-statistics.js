@@ -365,42 +365,313 @@ class SellerStatistics {
                     </div>
                 </div>
 
-                <!-- Modal Chi tiết đơn hàng theo trạng thái - NEW -->
-                <div id="order-details-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
-                    <div class="flex items-center justify-center min-h-screen px-4">
-                        <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-                            <!-- Modal Header -->
-                            <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
-                                <h3 class="text-xl font-semibold text-white" id="modal-title">Chi tiết đơn hàng</h3>
-                                <button onclick="window.statisticsManager?.closeOrderDetailsModal()" class="text-white hover:text-gray-200 transition">
-                                    <i class="fas fa-times text-xl"></i>
-                                </button>
-                            </div>
-                            
-                            <!-- Modal Body -->
-                            <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-                                <div id="order-details-content">
-                                    <!-- Content sẽ được load động -->
-                                    <div class="text-center py-8">
-                                        <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
-                                        <p class="text-gray-600">Đang tải dữ liệu...</p>
-                                    </div>
+                <!-- Modal Chi tiết đơn hàng theo trạng thái -->
+                <!-- Modal Chi tiết đơn hàng theo trạng thái -->
+            <div id="order-details-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[9999] hidden">
+                <!-- ✅ FIXED: Proper centering with flex -->
+                <div class="flex items-center justify-center min-h-screen p-4">
+                    <!-- ✅ FIXED: Proper width constraints and centering -->
+                    <div class="bg-white rounded-lg shadow-xl w-full max-w-7xl mx-auto max-h-[95vh] overflow-hidden">
+                        <!-- Modal Header -->
+                        <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
+                            <h3 class="text-xl font-semibold text-white" id="modal-title">Chi tiết đơn hàng</h3>
+                            <button onclick="window.statisticsManager?.closeOrderDetailsModal()" 
+                                    class="text-white hover:text-gray-200 transition-colors">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Modal Body - FIXED Scrolling -->
+                        <div class="overflow-y-auto max-h-[calc(95vh-140px)]">
+                            <div id="order-details-content" class="p-6">
+                                <!-- Content sẽ được load động -->
+                                <div class="text-center py-12">
+                                    <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
+                                    <p class="text-gray-600">Đang tải dữ liệu...</p>
                                 </div>
                             </div>
-                            
-                            <!-- Modal Footer -->
-                            <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
-                                <button onclick="window.statisticsManager?.exportOrdersByStatus()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
-                                    <i class="fas fa-download mr-2"></i>Xuất Excel
-                                </button>
-                                <button onclick="window.statisticsManager?.closeOrderDetailsModal()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
-                                    Đóng
-                                </button>
-                            </div>
+                        </div>
+                        
+                        <!-- Modal Footer -->
+                        <div class="bg-gray-50 px-6 py-4 flex justify-center md:justify-end space-x-3 border-t">
+                            <button onclick="window.statisticsManager?.exportOrdersByStatus()" 
+                                    class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                                <i class="fas fa-download mr-2"></i>Xuất Excel
+                            </button>
+                            <button onclick="window.statisticsManager?.closeOrderDetailsModal()" 
+                                    class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                                Đóng
+                            </button>
                         </div>
                     </div>
                 </div>
+
+                <style>
+                    /* ===== MODAL STYLES - ENHANCED FIX ===== */
+                    body.modal-open {
+                        overflow: hidden !important;
+                    }
+
+                    /* ✅ FIXED: Modal positioning override - HIGHEST PRIORITY */
+                    #order-details-modal {
+                        position: fixed !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        right: 0 !important;
+                        bottom: 0 !important;
+                        width: 100vw !important;
+                        height: 100vh !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        transform: none !important;
+                        z-index: 999999 !important;
+                        background-color: rgba(0, 0, 0, 0.5) !important;
+                    }
+
+                    #order-details-modal.hidden {
+                        display: none !important;
+                    }
+
+                    #order-details-modal:not(.hidden) {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                    }
+
+                    /* ✅ CRITICAL: Override .content margin-left effect */
+                    #order-details-modal,
+                    #order-details-modal * {
+                        margin-left: 0 !important;
+                        left: 0 !important;
+                        right: 0 !important;
+                        transform: none !important;
+                    }
+
+                    /* ✅ ENSURE MODAL CONTAINER KHÔNG BỊ SIDEBAR AFFECT */
+                    #order-details-modal > div {
+                        position: relative !important;
+                        margin: 0 auto !important;
+                        width: 100% !important;
+                        max-width: none !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        min-height: 100vh !important;
+                        padding: 20px !important;
+                        box-sizing: border-box !important;
+                    }
+
+                    #order-details-modal > div > div {
+                        margin: 0 auto !important;
+                        max-width: 1200px !important;
+                        width: 100% !important;
+                    }
+
+                    /* ===== PRODUCT ITEM TABLE FIXES - COMPLETE OVERHAUL ===== */
+                    .product-item-card {
+                        border: 1px solid #e5e7eb !important;
+                        border-radius: 0.5rem !important;
+                        padding: 1rem !important;
+                        margin-bottom: 0.75rem !important;
+                        background: white !important;
+                        transition: all 0.2s ease !important;
+                        overflow: hidden !important;
+                    }
+
+                    .product-item-card:hover {
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+                        border-color: #d1d5db !important;
+                    }
+
+                    /* ✅ FIXED: Product layout container */
+                    .product-item-card .flex {
+                        display: flex !important;
+                        align-items: center !important;
+                        gap: 1rem !important;
+                        width: 100% !important;
+                    }
+
+                    /* ✅ FIXED: Product image container */
+                    .product-item-card .flex-shrink-0 {
+                        flex-shrink: 0 !important;
+                        width: 64px !important;
+                        height: 64px !important;
+                    }
+
+                    /* ✅ FIXED: Product info section */
+                    .product-item-card .flex-1 {
+                        flex: 1 !important;
+                        min-width: 0 !important;
+                        padding-right: 1rem !important;
+                    }
+
+                    /* ✅ CRITICAL FIX: Pricing table container */
+                    .product-item-card .flex-shrink-0:last-child {
+                        flex-shrink: 0 !important;
+                        width: auto !important;
+                        min-width: 280px !important;
+                        max-width: 320px !important;
+                    }
+
+                    /* ✅ FIXED: Table structure */
+                    .product-item-card table {
+                        width: 100% !important;
+                        table-layout: fixed !important;
+                        border-collapse: separate !important;
+                        border-spacing: 0 !important;
+                        border: 1px solid #e5e7eb !important;
+                        border-radius: 0.5rem !important;
+                        overflow: hidden !important;
+                        background: white !important;
+                        min-width: 280px !important;
+                    }
+
+                    /* ✅ FIXED: Table headers */
+                    .product-item-card table thead {
+                        background-color: #f9fafb !important;
+                    }
+
+                    .product-item-card table th {
+                        padding: 0.75rem 1rem !important;
+                        text-align: center !important;
+                        font-size: 0.75rem !important;
+                        font-weight: 600 !important;
+                        color: #374151 !important;
+                        text-transform: uppercase !important;
+                        letter-spacing: 0.05em !important;
+                        border-bottom: 2px solid #e5e7eb !important;
+                        border-right: 1px solid #e5e7eb !important;
+                        white-space: nowrap !important;
+                        vertical-align: middle !important;
+                        width: 33.333% !important;
+                    }
+
+                    .product-item-card table th:last-child {
+                        border-right: none !important;
+                    }
+
+                    /* ✅ FIXED: Table cells */
+                    .product-item-card table td {
+                        padding: 0.75rem 1rem !important;
+                        text-align: center !important;
+                        font-size: 0.875rem !important;
+                        font-weight: 500 !important;
+                        color: #111827 !important;
+                        border-right: 1px solid #f3f4f6 !important;
+                        white-space: nowrap !important;
+                        vertical-align: middle !important;
+                        width: 33.333% !important;
+                        background: white !important;
+                    }
+
+                    .product-item-card table td:last-child {
+                        border-right: none !important;
+                        color: #2563eb !important;
+                        font-weight: 700 !important;
+                    }
+
+                    /* ✅ SPECIFIC COLUMN WIDTHS */
+                    .product-item-card table th:nth-child(1),
+                    .product-item-card table td:nth-child(1) {
+                        width: 25% !important;
+                        min-width: 60px !important;
+                    }
+
+                    .product-item-card table th:nth-child(2),
+                    .product-item-card table td:nth-child(2) {
+                        width: 40% !important;
+                        min-width: 100px !important;
+                    }
+
+                    .product-item-card table th:nth-child(3),
+                    .product-item-card table td:nth-child(3) {
+                        width: 35% !important;
+                        min-width: 120px !important;
+                    }
+
+                    /* ===== RESPONSIVE MOBILE FIXES ===== */
+                    @media (max-width: 768px) {
+                        #order-details-modal > div {
+                            padding: 10px !important;
+                        }
+
+                        #order-details-modal > div > div {
+                            max-width: 100vw !important;
+                            max-height: 95vh !important;
+                        }
+
+                        .product-item-card {
+                            padding: 0.75rem !important;
+                            margin-bottom: 0.5rem !important;
+                        }
+
+                        .product-item-card .flex {
+                            flex-direction: column !important;
+                            align-items: stretch !important;
+                            gap: 0.75rem !important;
+                        }
+
+                        .product-item-card .flex-1 {
+                            padding-right: 0 !important;
+                            text-align: center !important;
+                        }
+
+                        .product-item-card .flex-shrink-0:last-child {
+                            width: 100% !important;
+                            min-width: auto !important;
+                            max-width: none !important;
+                        }
+
+                        .product-item-card table {
+                            min-width: 100% !important;
+                            font-size: 0.8125rem !important;
+                        }
+
+                        .product-item-card table th,
+                        .product-item-card table td {
+                            padding: 0.5rem 0.25rem !important;
+                            font-size: 0.75rem !important;
+                        }
+                    }
+
+                    /* ===== ORDER CARD FIXES ===== */
+                    .order-card {
+                        border: 1px solid #e5e7eb !important;
+                        border-radius: 0.5rem !important;
+                        transition: all 0.2s ease !important;
+                        margin-bottom: 1rem !important;
+                        background: white !important;
+                        overflow: hidden !important;
+                    }
+
+                    .order-card:hover {
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+                        border-color: #d1d5db !important;
+                    }
+
+                    /* ===== GENERAL LAYOUT FIXES ===== */
+                    #order-details-content {
+                        max-width: none !important;
+                        width: 100% !important;
+                        margin: 0 !important;
+                        padding: 1.5rem !important;
+                    }
+
+                    /* ===== PREVENT TEXT OVERFLOW ===== */
+                    .product-item-card .truncate {
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        white-space: nowrap !important;
+                    }
+
+                    /* ===== ENSURE PROPER FLEXBOX BEHAVIOR ===== */
+                    .product-item-card .space-x-4 > * + * {
+                        margin-left: 1rem !important;
+                    }
+                </style>
             </div>
+        </div>
+    
         `;
 
         // Bind events cho các buttons sau khi HTML được tạo
@@ -979,39 +1250,130 @@ generateDummyRevenueData(days) {
     /**
      * Render order status statistics
      */
-
 renderOrderStatusStats(data) {
     const container = document.getElementById('order-status-stats');
     if (!container) return;
 
+    // ✅ FIXED: statusConfig CHÍNH XÁC với backend
     const statusConfig = [
-        { key: 'pending', label: 'Chờ xử lý', icon: 'fas fa-clock', color: 'yellow', dbStatus: ['Chờ xác nhận'] },
-        { key: 'processing', label: 'Đang xử lý', icon: 'fas fa-cog', color: 'blue', dbStatus: ['Đang xử lý'] },
-        { key: 'shipped', label: 'Đang giao', icon: 'fas fa-truck', color: 'indigo', dbStatus: ['Đang giao', 'Đang giao hàng'] },
-        { key: 'delivered', label: 'Đã giao', icon: 'fas fa-check-circle', color: 'green', dbStatus: ['Đã giao', 'Đã giao hàng'] },
-        { key: 'completed', label: 'Hoàn thành', icon: 'fas fa-star', color: 'emerald', dbStatus: ['Đã giao', 'Đã giao hàng'] },
-        { key: 'cancelled', label: 'Đã hủy', icon: 'fas fa-times-circle', color: 'red', dbStatus: ['Đã hủy', 'Đã hoàn tiền', 'Yêu cầu trả hàng/ hoàn tiền'] }
+        { 
+            key: 'pending', 
+            label: 'Chờ xác nhận', 
+            icon: 'fas fa-clock', 
+            color: 'yellow',
+            backendField: 'pending',
+            dbStatuses: ['Chờ xác nhận']
+        },
+        { 
+            key: 'processing', 
+            label: 'Đang xử lý', 
+            icon: 'fas fa-cog', 
+            color: 'blue',
+            backendField: 'processing',
+            dbStatuses: ['Đang xử lý']
+        },
+        { 
+            key: 'shipping', 
+            label: 'Đang giao', 
+            icon: 'fas fa-truck', 
+            color: 'indigo',
+            backendField: 'shipping',
+            dbStatuses: ['Đang giao']
+        },
+        { 
+            key: 'delivered', 
+            label: 'Đã giao', 
+            icon: 'fas fa-check-circle', 
+            color: 'green',
+            backendField: 'delivered',
+            dbStatuses: ['Đã giao']
+        },
+        { 
+            key: 'refundRequested', 
+            label: 'Yêu cầu hoàn tiền', 
+            icon: 'fas fa-exclamation-triangle', 
+            color: 'orange',
+            backendField: 'refundRequested',
+            dbStatuses: ['Yêu cầu trả hàng/ hoàn tiền']
+        },
+        { 
+            key: 'refunded', 
+            label: 'Đã hoàn tiền', 
+            icon: 'fas fa-undo', 
+            color: 'purple',
+            backendField: 'refunded',
+            dbStatuses: ['Đã hoàn tiền']
+        },
+        { 
+            key: 'completed', 
+            label: 'Hoàn thành', 
+            icon: 'fas fa-star', 
+            color: 'emerald',
+            backendField: 'completed',
+            dbStatuses: ['Hoàn thành']
+        },
+        { 
+            key: 'cancelled', 
+            label: 'Đã hủy', 
+            icon: 'fas fa-times-circle', 
+            color: 'red',
+            backendField: 'cancelled',
+            dbStatuses: ['Đã hủy']
+        }
     ];
 
     try {
-        container.innerHTML = statusConfig.map(status => {
-            const count = data[status.key] || 0;
+        console.log('📊 Rendering order status stats with data:', data);
+
+        if (!data || !data.data) {
+            this.renderOrderStatusError('Không có dữ liệu thống kê');
+            return;
+        }
+
+        const stats = data.data;
+        console.log('📊 Stats data:', stats);
+
+        // ✅ FIXED: Sử dụng mapping chính xác với backend fields
+        const statusCards = statusConfig.map(config => {
+            // ✅ Lấy giá trị từ backend field tương ứng
+            const count = stats[config.backendField] || 0;
+            const percentage = stats.total > 0 ? ((count / stats.total) * 100).toFixed(1) : '0.0';
+            
+            console.log(`📊 ${config.label}: ${count} (${percentage}%)`);
+            
             return `
-                <div class="bg-white border-2 border-${status.color}-200 rounded-lg p-4 text-center hover:shadow-md transition-all cursor-pointer transform hover:scale-105" 
-                     onclick="window.statisticsManager?.showOrderDetailsByStatus('${status.key}', '${status.label}', ${JSON.stringify(status.dbStatus).replace(/"/g, '&quot;')})">
-                    <div class="flex justify-center mb-2">
-                        <div class="w-12 h-12 bg-${status.color}-100 rounded-full flex items-center justify-center">
-                            <i class="${status.icon} text-${status.color}-600 text-lg"></i>
+                <div class="bg-white rounded-lg shadow p-4 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+                     onclick="window.statisticsManager?.showOrderDetailsByStatus('${config.key}', '${config.label}', ${JSON.stringify(config.dbStatuses).replace(/"/g, '&quot;')})">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="p-2 rounded-lg bg-${config.color}-100">
+                            <i class="${config.icon} text-${config.color}-600 text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-bold text-gray-900">${count}</span>
+                    </div>
+                    <div class="space-y-1">
+                        <h4 class="text-sm font-medium text-gray-700">${config.label}</h4>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-gray-500">${percentage}%</span>
+                            ${count > 0 ? '<span class="text-blue-600 text-xs">→ Xem chi tiết</span>' : ''}
                         </div>
                     </div>
-                    <h4 class="text-2xl font-bold text-${status.color}-700 mb-1">${count}</h4>
-                    <p class="text-${status.color}-600 text-sm font-medium">${status.label}</p>
-                    <p class="text-xs text-gray-400 mt-1">Click để xem chi tiết</p>
                 </div>
             `;
-        }).join('');
+        });
+
+        container.innerHTML = statusCards.join('');
+
+        // ✅ LOG: Summary
+        const totalCalculated = statusConfig.reduce((sum, config) => sum + (stats[config.backendField] || 0), 0);
+        console.log(`📊 Total calculated: ${totalCalculated}, Backend total: ${stats.total}`);
+        
+        if (totalCalculated !== stats.total) {
+            console.warn(`⚠️ Total mismatch: calculated=${totalCalculated}, backend=${stats.total}`);
+        }
+
     } catch (error) {
-        this.renderOrderStatusError(error.message);
+        console.error('❌ Error rendering order status stats:', error);
+        this.renderOrderStatusError(`Lỗi hiển thị: ${error.message}`);
     }
 }
     /**
@@ -1714,48 +2076,80 @@ async loadProfitAnalysis() {
  * Hiển thị chi tiết đơn hàng theo trạng thái - NEW METHOD
  */
 
+
 async showOrderDetailsByStatus(statusKey, statusLabel, dbStatuses) {
     try {
-        // Hiển thị modal
-        const modal = document.getElementById('order-details-modal');
-        const title = document.getElementById('modal-title');
-        const content = document.getElementById('order-details-content');
+        console.log(`🔍 Loading orders for status: ${statusKey} (${statusLabel})`);
+        console.log(`📋 DB Statuses: ${JSON.stringify(dbStatuses)}`);
         
-        if (!modal || !title || !content) {
-            console.error('Modal elements not found');
-            return;
+        // ✅ Show modal immediately với loading state
+        const modal = document.getElementById('order-details-modal');
+        if (modal) {
+            // ✅ FIXED: Add body scroll lock
+            document.body.classList.add('modal-open');
+            
+            // ✅ Remove hidden class
+            modal.classList.remove('hidden');
+            
+            // ✅ Update title
+            const modalTitle = document.getElementById('modal-title');
+            if (modalTitle) {
+                modalTitle.textContent = `Chi tiết đơn hàng: ${statusLabel}`;
+            }
+            
+            // ✅ Show loading trong modal
+            const content = document.getElementById('order-details-content');
+            if (content) {
+                content.innerHTML = `
+                    <div class="text-center py-12">
+                        <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
+                        <p class="text-gray-600">Đang tải dữ liệu cho "${statusLabel}"...</p>
+                    </div>
+                `;
+            }
         }
         
-        // Cập nhật title
-        title.textContent = `Đơn hàng ${statusLabel}`;
+        // ✅ CHUẨN HÓA: Prepare status parameter
+        let apiStatuses;
+        if (dbStatuses && dbStatuses.length > 0) {
+            apiStatuses = dbStatuses.join(',');
+        } else {
+            // Fallback mapping
+            const statusMapping = {
+                'pending': 'Chờ xác nhận',
+                'processing': 'Đang xử lý',
+                'shipping': 'Đang giao',
+                'delivered': 'Đã giao',
+                'refundRequested': 'Yêu cầu trả hàng/ hoàn tiền',
+                'refunded': 'Đã hoàn tiền',
+                'completed': 'Hoàn thành',
+                'cancelled': 'Đã hủy'
+            };
+            apiStatuses = statusMapping[statusKey] || statusKey;
+        }
         
-        // Hiển thị modal với loading
-        modal.classList.remove('hidden');
-        content.innerHTML = `
-            <div class="text-center py-12">
-                <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                <p class="text-gray-600 text-lg">Đang tải danh sách đơn hàng...</p>
-                <p class="text-gray-400 text-sm mt-2">Trạng thái: ${statusLabel}</p>
-            </div>
-        `;
+        console.log(`🌐 API call with statuses: "${apiStatuses}"`);
         
-        // Gọi API để lấy chi tiết đơn hàng
-        console.log(`Loading orders for status: ${statusKey}`, dbStatuses);
+        // ✅ FIXED: Call API với proper error handling
+        const response = await this.makeRequest(`/Statistics/orders-by-status?statuses=${encodeURIComponent(apiStatuses)}`);
         
-        // Tạo query parameters cho các trạng thái
-        const statusParams = Array.isArray(dbStatuses) ? dbStatuses.join(',') : dbStatuses;
-        const response = await this.makeRequest(`/Statistics/orders-by-status?statuses=${encodeURIComponent(statusParams)}`, 'GET');
-        
-        console.log('API Response:', response);
-        
-        if (response) {
+        if (response && response.success && response.data) {
+            console.log(`✅ Loaded ${response.data.length} orders for ${statusLabel}`);
+            
+            // ✅ Store data for export
+            this.currentOrdersData = {
+                orders: response.data,
+                statuses: apiStatuses,
+                statusLabel: statusLabel
+            };
+            
             this.renderOrderDetailsContent(response, statusLabel, statusKey);
         } else {
-            throw new Error('Không nhận được dữ liệu từ server');
+            throw new Error(response?.message || 'Không có dữ liệu đơn hàng');
         }
         
     } catch (error) {
-        console.error('Error showing order details:', error);
+        console.error(`❌ Error loading orders for ${statusLabel}:`, error);
         this.renderOrderDetailsError(error.message, statusLabel);
     }
 }
@@ -1766,53 +2160,49 @@ async loadStatistics() {
 /**
  * Render nội dung chi tiết đơn hàng 
  */
+// ✅ SỬA: renderOrderDetailsContent method
+
 renderOrderDetailsContent(response, statusLabel, statusKey) {
     const content = document.getElementById('order-details-content');
-    if (!content) return;
+    if (!content) {
+        console.error('❌ order-details-content element not found');
+        return;
+    }
     
-    // ✅ CHUẨN HÓA: Extract orders từ nhiều format response khác nhau
+    // ✅ Extract orders từ response
     let orders = [];
-    
-    if (response) {
-        if (Array.isArray(response)) {
-            // Format 1: Response trực tiếp là array
-            orders = response;
-        } else if (response.success && response.data) {
-            // Format 2: Standardized response với success flag
-            orders = Array.isArray(response.data) ? response.data : [];
-        } else if (response.items && Array.isArray(response.items)) {
-            // Format 3: Response có property items
-            orders = response.items;
-        } else if (response.result && Array.isArray(response.result)) {
-            // Format 4: Response có property result
-            orders = response.result;
-        } else if (response.data && Array.isArray(response.data)) {
-            // Format 5: Fallback - response có property data
-            orders = response.data;
-        }
+    if (response && response.success && response.data) {
+        orders = Array.isArray(response.data) ? response.data : [];
+    } else if (Array.isArray(response)) {
+        orders = response;
+    } else {
+        console.warn('⚠️ Unexpected response format:', response);
+        orders = [];
     }
     
     console.log(`📦 Processed ${orders.length} orders for status: ${statusLabel}`);
     
     if (!orders || orders.length === 0) {
         content.innerHTML = `
-            <div class="text-center py-12">
+            <div class="text-center py-16">
                 <div class="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
                     <i class="fas fa-inbox text-gray-400 text-4xl"></i>
                 </div>
                 <h3 class="text-xl font-semibold text-gray-700 mb-2">Không có đơn hàng</h3>
-                <p class="text-gray-500">Hiện tại không có đơn hàng nào ở trạng thái "${statusLabel}"</p>
+                <p class="text-gray-500 mb-6">Không tìm thấy đơn hàng nào với trạng thái "${statusLabel}"</p>
             </div>
         `;
         return;
     }
     
-    // Tính toán thống kê
+    // ✅ Tính toán thống kê
     const totalRevenue = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
     const averageOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+    const todayOrders = orders.filter(o => o.createdToday || 
+        (o.orderDate && new Date(o.orderDate).toDateString() === new Date().toDateString()));
     
     content.innerHTML = `
-        <!-- Thống kê tổng quan -->
+        <!-- ✅ Thống kê tổng quan -->
         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 mb-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="text-center">
@@ -1828,18 +2218,41 @@ renderOrderDetailsContent(response, statusLabel, statusKey) {
                     <p class="text-gray-600 text-sm">Giá trị TB/đơn</p>
                 </div>
                 <div class="text-center">
-                    <h4 class="text-2xl font-bold text-orange-600">${orders.filter(o => o.createdToday).length}</h4>
+                    <h4 class="text-2xl font-bold text-orange-600">${todayOrders.length}</h4>
                     <p class="text-gray-600 text-sm">Đơn hôm nay</p>
                 </div>
             </div>
         </div>
         
-        <!-- Danh sách đơn hàng -->
+        <!-- ✅ Search và Sort controls -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+            <div class="flex flex-col md:flex-row gap-4 items-end">
+                <div class="flex-1">
+                    <label for="order-search" class="block text-sm font-medium text-gray-700 mb-1">Tìm kiếm</label>
+                    <input type="text" id="order-search" placeholder="Tìm theo mã đơn hàng, tên khách hàng..."
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="w-full md:w-48">
+                    <label for="order-sort" class="block text-sm font-medium text-gray-700 mb-1">Sắp xếp</label>
+                    <select id="order-sort" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="date_desc">Ngày mới nhất</option>
+                        <option value="date_asc">Ngày cũ nhất</option>
+                        <option value="amount_desc">Giá trị cao nhất</option>
+                        <option value="amount_asc">Giá trị thấp nhất</option>
+                        <option value="customer_asc">Tên khách hàng A-Z</option>
+                        <option value="customer_desc">Tên khách hàng Z-A</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ✅ Danh sách đơn hàng -->
         <div class="space-y-4" id="orders-list">
             ${orders.map(order => this.renderOrderCard(order)).join('')}
         </div>
     `;
     
+    // ✅ Bind events cho search/sort
     this.bindOrderDetailsEvents();
 }
 /**
@@ -1914,7 +2327,102 @@ renderOrderCard(order) {
         </div>
     `;
 }
+renderOrderProducts(products) {
+    if (!products || products.length === 0) {
+        return `
+            <div class="bg-gray-50 rounded-lg p-3 text-center text-gray-500 mt-4">
+                <i class="fas fa-box-open mr-2"></i>Không có thông tin sản phẩm
+            </div>
+        `;
+    }
+    
+    return `
+        <div class="bg-gray-50 rounded-lg p-4 mt-4">
+            <h5 class="font-medium text-gray-700 mb-3 flex items-center">
+                <i class="fas fa-shopping-bag mr-2 text-blue-600"></i>
+                Sản phẩm trong đơn hàng (${products.length})
+            </h5>
+            <div class="space-y-3 max-h-40 overflow-y-auto">
+                ${products.map(product => this.renderProductItem(product)).join('')}
+            </div>
+        </div>
+    `;
+}
 
+/**
+ * Render từng product item với layout FIXED - NO MORE OVERLAPPING
+ */
+renderProductItem(product) {
+    // ✅ Validate và format dữ liệu
+    const productName = product.productName || 'Sản phẩm không xác định';
+    const categoryName = product.categoryName || 'N/A';
+    const quantity = product.quantity || 0;
+    const price = product.price || 0;
+    const totalPrice = product.totalPrice || (price * quantity);
+    
+    // ✅ Format currency với fallback
+    const formattedPrice = product.formattedPrice || this.formatCurrency(price);
+    const formattedTotalPrice = product.formattedTotalPrice || this.formatCurrency(totalPrice);
+    
+    // ✅ Image handling với proper fallback
+    const imageUrl = product.imageUrl || product.fullImageUrl || '';
+    const hasImage = imageUrl && imageUrl.trim() !== '';
+    
+    return `
+        <div class="product-item-card">
+            <!-- ✅ FIXED: Container layout với proper structure -->
+            <div class="flex items-center space-x-4">
+                <!-- ✅ Product Image Container - FIXED SIZE -->
+                <div class="flex-shrink-0">
+                    ${hasImage ? 
+                        `<img src="${imageUrl}" 
+                              alt="${productName}" 
+                              class="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                         <div class="w-16 h-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center" style="display: none;">
+                             <i class="fas fa-image text-gray-400 text-sm"></i>
+                         </div>` :
+                        `<div class="w-16 h-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                             <i class="fas fa-image text-gray-400 text-sm"></i>
+                         </div>`
+                    }
+                </div>
+                
+                <!-- ✅ Product Info - FLEXIBLE WIDTH -->
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-gray-900 truncate text-sm" title="${productName}">
+                        ${productName}
+                    </p>
+                    <p class="text-xs text-gray-500 mt-1">
+                        ${categoryName}
+                    </p>
+                </div>
+                
+                <!-- ✅ FIXED: Pricing Table với container riêng -->
+                <div class="flex-shrink-0">
+                    <div class="pricing-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>SL</th>
+                                    <th>Đơn giá</th>
+                                    <th>Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>${quantity}</td>
+                                    <td>${formattedPrice}</td>
+                                    <td>${formattedTotalPrice}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
 /**
  * Lấy class CSS cho badge trạng thái - NEW METHOD
  */
@@ -1940,25 +2448,15 @@ getOrderActionButton(order) {
     switch (order.status) {
         case 'Chờ xác nhận':
             return `
-                <button onclick="window.statisticsManager?.confirmOrder(${order.orderID})" 
-                        class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm">
-                    <i class="fas fa-check mr-2"></i>Xác nhận
-                </button>
+                
             `;
         case 'Đang xử lý':
             return `
-                <button onclick="window.statisticsManager?.shipOrder(${order.orderID})" 
-                        class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm">
-                    <i class="fas fa-truck mr-2"></i>Giao hàng
-                </button>
+                
             `;
         case 'Đang giao':
         case 'Đang giao hàng':
             return `
-                <button onclick="window.statisticsManager?.completeOrder(${order.orderID})" 
-                        class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm">
-                    <i class="fas fa-check-circle mr-2"></i>Hoàn thành
-                </button>
             `;
         default:
             return '';
@@ -2185,7 +2683,7 @@ showSingleOrderModal(orderDetails) {
         return;
     }
     
-    // ✅ CHUẨN HÓA: Xử lý cả OrderDto và OrderByStatusDto format
+    // ✅ CHUẨN HÓA: Xử lý cả OrderDto format từ API Orders/{orderId}
     let orderData = orderDetails;
     
     // Nếu response có wrapper (success, data)
@@ -2196,35 +2694,49 @@ showSingleOrderModal(orderDetails) {
     }
     
     console.log('📊 Processed order data:', orderData);
+    console.log('📸 Order details items:', orderData.orderDetails);
     
     // Validate dữ liệu cần thiết
     if (!orderData || !orderData.orderID) {
         console.error('❌ Invalid order data structure:', orderData);
         content.innerHTML = `
-            <div class="text-center py-12">
-                <div class="w-24 h-24 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-exclamation-triangle text-red-500 text-4xl"></i>
+            <div class="flex flex-col items-center justify-center py-16 px-6">
+                <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-red-100 to-red-200 rounded-2xl flex items-center justify-center shadow-lg">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
                 </div>
-                <h3 class="text-xl font-semibold text-gray-700 mb-2">Dữ liệu đơn hàng không hợp lệ</h3>
-                <p class="text-gray-500 mb-6">Cấu trúc dữ liệu từ API không đúng định dạng mong đợi</p>
+                <h3 class="text-2xl font-bold text-gray-800 mb-3">Oops! Có lỗi xảy ra</h3>
+                <p class="text-gray-600 text-center mb-8 max-w-md">Dữ liệu đơn hàng không hợp lệ hoặc không đúng định dạng mong đợi</p>
                 <button onclick="window.statisticsManager?.closeOrderDetailsModal()" 
-                        class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition">
-                    Đóng
+                        class="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-8 py-3 rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                    <i class="fas fa-times mr-2"></i>Đóng
                 </button>
             </div>
         `;
         return;
     }
     
-    // ✅ CHUẨN HÓA: Xử lý OrderDto format từ OrdersController
+    // ✅ FIXED: Sử dụng đúng field names từ OrderDto API
     const orderDate = new Date(orderData.orderDate);
     
-    // Tính toán thông tin - FLEXIBLE cho nhiều format
+    // ✅ FIXED: orderDetails field từ API Orders/{orderId}
     const orderDetails_items = orderData.orderDetails || orderData.items || [];
+    console.log(`📦 Found ${orderDetails_items.length} order detail items`);
+    
+    // Log chi tiết để debug
+    orderDetails_items.forEach((item, index) => {
+        console.log(`📸 Item ${index + 1}:`, {
+            productName: item.productName,
+            productImageURL: item.productImageURL,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            allFields: Object.keys(item)
+        });
+    });
+    
     const totalItems = orderDetails_items.reduce((sum, item) => sum + (item.quantity || 0), 0);
     const totalAmount = orderDetails_items.reduce((sum, item) => sum + ((item.unitPrice || 0) * (item.quantity || 0)), 0);
     
-    // Customer info - FLEXIBLE
+    // ✅ FIXED: Customer info từ OrderDto
     const customer = orderData.customerInfo || {};
     const customerName = customer.fullName || customer.customerName || orderData.customerName || 'N/A';
     const customerEmail = customer.email || customer.customerEmail || orderData.customerEmail || 'N/A';
@@ -2233,76 +2745,253 @@ showSingleOrderModal(orderDetails) {
     console.log('📊 Calculated values:', { totalItems, totalAmount, customerName });
     
     content.innerHTML = `
-        <div class="space-y-6">
-            <!-- Header đơn hàng -->
-            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Đơn hàng #${orderData.orderID}</h3>
-                        <div class="flex items-center space-x-4">
-                            <span class="px-3 py-1 rounded-full text-sm font-medium ${this.getStatusBadgeClass(orderData.status)}">
+        <!-- ✨ Custom CSS cho animations -->
+        <style>
+            @keyframes fade-in {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+            }
+            .animate-fade-in {
+                animation: fade-in 0.5s ease-out;
+            }
+            
+            /* Custom scrollbar cho mobile */
+            .custom-scrollbar::-webkit-scrollbar {
+                width: 4px;
+                height: 4px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 2px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 2px;
+            }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+            }
+        </style>
+        
+        <div class="space-y-8 custom-scrollbar">
+            <!-- ✨ Header đơn hàng với gradient đẹp -->
+            <div class="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 rounded-2xl p-8 text-white shadow-2xl">
+                <!-- Background pattern -->
+                <div class="absolute inset-0 opacity-10">
+                    <div class="absolute inset-0" style="background-image: radial-gradient(circle at 25% 25%, white 2px, transparent 2px); background-size: 24px 24px;"></div>
+                </div>
+                
+                <div class="relative flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                <i class="fas fa-receipt text-white text-lg"></i>
+                            </div>
+                            <h3 class="text-3xl font-bold">Đơn hàng #${orderData.orderID}</h3>
+                        </div>
+                        
+                        <div class="flex flex-wrap items-center gap-4">
+                            <span class="px-4 py-2 rounded-full text-sm font-semibold bg-white/20 backdrop-blur-sm border border-white/30 ${this.getStatusBadgeClass(orderData.status)}">
+                                <i class="fas fa-circle text-xs mr-2"></i>
                                 ${orderData.status || 'Chưa xác định'}
                             </span>
-                            <span class="text-gray-600">${orderDate.toLocaleString('vi-VN')}</span>
+                            <div class="flex items-center space-x-2 text-white/90">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span class="font-medium">${orderDate.toLocaleString('vi-VN')}</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-sm text-gray-600">Tổng giá trị</p>
-                        <p class="text-2xl font-bold text-blue-600">${this.formatCurrency(totalAmount)}</p>
+                    
+                    <div class="text-right lg:text-left">
+                        <p class="text-white/80 text-sm mb-1">Tổng giá trị đơn hàng</p>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-money-bill-wave text-2xl"></i>
+                            <p class="text-4xl font-bold">${this.formatCurrency(totalAmount)}</p>
+                        </div>
+                        <p class="text-white/70 text-sm mt-1">${totalItems} sản phẩm</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Thông tin khách hàng -->
-            <div class="bg-white border rounded-lg p-6">
-                <h4 class="text-lg font-semibold mb-4 flex items-center">
-                    <i class="fas fa-user text-blue-600 mr-2"></i>
-                    Thông tin khách hàng
-                </h4>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">Tên khách hàng</p>
-                        <p class="font-medium">${customerName}</p>
+            <!-- 👤 Thông tin khách hàng với card đẹp -->
+            <div class="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-user text-white text-lg"></i>
                     </div>
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">Email</p>
-                        <p class="font-medium">${customerEmail}</p>
+                    <h4 class="text-2xl font-bold text-gray-800">Thông tin khách hàng</h4>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2 text-gray-600 mb-1">
+                            <i class="fas fa-user-circle text-blue-500"></i>
+                            <p class="text-sm font-medium">Tên khách hàng</p>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-800 pl-6">${customerName}</p>
                     </div>
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">Số điện thoại</p>
-                        <p class="font-medium">${customerPhone}</p>
+                    
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2 text-gray-600 mb-1">
+                            <i class="fas fa-envelope text-green-500"></i>
+                            <p class="text-sm font-medium">Email</p>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-800 pl-6">${customerEmail}</p>
                     </div>
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">Địa chỉ giao hàng</p>
-                        <p class="font-medium">${orderData.shippingAddress || 'N/A'}</p>
+                    
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2 text-gray-600 mb-1">
+                            <i class="fas fa-phone text-purple-500"></i>
+                            <p class="text-sm font-medium">Số điện thoại</p>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-800 pl-6">${customerPhone}</p>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2 text-gray-600 mb-1">
+                            <i class="fas fa-map-marker-alt text-red-500"></i>
+                            <p class="text-sm font-medium">Địa chỉ giao hàng</p>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-800 pl-6">${orderData.shippingAddress || 'Chưa có thông tin'}</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Chi tiết sản phẩm -->
-            <div class="bg-white border rounded-lg p-6">
-                <h4 class="text-lg font-semibold mb-4 flex items-center">
-                    <i class="fas fa-box text-green-600 mr-2"></i>
-                    Sản phẩm đã đặt (${totalItems} món)
-                </h4>
-                <div class="space-y-4">
-                    ${orderDetails_items.map(item => {
+            <!-- 📦 Chi tiết sản phẩm với design hiện đại -->
+            <div class="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-shopping-cart text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-2xl font-bold text-gray-800">Sản phẩm đã đặt</h4>
+                            <p class="text-gray-600">${totalItems} món trong đơn hàng</p>
+                        </div>
+                    </div>
+                    
+                    <div class="hidden lg:block">
+                        <div class="bg-gradient-to-r from-green-100 to-teal-100 px-6 py-3 rounded-xl">
+                            <p class="text-green-700 font-semibold">Tổng: ${this.formatCurrency(totalAmount)}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-6">
+                    ${orderDetails_items.map((item, index) => {
                         const itemTotal = (item.unitPrice || 0) * (item.quantity || 0);
+                        
+                        // ✅ FIXED: Sử dụng đúng field productImageURL từ API
+                        const productImageURL = item.productImageURL || '';
+                        const hasValidImage = productImageURL && productImageURL.trim() !== '';
+                        
+                        // ✅ ENHANCED: Xử lý đường dẫn ảnh với lazy loading
+                        let finalImageUrl = '';
+                        if (hasValidImage) {
+                            // Xử lý URL base
+                            if (productImageURL.startsWith('http')) {
+                                finalImageUrl = productImageURL;
+                            } else if (productImageURL.startsWith('/')) {
+                                finalImageUrl = `https://localhost:7088${productImageURL}`;
+                            } else {
+                                finalImageUrl = `https://localhost:7088/${productImageURL}`;
+                            }
+                        } else {
+                            // Sử dụng placeholder đẹp hơn
+                            finalImageUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.productName || 'Product')}&size=200&background=f97316&color=ffffff&format=png&rounded=true&font-size=0.4`;
+                        }
+                        
+                        console.log(`📸 Item ${index + 1} image processing:`, {
+                            original: productImageURL,
+                            hasValidImage,
+                            final: finalImageUrl
+                        });
+                        
                         return `
-                            <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                                <div class="flex-shrink-0 w-16 h-16">
-                                    <img src="${item.productImage || item.imageUrl || item.thumbnail || 'https://via.placeholder.com/150'}" 
-                                         alt="${item.productName || 'Sản phẩm'}" 
-                                         class="w-full h-full object-cover rounded"
-                                         onerror="this.src='https://via.placeholder.com/150'">
-                                </div>
-                                <div class="flex-1">
-                                    <h5 class="font-medium text-gray-900">${item.productName || 'Sản phẩm'}</h5>
-                                    <p class="text-sm text-gray-600">${item.categoryName || ''}</p>
-                                    <div class="flex items-center justify-between mt-2">
-                                        <span class="text-sm text-gray-600">SL: ${item.quantity || 0}</span>
-                                        <span class="text-sm text-gray-600">Đơn giá: ${this.formatCurrency(item.unitPrice || 0)}</span>
-                                        <span class="font-semibold text-blue-600">Thành tiền: ${this.formatCurrency(itemTotal)}</span>
+                            <div class="group relative bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 border border-gray-200 hover:border-blue-300">
+                                <div class="flex flex-col lg:flex-row space-y-4 lg:space-y-0 lg:space-x-6">
+                                    <!-- ✨ Product Image với avatar-style như design mới -->
+                                    <div class="flex-shrink-0 mx-auto lg:mx-0">
+                                        <div class="relative w-20 h-20 lg:w-24 lg:h-24">
+                                            <!-- Background với gradient nhẹ -->
+                                            <div class="absolute inset-0 bg-gradient-to-br from-orange-100 via-yellow-50 to-amber-100 rounded-2xl shadow-inner"></div>
+                                            
+                                            <!-- Main product image -->
+                                            <img src="${finalImageUrl}" 
+                                                 alt="${item.productName || 'Sản phẩm'}" 
+                                                 class="relative w-full h-full object-contain rounded-2xl p-2 group-hover:scale-110 transition-all duration-500 filter drop-shadow-sm"
+                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                                                 onload="console.log('✅ Image loaded successfully:', this.src); this.classList.add('animate-fade-in');"
+                                                 data-original-url="${productImageURL}"
+                                                 data-final-url="${finalImageUrl}">
+                                            
+                                            <!-- Fallback với cute avatar style -->
+                                            <div class="relative w-full h-full bg-gradient-to-br from-orange-100 via-yellow-50 to-amber-100 rounded-2xl flex items-center justify-center" style="display: none;">
+                                                <div class="text-center p-2">
+                                                    <!-- Cute product icon như trong design -->
+                                                    <div class="w-8 h-8 mx-auto mb-1 bg-orange-200 rounded-full flex items-center justify-center">
+                                                        <i class="fas fa-box text-orange-600 text-sm"></i>
+                                                    </div>
+                                                    <p class="text-xs text-orange-600 font-medium">Sản phẩm</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Loading spinner overlay -->
+                                            <div class="absolute inset-0 bg-white/80 rounded-2xl flex items-center justify-center" id="loading-${index}" style="display: none;">
+                                                <div class="animate-spin rounded-full h-6 w-6 border-2 border-orange-300 border-t-orange-600"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- ✨ Product Details với layout đẹp -->
+                                    <div class="flex-1 space-y-4">
+                                        <div class="text-center lg:text-left">
+                                            <h5 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                                                ${item.productName || 'Tên sản phẩm không xác định'}
+                                            </h5>
+                                            <div class="flex items-center justify-center lg:justify-start space-x-2">
+                                                <i class="fas fa-tag text-purple-500"></i>
+                                                <p class="text-sm font-medium text-gray-600">${item.categoryName || 'Danh mục: N/A'}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- ✨ Pricing table với gradient -->
+                                        <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                                            <div class="grid grid-cols-3 gap-4 text-center">
+                                                <div class="space-y-1">
+                                                    <div class="flex items-center justify-center space-x-1 text-gray-600 mb-1">
+                                                        <i class="fas fa-cubes text-blue-500"></i>
+                                                        <p class="text-xs font-medium">Số lượng</p>
+                                                    </div>
+                                                    <p class="text-lg font-bold text-blue-600">${item.quantity || 0}</p>
+                                                </div>
+                                                
+                                                <div class="space-y-1 border-x border-gray-200">
+                                                    <div class="flex items-center justify-center space-x-1 text-gray-600 mb-1">
+                                                        <i class="fas fa-money-bill text-green-500"></i>
+                                                        <p class="text-xs font-medium">Đơn giá</p>
+                                                    </div>
+                                                    <p class="text-lg font-bold text-green-600">${this.formatCurrency(item.unitPrice || 0)}</p>
+                                                </div>
+                                                
+                                                <div class="space-y-1">
+                                                    <div class="flex items-center justify-center space-x-1 text-gray-600 mb-1">
+                                                        <i class="fas fa-calculator text-purple-500"></i>
+                                                        <p class="text-xs font-medium">Thành tiền</p>
+                                                    </div>
+                                                    <p class="text-lg font-bold text-purple-600">${this.formatCurrency(itemTotal)}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- ✨ Status badge với icon tương ứng -->
+                                        ${hasValidImage ? 
+                                            `` : 
+                                            `<div class="flex items-center justify-center lg:justify-start space-x-2 text-xs bg-orange-50 border border-orange-200 px-3 py-2 rounded-xl">
+                                                <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                                <span class="text-orange-700 font-medium">Sử dụng ảnh mặc định</span>
+                                             </div>`
+                                        }
                                     </div>
                                 </div>
                             </div>
@@ -2311,17 +3000,34 @@ showSingleOrderModal(orderDetails) {
                 </div>
             </div>
 
-            <!-- Tổng kết -->
-            <div class="bg-gray-50 rounded-lg p-6">
-                <div class="flex justify-between items-center text-lg">
-                    <span class="font-semibold">Tổng cộng:</span>
-                    <span class="font-bold text-blue-600 text-xl">${this.formatCurrency(totalAmount)}</span>
+            <!-- 💰 Tổng kết với gradient đẹp -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-2xl p-8 text-white shadow-2xl">
+                <div class="flex flex-col lg:flex-row justify-between items-center space-y-4 lg:space-y-0">
+                    <div class="text-center lg:text-left">
+                        <h4 class="text-2xl font-bold mb-2">Tổng thanh toán</h4>
+                        <p class="text-indigo-200">Bao gồm ${totalItems} sản phẩm</p>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                            <i class="fas fa-money-check-alt text-white text-2xl"></i>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-4xl font-bold">${this.formatCurrency(totalAmount)}</p>
+                            <p class="text-indigo-200 text-sm">VNĐ</p>
+                        </div>
+                    </div>
                 </div>
+            </div>
+            
+            
+                
+               
             </div>
         </div>
     `;
     
-    console.log('✅ Order modal content updated successfully');
+    console.log('✅ Order modal content updated successfully with beautiful modern design');
 }
 
 /**

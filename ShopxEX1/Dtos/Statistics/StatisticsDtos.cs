@@ -101,12 +101,33 @@ namespace ShopxEX1.Dtos.Statistics
     /// </summary>
     public class OrderStatusStatsDto
     {
-        public int Pending { get; set; }
-        public int Processing { get; set; }
-        public int Shipped { get; set; }
-        public int Delivered { get; set; }
-        public int Completed { get; set; }
-        public int Cancelled { get; set; }
+        public int Pending { get; set; }                // "Chờ xác nhận"
+            public int Processing { get; set; }             // "Đang xử lý" 
+            public int Shipping { get; set; }               // "Đang giao"
+            public int Delivered { get; set; }              // "Đã giao"
+            public int RefundRequested { get; set; }        // "Yêu cầu trả hàng/ hoàn tiền"
+            public int Cancelled { get; set; }              // "Đã hủy"
+            public int Refunded { get; set; }               // "Đã hoàn tiền"
+            public int Completed { get; set; }              // "Hoàn thành" 
+            
+                // ✅ COMPUTED PROPERTIES
+            public int Total => Pending + Processing + Shipping + Delivered + RefundRequested + Cancelled + Refunded + Completed;
+            
+            // ✅ PERCENTAGES
+            public decimal PendingPercentage => Total > 0 ? (decimal)Pending / Total * 100 : 0;
+            public decimal ProcessingPercentage => Total > 0 ? (decimal)Processing / Total * 100 : 0;
+            public decimal ShippingPercentage => Total > 0 ? (decimal)Shipping / Total * 100 : 0;
+            public decimal DeliveredPercentage => Total > 0 ? (decimal)Delivered / Total * 100 : 0;
+            public decimal CompletedPercentage => Total > 0 ? (decimal)Completed / Total * 100 : 0;
+            
+            // ✅ BUSINESS METRICS
+            public decimal CompletionRate => Total > 0 ? (decimal)(Delivered + Completed) / Total * 100 : 0;
+            public decimal CancellationRate => Total > 0 ? (decimal)(Cancelled + Refunded) / Total * 100 : 0;
+            public decimal RefundRate => Total > 0 ? (decimal)(RefundRequested + Refunded) / Total * 100 : 0;
+            
+            // ✅ ACTIVE ORDERS (cần xử lý)
+            public int ActiveOrders => Pending + Processing + Shipping + RefundRequested;
+            public int FinalizedOrders => Delivered + Completed + Cancelled + Refunded;
     }
 
     /// <summary>
@@ -255,22 +276,23 @@ namespace ShopxEX1.Dtos.Statistics
         public bool IsVIP { get; set; }
     }
 
-// THÊM VÀO CUỐI FILE (sau ProductProfitDto)
+    // THÊM VÀO CUỐI FILE (sau ProductProfitDto)
 
-/// <summary>
-/// DTO cho đơn hàng theo trạng thái
-/// </summary>
-public class OrderByStatusDto
-{
-    public int OrderID { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public DateTime OrderDate { get; set; }
-    public decimal TotalAmount { get; set; }
-    public string CustomerName { get; set; } = string.Empty;
-    public string CustomerEmail { get; set; } = string.Empty;
-    public string CustomerPhone { get; set; } = string.Empty;
-    public string ShippingAddress { get; set; } = string.Empty;
-    public int TotalItems { get; set; }
-    public bool CreatedToday { get; set; }
+    /// <summary>
+    /// DTO cho đơn hàng theo trạng thái
+    /// </summary>
+    public class OrderByStatusDto
+    {
+        public int OrderID { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public DateTime OrderDate { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerEmail { get; set; } = string.Empty;
+        public string CustomerPhone { get; set; } = string.Empty;
+        public string ShippingAddress { get; set; } = string.Empty;
+        public int TotalItems { get; set; }
+        public bool CreatedToday { get; set; }
+    
 }
 }

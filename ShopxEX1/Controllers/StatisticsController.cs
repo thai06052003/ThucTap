@@ -131,29 +131,59 @@ namespace ShopxEX1.Controllers
         [HttpGet("order-status")]
         [Authorize(Roles = "Seller")]
         public async Task<IActionResult> GetOrderStatusStats()
+{
+    try
+    {
+        Console.WriteLine("=== StatisticsController GetOrderStatusStats ENHANCED ===");
+
+        var sellerId = await GetValidSellerIdAsync();
+        if (!sellerId.HasValue)
         {
-            try
-            {
-                Console.WriteLine("=== StatisticsController GetOrderStatusStats ===");
-
-                var sellerId = await GetValidSellerIdAsync();
-                if (!sellerId.HasValue)
-                {
-                    Console.WriteLine("ERROR: Cannot determine sellerId");
-                    return Unauthorized("Không thể xác định thông tin người bán");
-                }
-
-                Console.WriteLine($"Final sellerId used: {sellerId.Value}");
-
-                var result = await _statisticsService.GetOrderStatusStatsAsync(sellerId.Value);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Lỗi khi lấy thống kê trạng thái đơn hàng");
-                return StatusCode(500, $"Lỗi xử lý yêu cầu: {ex.Message}");
-            }
+            Console.WriteLine("ERROR: Cannot determine sellerId");
+            return Unauthorized(new { 
+                success = false, 
+                message = "Không thể xác định thông tin người bán" 
+            });
         }
+
+        Console.WriteLine($"Processing order status stats for sellerId: {sellerId.Value}");
+
+        var result = await _statisticsService.GetOrderStatusStatsAsync(sellerId.Value);
+
+        // ✅ ENHANCED: Response với metadata
+        var response = new
+        {
+            success = true,
+            message = "Lấy thống kê trạng thái đơn hàng thành công",
+            data = result,
+            metadata = new
+            {
+                sellerId = sellerId.Value,
+                timestamp = DateTime.UtcNow,
+                // ✅ Validation info
+                hasData = result.Total > 0,
+                totalOrders = result.Total,
+                // ✅ Business insights
+                needsAttention = result.ActiveOrders,
+                completionRate = $"{result.CompletionRate:F1}%",
+                cancellationRate = $"{result.CancellationRate:F1}%"
+            }
+        };
+
+        Console.WriteLine($"✅ Returning {result.Total} total orders");
+        return Ok(response);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Lỗi khi lấy thống kê trạng thái đơn hàng");
+        return StatusCode(500, new { 
+            success = false,
+            message = $"Lỗi xử lý yêu cầu: {ex.Message}",
+            data = new OrderStatusStatsDto() // ✅ Empty but valid structure
+        });
+    }
+}
+
         /// <summary>
         /// API cho biểu đồ doanh thu với số ngày tùy chọn - Phiên bản chuẩn hóa
         /// </summary>
