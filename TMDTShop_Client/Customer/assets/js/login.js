@@ -16,19 +16,44 @@ const facebookProvider = new FacebookAuthProvider();
 
 // === Helper Functions ===
 function showForm(formId) {
-  const formIds = ['loginForm', 'registerForm', 'forgotPasswordForm', 'resetPasswordForm'];
+  const formIds = ['loginForm', 'registerForm', 'forgotPasswordForm', 'resetPasswordForm', 'emailPrompt', 'forgotSuccessMessage', 'successMessage'];
+  
+  console.log(`🔄 Switching to form: ${formId}`);
+  console.log(`📝 Available forms: ${formIds.join(', ')}`);
   
   // Ẩn tất cả các form
   formIds.forEach(id => {
     const form = document.getElementById(id);
-    if (form) form.classList.add('hidden');
+    if (form) {
+      form.classList.add('hidden');
+      console.log(`  ✅ Hidden: ${id}`);
+    } else {
+      console.log(`  ❌ Not found: ${id}`);
+    }
   });
 
   // Hiện form được yêu cầu
   const activeForm = document.getElementById(formId);
-  if (activeForm) activeForm.classList.remove('hidden');
+  if (activeForm) {
+    activeForm.classList.remove('hidden');
+    console.log(`  ✅ Shown: ${formId}`);
+  } else {
+    console.error(`  ❌ Target form not found: ${formId}`);
+  }
 }
 
+// ✅ CRITICAL: Expose to global scope
+window.showForm = showForm;
+
+// ✅ THÊM: cancelSocialLogin function
+function cancelSocialLogin() {
+  console.log('🚫 Cancelling social login');
+  tempUser = null;
+  showForm('loginForm');
+}
+
+// ✅ Expose to global scope
+window.cancelSocialLogin = cancelSocialLogin;
 function showSuccessMessage() {
   document.querySelectorAll('[id$="Form"]').forEach(form => form.classList.add('hidden'));
   document.getElementById('successMessage')?.classList.remove('hidden');
@@ -359,13 +384,69 @@ document.getElementById('facebookLogin')?.addEventListener('click', async () => 
 async function handleSocialLogin(user) {
   const provider = user.providerData[0]?.providerId;
   
+  console.log('🔍 Social login debug:', {
+    provider: provider,
+    email: user.email,
+    displayName: user.displayName,
+    uid: user.uid,
+    providerData: user.providerData
+  });
+  
+  // ✅ FIXED: Check database first for Facebook users
   if (!user.email && provider === 'facebook.com') {
-    tempUser = { ...user };
-    document.getElementById('emailPrompt')?.classList.remove('hidden');
-    return;
+    console.log('📧 Facebook login without email - checking existing account...');
+    
+    try {
+      // ✅ NEW: Check if user already exists in database by Facebook UID
+      const checkResponse = await fetch(`${API_BASE}/check-social-user`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          provider: provider,
+          userId: user.uid
+        })
+      });
+      
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json();
+        console.log('📊 Check existing user response:', checkData);
+        
+        if (checkData.success && checkData.exists && checkData.user) {
+          // ✅ User exists in database, use stored email
+          console.log('✅ Found existing Facebook user in database:', checkData.user.email);
+          user.email = checkData.user.email; // ✅ Set email from database
+          
+          // ✅ Continue with normal login flow
+          await proceedWithSocialLogin(user, provider);
+          return;
+        }
+      }
+      
+      // ✅ User doesn't exist or error occurred, show email prompt
+      console.log('❌ No existing Facebook user found, showing email prompt');
+      tempUser = { ...user };
+      
+      // ✅ CRITICAL: Use showForm to properly hide other forms
+      showForm('emailPrompt');
+      return;
+      
+    } catch (error) {
+      console.error('❌ Error checking existing user:', error);
+      // ✅ Fallback to email prompt
+      tempUser = { ...user };
+      showForm('emailPrompt');
+      return;
+    }
   }
 
-  // Đổi tên thành requestData để tránh xung đột
+  // ✅ For users with email or other providers
+  await proceedWithSocialLogin(user, provider);
+}
+
+/**
+ * ✅ NEW: Separate function for actual social login processing
+ */
+async function proceedWithSocialLogin(user, provider) {
   const requestData = {
     email: user.email,
     provider: provider,
@@ -378,6 +459,8 @@ async function handleSocialLogin(user) {
   };
 
   try {
+    console.log('🌐 Sending social login request:', requestData);
+    
     const res = await fetch(`${API_BASE}/social-login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -385,7 +468,8 @@ async function handleSocialLogin(user) {
     });
 
     const data = await res.json();
-    console.log('Social login response data:', data);
+    console.log('✅ Social login response data:', data);
+    
     if (!res.ok) throw new Error(data.message || "Đăng nhập thất bại");
 
     // Log thông tin vai trò để debug
@@ -415,7 +499,6 @@ async function handleSocialLogin(user) {
     console.log('Determined role value to save:', userRole);
     console.log('Determined shopName to save:', shopName);
     
-    // Biến này vẫn có thể giữ tên userData vì nó là biến mới
     const userData = {
       fullName: data.user?.fullName || data.fullName || user.displayName || user.email,
       email: data.user?.email || user.email,
@@ -423,7 +506,7 @@ async function handleSocialLogin(user) {
       birthday: data.user?.birthday || '',
       gender: data.user?.gender,
       address: data.user?.address || '',
-      avatar: data.user?.avatar || '',
+      avatar: data.user?.avatar || user.photoURL || '',
       role: userRole,
       shopName: shopName || ''
     };
@@ -437,17 +520,78 @@ async function handleSocialLogin(user) {
 
     showSuccessMessage();
   } catch (error) {
+    console.error('❌ Social login error:', error);
     alert("Đăng nhập thất bại: " + error.message);
   }
 }
-
 // Xử lý khi người dùng nhập email cho Facebook login
 document.getElementById('emailPromptForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!tempUser) return;
+  
+  if (!tempUser) {
+    alert('Lỗi: Thông tin đăng nhập tạm thời không tồn tại');
+    showForm('loginForm');
+    return;
+  }
 
-  const email = document.getElementById('socialEmail').value;
-  tempUser.email = email;
-  await handleSocialLogin(tempUser);
-  document.getElementById('emailPrompt')?.classList.add('hidden');
+  const email = document.getElementById('socialEmail').value.trim();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  
+  // ✅ Validate email
+  if (!email) {
+    alert('Vui lòng nhập email');
+    return;
+  }
+  
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    alert('Định dạng email không hợp lệ');
+    return;
+  }
+  
+  // ✅ Show loading state
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang xử lý...';
+  submitBtn.disabled = true;
+  
+  console.log('📧 Processing Facebook login with email:', email);
+  
+  try {
+    // ✅ Check if email already exists in system
+    const emailCheckResponse = await fetch(`${API_BASE}/check-email-exists`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email })
+    });
+    
+    if (emailCheckResponse.ok) {
+      const emailCheckData = await emailCheckResponse.json();
+      console.log('📊 Email check response:', emailCheckData);
+      
+      if (emailCheckData.exists && !emailCheckData.isSocialAccount) {
+        // ✅ Email belongs to regular account
+        alert('Email này đã được sử dụng cho tài khoản thường. Vui lòng sử dụng email khác hoặc đăng nhập bằng email và mật khẩu.');
+        return;
+      }
+    }
+    
+    // ✅ Add email to tempUser and continue
+    tempUser.email = email;
+    
+    // ✅ Process login with email
+    await proceedWithSocialLogin(tempUser, 'facebook.com');
+    
+  } catch (error) {
+    console.error('❌ Error processing Facebook login with email:', error);
+    alert('Lỗi xử lý đăng nhập: ' + error.message);
+    // ✅ Show email prompt again on error
+    showForm('emailPrompt');
+  } finally {
+    // ✅ Reset button state
+    submitBtn.innerHTML = '<i class="fas fa-arrow-right mr-2"></i>Tiếp tục đăng nhập';
+    submitBtn.disabled = false;
+    
+    // ✅ Clear temp user
+    tempUser = null;
+  }
 });
+

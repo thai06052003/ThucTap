@@ -322,7 +322,14 @@ namespace ShopxEX1.Controllers
                 var success = await _orderService.UpdateOrderStatusAsync(orderId, statusUpdateDto, idForService, userRole);
                 if (success)
                 {
-                    return NoContent(); // 204 No Content
+                            var message = GetSuccessMessageForStatusChange(statusUpdateDto.NewStatus);
+                    return Ok(new { 
+                        success = true,
+                        message = message,
+                        orderId = orderId,
+                        newStatus = statusUpdateDto.NewStatus,
+                        timestamp = DateTime.UtcNow
+            });
                 }
                 // Trường hợp service trả về false (ví dụ: trạng thái không đổi) nhưng không ném exception
                 return BadRequest("Không thể cập nhật trạng thái đơn hàng hoặc trạng thái không thay đổi.");
@@ -336,7 +343,7 @@ namespace ShopxEX1.Controllers
             {
                 _logger.LogWarning(ex, "Lỗi cập nhật trạng thái đơn hàng: Không có quyền cho OrderID {OrderId}.", orderId);
                 return Forbid(ex.Message);
-            } 
+            }
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "Lỗi cập nhật trạng thái đơn hàng: Thao tác không hợp lệ cho OrderID {OrderId}.", orderId);
@@ -351,7 +358,8 @@ namespace ShopxEX1.Controllers
         /// <summary>
         /// [Seller, Admin] Cập nhật trạng thái của một đơn hàng.
         /// </summary>
-        [HttpPut("{orderId}/order-status")]
+        [HttpPut("{orderId}/customer-status")]
+        [Authorize(Roles = "Customer")]
         public async Task<IActionResult> UpdateOrderStatusForCustomer(int orderId, [FromBody] OrderStatusUpdateDto statusUpdateDto)
         {
             if (!ModelState.IsValid)
@@ -366,7 +374,13 @@ namespace ShopxEX1.Controllers
                 var success = await _orderService.UpdateOrderStatusForCustomerAsync(orderId, statusUpdateDto, requestingUserId);
                 if (success)
                 {
-                    return NoContent(); // 204 No Content
+                    return Ok(new
+                    {
+                        message = "Yêu cầu hoàn tiền đã được gửi thành công",
+                        orderId = orderId,
+                        newStatus = statusUpdateDto.NewStatus,
+                        note = "Shop sẽ xem xét và phản hồi trong thời gian sớm nhất"
+                    });
                 }
                 // Trường hợp service trả về false (ví dụ: trạng thái không đổi) nhưng không ném exception
                 return BadRequest("Không thể cập nhật trạng thái đơn hàng hoặc trạng thái không thay đổi.");
@@ -392,5 +406,19 @@ namespace ShopxEX1.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "Lỗi xử lý yêu cầu.");
             }
         }
+        private string GetSuccessMessageForStatusChange(string newStatus)
+{
+    return newStatus switch
+    {
+        "Đang xử lý" => "Đơn hàng đã được xác nhận và đang được xử lý",
+        "Đang giao" => "Đơn hàng đang được giao đến khách hàng",
+        "Đã giao" => "Đơn hàng đã được giao thành công. Sẽ tự động hoàn thành sau 3 ngày.",
+        "Đã hoàn tiền" => "Đã xác nhận hoàn tiền cho khách hàng",
+        "Hoàn thành" => "Đã từ chối yêu cầu hoàn tiền. Đơn hàng hoàn thành.",
+        "Đã hủy" => "Đơn hàng đã được hủy và hoàn trả số lượng sản phẩm",
+        _ => "Cập nhật trạng thái thành công"
+    };
+}
+
     }
 }

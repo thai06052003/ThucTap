@@ -146,6 +146,65 @@ function getSession(key) {
         return null;
     }
 }
+/**
+ * Tính số ngày chênh lệch từ một ngày đến hiện tại
+ * @param {string|Date} dateString - Ngày cần tính (ISO string hoặc Date object)
+ * @returns {number} Số ngày chênh lệch (số dương nếu trong quá khứ)
+ */
+function getDateDifference(dateString) {
+    try {
+        const inputDate = new Date(dateString);
+        const currentDate = new Date();
+        
+        // Kiểm tra tính hợp lệ của ngày
+        if (isNaN(inputDate.getTime())) {
+            console.warn('Invalid date provided to getDateDifference:', dateString);
+            return Infinity; // Trả về số lớn để prevent return button
+        }
+        
+        // Tính chênh lệch theo milliseconds, rồi chuyển sang ngày
+        const timeDifference = currentDate.getTime() - inputDate.getTime();
+        const daysDifference = timeDifference / (1000 * 60 * 60 * 24);
+        
+        console.log(`📅 Date difference calculation:`, {
+            inputDate: inputDate.toISOString(),
+            currentDate: currentDate.toISOString(),
+            daysDifference: daysDifference,
+            roundedDays: Math.floor(daysDifference)
+        });
+        
+        return Math.floor(daysDifference); // Làm tròn xuống để chỉ tính ngày hoàn chỉnh
+    } catch (error) {
+        console.error('Error calculating date difference:', error);
+        return Infinity; // Trả về số lớn để prevent return button
+    }
+}
+
+/**
+ * Kiểm tra xem đơn hàng có thể yêu cầu hoàn tiền không (trong vòng 3 ngày)
+ * @param {string|Date} deliveryDate - Ngày giao hàng
+ * @returns {boolean} True nếu có thể yêu cầu hoàn tiền
+ */
+function canRequestReturn(deliveryDate) {
+    const daysDiff = getDateDifference(deliveryDate);
+    return daysDiff <= 3 && daysDiff >= 0; // Trong vòng 3 ngày và không phải tương lai
+}
+
+/**
+ * Format thời gian còn lại để yêu cầu hoàn tiền
+ * @param {string|Date} deliveryDate - Ngày giao hàng 
+ * @returns {string} Thông báo thời gian còn lại
+ */
+function getReturnTimeRemaining(deliveryDate) {
+    const daysDiff = getDateDifference(deliveryDate);
+    const remainingDays = 3 - daysDiff;
+    
+    if (remainingDays > 0) {
+        return `Còn ${remainingDays} ngày để yêu cầu hoàn tiền`;
+    } else {
+        return `Đã hết thời hạn yêu cầu hoàn tiền (${Math.abs(remainingDays)} ngày trước)`;
+    }
+}
 window.getSession = getSession;
 
 

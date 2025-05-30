@@ -86,14 +86,14 @@ function debounce(func, wait) {
         DA_HUY: "Đã hủy"
     });
     const STATUS_MAPPING = {
-        // Database Status -> Display Info  
         'Chờ xác nhận': { display: 'Chờ xác nhận', class: 'status-pending', vietnameseName: 'chờ xác nhận' },
         'Đang xử lý': { display: 'Đang xử lý', class: 'status-processing', vietnameseName: 'đang xử lý' },
-        'Đang giao hàng': { display: 'Đang giao hàng', class: 'status-shipped', vietnameseName: 'đang giao hàng' },
+        'Đang giao': { display: 'Đang giao', class: 'status-shipping', vietnameseName: 'đang giao' }, // ✅ SỬA
         'Đã giao': { display: 'Đã giao', class: 'status-delivered', vietnameseName: 'đã giao' },
-        'Đã hủy': { display: 'Đã hủy', class: 'status-cancelled', vietnameseName: 'đã hủy' },
-        'Yêu cầu trả hàng/ hoàn tiền': { display: 'Yêu cầu trả hàng/ hoàn tiền', class: 'status-refund', vietnameseName: 'yêu cầu trả hàng/ hoàn tiền' },
-        'Đã hoàn tiền': { display: 'Đã hoàn tiền', class: 'status-refunded', vietnameseName: 'đã hoàn tiền' }
+        'Yêu cầu trả hàng/ hoàn tiền': { display: 'Yêu cầu hoàn tiền', class: 'status-refund-request', vietnameseName: 'yêu cầu trả hàng/ hoàn tiền' },
+        'Đã hoàn tiền': { display: 'Đã hoàn tiền', class: 'status-refunded', vietnameseName: 'đã hoàn tiền' },
+        'Hoàn thành': { display: 'Hoàn thành', class: 'status-completed', vietnameseName: 'hoàn thành' }, // ✅ THÊM MỚI
+        'Đã hủy': { display: 'Đã hủy', class: 'status-cancelled', vietnameseName: 'đã hủy' }
     };
     const STATUS_VARIATIONS = {
         // Các biến thể của "Delivered"
@@ -225,20 +225,60 @@ function debounce(func, wait) {
      * @returns {string|null} - Trạng thái tiếp theo hoặc null nếu không có
      */
     function getNextStatusInFlow(currentStatus) {
-        const normalizedStatus = currentStatus.toLowerCase().trim();
+        const status = currentStatus?.toLowerCase().trim();
         
         switch (true) {
-            case normalizedStatus.includes('chờ xác nhận') || normalizedStatus.includes('pending'):
-                return 'Processing'; // ← API format
+            case status.includes('chờ xác nhận'):
+                return 'Đang xử lý';
                 
-            case normalizedStatus.includes('đang xử lý') || normalizedStatus.includes('dang xu ly') || normalizedStatus.includes('processing'):
-                return 'Đang giao'; // ← API format
+            case status.includes('đang xử lý'):
+                return 'Đang giao';
                 
-            case normalizedStatus.includes('đang giao') || normalizedStatus.includes('dang giao') || normalizedStatus.includes('shipped'):
-                return 'Đã giao'; // ← API format
+            case status.includes('đang giao'):
+                return 'Đã giao';
+                
+            case status.includes('yêu cầu trả hàng/ hoàn tiền'):
+                return 'Đã hoàn tiền'; // ✅ FIXED
                 
             default:
                 return null;
+        }
+    }
+    function getAvailableSellerStatuses(currentStatus) {
+        const status = currentStatus?.toLowerCase() || '';
+        
+        // ✅ NEW LOGIC: Transitions theo yêu cầu mới
+        const statusTransitions = {
+            'chờ xác nhận': ['Đang xử lý', 'Đã hủy'],
+            'đang xử lý': ['Đang giao', 'Đã hủy'],
+            'đang giao': ['Đã giao'],
+            'đã giao': [], // ✅ Seller KHÔNG thể chuyển từ "Đã giao"
+            'yêu cầu trả hàng/ hoàn tiền': ['Đã hoàn tiền', 'Hoàn thành'], // ✅ NEW: Seller có thể chấp nhận hoặc từ chối
+            'đã hoàn tiền': [], // Final state
+            'hoàn thành': [],   // Final state
+            'đã hủy': []        // Final state
+        };
+        
+        const allowedTransitions = statusTransitions[status] || [];
+        
+        return [
+            { value: 'Đang xử lý', text: 'Đang xử lý' },
+            { value: 'Đang giao', text: 'Đang giao' },
+            { value: 'Đã giao', text: 'Đã giao' },
+            { value: 'Đã hoàn tiền', text: 'Đã hoàn tiền' },
+            { value: 'Hoàn thành', text: 'Hoàn thành' }, // ✅ THÊM MỚI
+            { value: 'Đã hủy', text: 'Đã hủy' }
+        ].filter(s => allowedTransitions.includes(s.value));
+    }
+    async function handleConfirmRefund(orderId) {
+        if (confirm(`Xác nhận hoàn tiền cho đơn hàng #${orderId}? Đơn hàng sẽ chuyển sang trạng thái "Đã hoàn tiền".`)) {
+            const result = await updateOrderStatus(orderId, 'Đã hoàn tiền', 'Seller xác nhận hoàn tiền');
+            if (result.success) {
+                displayToastMessage(`Đơn hàng #${orderId} đã được xác nhận hoàn tiền`, 'success');
+                loadSellerOrders(orderPagination.currentPage);
+            } else {
+                displayToastMessage(`Lỗi: ${result.message}`, 'error');
+            }
         }
     }
     /**
@@ -247,17 +287,31 @@ function debounce(func, wait) {
      * @param {number} orderId - ID của đơn hàng
      * @returns {Object} - Thông tin trạng thái
      */
-    function getOrderStatusInfo(status, orderId) {
-        const apiStatus = normalizeStatusForApi(status) || status;
-        const statusInfo = STATUS_MAPPING[apiStatus] || {
-            display: status || 'Không xác định',
-            class: 'status-default'
-        };
-        
+function getOrderStatusInfo(status, orderId) {
+    const apiStatus = normalizeStatusForApi(status) || status;
+    const statusInfo = STATUS_MAPPING[apiStatus] || {
+        display: status || 'Không xác định',
+        class: 'status-default'
+    };
+    
+    let html = '';
+    
+    // ✅ NEW LOGIC: Xử lý đặc biệt cho "Yêu cầu trả hàng/ hoàn tiền"
+    if (status && status.toLowerCase().includes('yêu cầu trả hàng/ hoàn tiền')) {
+        // Click vào trạng thái = TỪ CHỐI (chuyển sang Hoàn thành)
+        html = `
+            <button class="status-badge interactive ${statusInfo.class}" 
+                onclick="handleRejectRefundByStatus(${orderId})"
+                title="Click để TỪ CHỐI yêu cầu hoàn tiền (chuyển sang Hoàn thành)">
+                ${statusInfo.display}
+                <i class="fas fa-times fa-xs ml-2 text-red-500"></i>
+            </button>
+        `;
+    } else {
+        // Logic bình thường cho các trạng thái khác
         const nextStatus = getNextStatusInFlow(apiStatus);
         const isInteractive = !!nextStatus;
         
-        let html = '';
         if (isInteractive) {
             html = `
                 <button class="status-badge interactive ${statusInfo.class}" 
@@ -270,71 +324,87 @@ function debounce(func, wait) {
         } else {
             html = `<span class="status-badge ${statusInfo.class}">${statusInfo.display}</span>`;
         }
-        
-        return {
-            class: statusInfo.class,
-            text: statusInfo.display,
-            html,
-            isInteractive
-        };
     }
     
+    return {
+        class: statusInfo.class,
+        text: statusInfo.display,
+        html,
+        isInteractive: true
+    };
+}
 
-    /**
-     * Tạo HTML cho các nút hành động dựa trên trạng thái đơn hàng
-     * @param {number} orderId - ID đơn hàng
-     * @param {string} status - Trạng thái đơn hàng
-     * @returns {string} - HTML cho các nút hành động
-     */
-    function getOrderActions(orderId, status) {
-        const statusLower = status?.toLowerCase() || '';
-        let actions = `
-            <button onclick="viewOrderDetails(${orderId})" class="action-button action-button-view" title="Xem chi tiết">
-                <i class="fas fa-eye"></i> Xem
+
+function getOrderActions(orderId, status) {
+    const statusLower = status?.toLowerCase() || '';
+    
+    let actions = `
+        <button onclick="viewOrderDetails(${orderId})" 
+                class="action-button action-button-view" 
+                title="Xem chi tiết">
+            <i class="fas fa-eye"></i> Xem
+        </button>
+    `;
+    
+    // ✅ NEW LOGIC: Xử lý nút cho "Yêu cầu trả hàng/ hoàn tiền"
+    if (statusLower.includes('yêu cầu trả hàng/ hoàn tiền')) {
+        // Thay thế nút "Hủy" bằng nút "Xác nhận" (ĐỒNG Ý hoàn tiền)
+        actions += `
+            <button onclick="handleAcceptRefundByButton(${orderId})" 
+                    class="action-button action-button-accept ml-2" 
+                    title="XÁC NHẬN hoàn tiền (ĐỒNG Ý yêu cầu)">
+                <i class="fas fa-check-circle"></i> Xác nhận
             </button>
         `;
-        function normalizeSortByForApi(sortBy) {
-        const sortByMap = {
-            'OrderID': 'OrderId',        // ✅ Thử chữ 'd' nhỏ
-            'OrderDate': 'OrderDate',
-            'TotalAmount': 'TotalAmount',
-            'TotalPayment': 'TotalPayment',
-            'ItemCount': 'Items',
-        };
-        
-        const result = sortByMap[sortBy] || sortBy;
-        if (debugMode) console.log(`🔄 Sort mapping: "${sortBy}" -> "${result}"`);
-        return result;
-    }
-        // Kiểm tra trạng thái có thể hủy
-        const canCancel = Object.entries(STATUS_MAPPING).some(([apiStatus, info]) => {
-            const isCurrentStatus = statusLower === info.vietnameseName.toLowerCase() || 
-                                   statusLower === info.display.toLowerCase() || 
-                                   statusLower === apiStatus.toLowerCase();
-            const isCancellable = !['delivered', 'cancelled', 'completed'].includes(apiStatus.toLowerCase());
-            return isCurrentStatus && isCancellable;
-        });
-    
-        if (canCancel) {
+    } else {
+        // Logic bình thường cho các trạng thái khác
+        // Cancel button cho giai đoạn đầu
+        if (statusLower.includes('chờ xác nhận') || statusLower.includes('đang xử lý')) {
             actions += `
-                <button onclick="handleCancelOrder(${orderId})" class="action-button action-button-cancel ml-2" title="Hủy đơn hàng">
+                <button onclick="handleCancelOrder(${orderId})" 
+                        class="action-button action-button-cancel ml-2" 
+                        title="Hủy đơn hàng">
                     <i class="fas fa-times-circle"></i> Hủy
                 </button>
             `;
         }
-    
-        // Thêm nút xác nhận hoàn tiền
-        // if (statusLower === ORDER_STATUSES.YEU_CAU_TRA_HANG_HOAN_TIEN.toLowerCase() || 
-        //     statusLower === STATUS_MAP['yêu cầu trả hàng/hoàn tiền'].api.toLowerCase()) {
-        //     actions += `
-        //         <button onclick="handleConfirmRefundRequest(${orderId})" class="action-button action-button-refund ml-2" title="Xác nhận yêu cầu & hoàn tiền">
-        //             <i class="fas fa-check-circle"></i> XN Hoàn tiền
-        //         </button>
-        //     `;
-        // }
-    
-        return actions;
     }
+    
+    return actions;
+}
+
+// ✅ NEW: Handler function - TỪ CHỐI qua click trạng thái
+async function handleRejectRefundByStatus(orderId) {
+    if (confirm(`❌ TỪ CHỐI yêu cầu hoàn tiền cho đơn hàng #${orderId}?\n\n• Đơn hàng sẽ chuyển sang "Hoàn thành"\n• Khách hàng KHÔNG thể yêu cầu hoàn tiền lại\n• Seller từ chối hoàn tiền`)) {
+        const result = await updateOrderStatus(orderId, 'Hoàn thành');
+        if (result.success) {
+            displayToastMessage(`❌ Đã từ chối yêu cầu hoàn tiền cho đơn hàng #${orderId}`, 'info');
+            loadSellerOrders(orderPagination.currentPage);
+        }
+    }
+}
+
+// ✅ NEW: Handler function - ĐỒNG Ý qua nút "Xác nhận"
+async function handleAcceptRefundByButton(orderId) {
+    if (confirm(`✅ XÁC NHẬN hoàn tiền cho đơn hàng #${orderId}?\n\n• Khách hàng sẽ được hoàn tiền\n• Đơn hàng chuyển sang "Đã hoàn tiền"\n• Seller đồng ý hoàn tiền`)) {
+        const result = await updateOrderStatus(orderId, 'Đã hoàn tiền');
+        if (result.success) {
+            displayToastMessage(`✅ Đã xác nhận hoàn tiền cho đơn hàng #${orderId}`, 'success');
+            loadSellerOrders(orderPagination.currentPage);
+        }
+    }
+}
+
+
+// ✅ NEW: Export functions mới
+window.handleRejectRefundByStatus = handleRejectRefundByStatus;
+window.handleAcceptRefundByButton = handleAcceptRefundByButton;
+
+    
+
+    
+    
+    
     /**
      * Xử lý sự kiện khi người dùng click vào nút trạng thái
      * @param {number} orderId - ID đơn hàng
@@ -952,39 +1022,7 @@ sellerOrders = data.items || [];
 
 
 
-    /**
-     * Tạo HTML cho các nút hành động dựa trên trạng thái đơn hàng
-     * @param {number} orderId - ID đơn hàng
-     * @param {string} status - Trạng thái đơn hàng
-     * @returns {string} HTML các nút hành động
-     */
-    function getOrderActions(orderId, status) {
-        const statusLower = status?.toLowerCase() || '';
-        
-        // Luôn có nút Xem
-        let actions = `
-            <button onclick="viewOrderDetails(${orderId})" class="action-button action-button-view" title="Xem chi tiết đơn hàng">
-                <i class="fas fa-eye"></i> Xem
-            </button>
-        `;
-        
-        // Chỉ hiển thị nút Hủy nếu đơn hàng chưa giao và chưa hủy
-        const canCancel = !statusLower.includes('đã giao') && 
-                        !statusLower.includes('delivered') && 
-                        !statusLower.includes('đã hủy') && 
-                        !statusLower.includes('cancelled') &&
-                        !statusLower.includes('completed');
-                        
-        if (canCancel) {
-            actions += `
-                <button onclick="handleCancelOrder(${orderId})" class="action-button action-button-cancel" title="Hủy đơn hàng">
-                    <i class="fas fa-times-circle"></i> Hủy
-                </button>
-            `;
-        }
-        
-        return actions;
-    }
+    
 
     /**
      * Hiển thị phân trang cho danh sách đơn hàng
@@ -1712,52 +1750,45 @@ sellerOrders = data.items || [];
     function normalizeStatusForApi(status) {
         if (!status) return null;
         
-        // Chuẩn hóa input
-        const normalizedInput = status.trim();
+        const statusLower = status.toLowerCase().trim();
         
-        // Mapping trực tiếp với database statuses
-        const statusMapping = {
-            'pending': 'Chờ xác nhận',
+        // ✅ UPDATED: Mapping với trạng thái database chính xác
+        const statusMap = {
             'chờ xác nhận': 'Chờ xác nhận',
             'cho xac nhan': 'Chờ xác nhận',
+            'pending': 'Chờ xác nhận',
             
-            'processing': 'Đang xử lý',
             'đang xử lý': 'Đang xử lý',
             'dang xu ly': 'Đang xử lý',
+            'processing': 'Đang xử lý',
             
-            'shipped': 'Đang giao hàng',
-            'đang giao hàng': 'Đang giao hàng',
-            'dang giao hàng': 'Đang giao hàng',
+            'đang giao': 'Đang giao',
+            'đang giao hàng': 'Đang giao',
+            'dang giao': 'Đang giao',
+            'shipping': 'Đang giao',
             
-            'delivered': 'Đã giao',
             'đã giao': 'Đã giao',
             'da giao': 'Đã giao',
+            'delivered': 'Đã giao',
             
-            'cancelled': 'Đã hủy',
+            'yêu cầu trả hàng/ hoàn tiền': 'Yêu cầu trả hàng/ hoàn tiền',
+            'yeu cau tra hang hoan tien': 'Yêu cầu trả hàng/ hoàn tiền',
+            'refund request': 'Yêu cầu trả hàng/ hoàn tiền',
+            
+            'đã hoàn tiền': 'Đã hoàn tiền',
+            'da hoan tien': 'Đã hoàn tiền',
+            'refunded': 'Đã hoàn tiền',
+            
+            'hoàn thành': 'Hoàn thành', // ✅ THÊM MỚI
+            'hoan thanh': 'Hoàn thành',
+            'completed': 'Hoàn thành',
+            
             'đã hủy': 'Đã hủy',
             'da huy': 'Đã hủy',
-            
-            'yêu cầu trả hàng/ hoàn tiền': 'Yêu cầu trà hàng/ hoàn tiền',
-            'đã hoàn tiền': 'Đã hoàn tiền'
+            'cancelled': 'Đã hủy'
         };
         
-        const lowerStatus = normalizedInput.toLowerCase();
-        
-        // Kiểm tra mapping
-        if (statusMapping[lowerStatus]) {
-            console.log(`✅ Status mapped: "${normalizedInput}" -> "${statusMapping[lowerStatus]}"`);
-            return statusMapping[lowerStatus];
-        }
-        
-        // Nếu đã đúng format database, trả về nguyên gốc
-        const dbStatuses = Object.values(ORDER_STATUSES);
-        if (dbStatuses.includes(normalizedInput)) {
-            console.log(`✅ Status is valid DB format: "${normalizedInput}"`);
-            return normalizedInput;
-        }
-        
-        console.warn(`❌ Invalid status: "${normalizedInput}"`);
-        return null;
+        return statusMap[statusLower] || status;
     }
     /**
      * Xử lý khi người dùng click vào trạng thái đơn hàng
@@ -1795,53 +1826,21 @@ sellerOrders = data.items || [];
         }
     }
 
-
-
     /**
      * Xử lý hủy đơn hàng
      * @param {number} orderId - ID đơn hàng cần hủy
      */
     async function handleCancelOrder(orderId) {
-        if (confirm(`Bạn có chắc chắn muốn hủy đơn hàng #${orderId}?`)) {
-            try {
-                // Hiển thị thông báo đang xử lý
-                displayToastMessage('Đang hủy đơn hàng...', 'info');
-                
-                const token = getTokenFromStorage();
-                if (!token) {
-                    displayToastMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
-                    return;
-                }
-                
-                const response = await fetch(`${API_BASE}/Orders/${orderId}/status`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        newStatus: 'Cancelled',
-                        reason: 'Hủy bởi người bán'
-                    })
-                });
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`API trả về mã lỗi: ${response.status} - ${errorText}`);
-                }
-                
-                // Hiển thị thông báo thành công
-                displayToastMessage('Đơn hàng đã được hủy thành công', 'success');
-                
-                // Tải lại danh sách đơn hàng
+        if (confirm(`Bạn có chắc chắn muốn HỦY đơn hàng #${orderId} không?\nSản phẩm sẽ được hoàn lại kho.`)) {
+            const result = await updateOrderStatus(orderId, 'Đã hủy');
+            if (result.success) {
+                displayToastMessage(`✅ Đơn hàng #${orderId} đã được hủy thành công`, 'success');
                 loadSellerOrders(orderPagination.currentPage);
-                
-            } catch (error) {
-                console.error('Lỗi khi hủy đơn hàng:', error);
-                displayToastMessage(`Không thể hủy đơn hàng: ${error.message}`, 'error');
             }
         }
     }
+
+    
     function formatDateTime(dateString) {
         if (!dateString) return 'N/A';
         try {
@@ -1969,6 +1968,7 @@ sellerOrders = data.items || [];
     window.loadSellerOrders = loadSellerOrders;
     window.changeOrderPage = changeOrderPage;
     window.viewOrderDetails = viewOrderDetails;
+    window.handleConfirmRefund = handleConfirmRefund;
     window.closeOrderDetailModal = closeOrderDetailModal;
     window.openUpdateStatusModal = openUpdateStatusModal;
     window.closeUpdateStatusModal = closeUpdateStatusModal;

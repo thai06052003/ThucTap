@@ -376,7 +376,7 @@
 
             async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refreshCallback) {
                 const token = getSession('token');
-                if (!token && token != null) { 
+                if (!token && token != null) {
                     alert('Bạn cần đăng nhập để có thể sử dụng chức năng này')
                     sessionStorage.clear();
                     window.location.assign('/Customer/templates/login.html')
@@ -499,7 +499,7 @@
                             <i class="fas fa-times-circle"></i>Hủy Đơn Hàng
                         </button>`;
                 }
-                
+
                 if (order.status === ORDER_STATUSES.DA_GIAO && order?.orderDate) {
                     if (getDateDifference(order.orderDate) < 3) {
                         actionButtonsContainer.innerHTML += `
