@@ -23,7 +23,7 @@ namespace ShopxEX1.Services.Implementations
         // Định nghĩa các trạng thái đơn hàng hợp lệ
         private static readonly List<string> ValidOrderStatuses = new List<string>
         {
-            "Chờ xác nhận", "Đang xử lý", "Đang giao", "Đã giao", "Đã hủy", "Đã hoàn tiền", "Yêu cầu trả hàng/ hoàn tiền","Hoàn thành"
+            "Chờ xác nhận", "Đang xử lý", "Đang giao", "Đã giao", "Đã hủy", "Đã hoàn tiền", "Yêu cầu trả hàng/ hoàn tiền"
         };
         private static readonly Dictionary<string, int> OrderStatusPriority = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
         {
@@ -33,8 +33,7 @@ namespace ShopxEX1.Services.Implementations
             { "Đã giao", 4 },
             { "Yêu cầu trả hàng/ hoàn tiền", 5 }, // Đưa Yêu cầu TH/HT lên trước Đã hủy và Đã hoàn tiền (theo logic mới)
             { "Đã hủy", 6 },
-            { "Đã hoàn tiền", 7 },
-            { "Hoàn thành", 8 }
+            { "Đã hoàn tiền", 7 }
             // Thêm các trạng thái khác nếu có và gán thứ tự ưu tiên
         };
         // Helper function để lấy thứ tự ưu tiên, trả về giá trị lớn nếu không tìm thấy để đẩy xuống cuối
@@ -465,8 +464,7 @@ namespace ShopxEX1.Services.Implementations
                             o.Status == "Đã giao" ? 4 :
                             o.Status == "Yêu cầu trả hàng/ hoàn tiền" ? 5 : // Thứ tự mới
                             o.Status == "Đã hủy" ? 6 :
-                            o.Status == "Đã hoàn tiền" ? 7 : 
-                            o.Status == "Hoàn thành" ? 8: 9
+                            o.Status == "Đã hoàn tiền" ? 7 : 0
                         ).ThenByDescending(o => o.OrderDate); // Sắp xếp phụ theo ngày nếu trạng thái giống nhau
                         break;
                     case "status_desc":
@@ -477,8 +475,7 @@ namespace ShopxEX1.Services.Implementations
                             o.Status == "Đã giao" ? 4 :
                             o.Status == "Yêu cầu trả hàng/ hoàn tiền" ? 5 : // Thứ tự mới
                             o.Status == "Đã hủy" ? 6 :
-                            o.Status == "Đã hoàn tiền" ? 7 : 
-                            o.Status == "Hoàn thành" ? 8 : 9
+                            o.Status == "Đã hoàn tiền" ? 7 : 0
                         ).ThenByDescending(o => o.OrderDate); // Sắp xếp phụ theo ngày nếu trạng thái giống nhau
                         break;
                     case "orderdate_asc":
@@ -501,8 +498,7 @@ namespace ShopxEX1.Services.Implementations
                             o.Status == "Đã giao" ? 4 :
                             o.Status == "Yêu cầu trả hàng/ hoàn tiền" ? 5 : // Thứ tự mới
                             o.Status == "Đã hủy" ? 6 :
-                            o.Status == "Đã hoàn tiền" ? 7 : 
-                            o.Status=="Hoàn thành" ? 8 : 9
+                            o.Status == "Đã hoàn tiền" ? 7 : 0
                         ).ThenByDescending(o => o.OrderDate); // Sắp xếp phụ theo ngày nếu trạng thái giống nhau
             }
 
@@ -679,44 +675,26 @@ namespace ShopxEX1.Services.Implementations
             bool canUpdate = false;
             if (userRole == "Admin")
             {
+                //if (statusUpdateDto.NewStatus.Equals("Đã hủy", StringComparison.OrdinalIgnoreCase))
                 canUpdate = true;
             }
             else if (userRole == "Seller")
             {
                 // Seller chỉ có thể cập nhật nếu đơn hàng chứa sản phẩm của họ
+                // Và không phải là tất cả các trạng thái (ví dụ, không thể tự ý "Đã giao" nếu chưa giao)
                 bool sellerProductInOrder = await _context.OrderDetails
-                    .AnyAsync(od => od.OrderID == orderId);
-
+                    .AnyAsync(od => od.OrderID == orderId && od.Product.SellerID == userId);
                 if (sellerProductInOrder)
                 {
-                    // ✅ NEW LOGIC: Seller transitions theo yêu cầu mới
-                    var allowedSellerTransitions = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "Chờ xác nhận", new List<string> { "Đang xử lý", "Đã hủy" } },
-                { "Đang xử lý", new List<string> { "Đang giao", "Đã hủy" } },
-                { "Đang giao", new List<string> { "Đã giao" } },
-                { "Đã giao", new List<string>() }, // ✅ FIXED: Seller KHÔNG thể chuyển từ "Đã giao"
-                
-                // ✅ NEW: Chỉ khi customer yêu cầu hoàn tiền, seller mới có quyền quyết định
-                { "Yêu cầu trả hàng/ hoàn tiền", new List<string> { "Đã hoàn tiền", "Hoàn thành" } },
-
-                { "Đã hoàn tiền", new List<string>() },  // Final state
-                { "Hoàn thành", new List<string>() },    // Final state  
-                { "Đã hủy", new List<string>() }         // Final state
-            };
-
-                    if (allowedSellerTransitions.TryGetValue(order.Status, out var allowedStatuses) &&
-                        allowedStatuses.Contains(statusUpdateDto.NewStatus))
+                    // Seller có thể cập nhật thành Đang xử lý, Đang giao.
+                    // Có thể cần logic phức tạp hơn ở đây để giới hạn các trạng thái Seller có thể set.
+                    if (statusUpdateDto.NewStatus.Equals("Đang xử lý", StringComparison.OrdinalIgnoreCase) ||
+                        statusUpdateDto.NewStatus.Equals("Đang giao", StringComparison.OrdinalIgnoreCase) ||
+                        statusUpdateDto.NewStatus.Equals("Đã giao", StringComparison.OrdinalIgnoreCase) ||
+                        statusUpdateDto.NewStatus.Equals("Đã hủy", StringComparison.OrdinalIgnoreCase) && order.Status == "Chờ xác nhận" // Seller có thể hủy đơn Chờ xác nhận
+                        )
                     {
                         canUpdate = true;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Seller không thể chuyển từ '{CurrentStatus}' sang '{NewStatus}' cho OrderID {OrderId}",
-                            order.Status, statusUpdateDto.NewStatus, orderId);
-                        throw new InvalidOperationException(
-                            $"Seller không thể chuyển từ '{order.Status}' sang '{statusUpdateDto.NewStatus}'"
-                        );
                     }
                 }
             }
@@ -727,131 +705,86 @@ namespace ShopxEX1.Services.Implementations
                 throw new UnauthorizedAccessException("Bạn không có quyền cập nhật trạng thái cho đơn hàng này.");
             }
 
-            // ✅ REMOVED: Logic cũ không đúng với flow mới
-            // Bỏ đi logic: if (order.Status == "Đã giao" && !(statusUpdateDto.NewStatus == "Yêu cầu trả hàng/ hoàn tiền"))
-
-            // ✅ FIXED: Logic validation trạng thái
-            if (!IsValidStatusTransition(order.Status, statusUpdateDto.NewStatus, userRole))
+            // Logic chuyển đổi trạng thái
+            // Chỉ có thể chuyển đổi trạng thái đã giao -> Yêu cầu trả hàng/ hoàn tiền
+            if (order.Status == "Đã giao" && !(statusUpdateDto.NewStatus == "Yêu cầu trả hàng/ hoàn tiền") && (DateTime.UtcNow - order.OrderDate).TotalDays > 3)
             {
-                _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Không thể chuyển từ '{CurrentStatus}' sang '{NewStatus}' với role '{UserRole}'.",
-                    orderId, order.Status, statusUpdateDto.NewStatus, userRole);
-                throw new InvalidOperationException($"Không thể chuyển từ '{order.Status}' sang '{statusUpdateDto.NewStatus}'.");
+                _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Không thể thay đổi trạng thái từ 'Đã giao' thành '{NewStatus}'.", orderId, statusUpdateDto.NewStatus);
+                throw new InvalidOperationException($"Không thể thay đổi trạng thái từ '{order.Status}' thành '{statusUpdateDto.NewStatus}'.");
             }
-
             // Không thể chuyển đổi trạng thái đã hủy
-            if (order.Status == "Đã hủy")
+            if (order.Status == "Đã hủy") // Không thể thay đổi khi đã hủy
             {
                 _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Đơn hàng đã bị hủy.", orderId);
                 throw new InvalidOperationException("Đơn hàng đã bị hủy và không thể thay đổi trạng thái.");
             }
-
-            // Không thể chuyển đổi trạng thái đã hoàn thành
-            if (order.Status == "Hoàn thành")
-            {
-                _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Đơn hàng đã hoàn thành.", orderId);
-                throw new InvalidOperationException("Đơn hàng đã hoàn thành và không thể thay đổi trạng thái.");
-            }
-
-            // Không thể chuyển đổi trạng thái đã hoàn tiền
-            if (order.Status == "Đã hoàn tiền")
-            {
-                _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Đơn hàng đã được hoàn tiền.", orderId);
-                throw new InvalidOperationException("Đơn hàng đã được hoàn tiền và không thể thay đổi trạng thái.");
-            }
-
-            // ✅ FIXED: Logic kiểm tra thời gian cho yêu cầu hoàn tiền
-            if (order.Status == "Yêu cầu trả hàng/ hoàn tiền")
-            {
-                // Seller có thể quyết định đồng ý hoặc từ chối hoàn tiền
-                if (!(statusUpdateDto.NewStatus == "Đã hoàn tiền" || statusUpdateDto.NewStatus == "Hoàn thành"))
+            // Chỉ có thể chuyển từ Yêu cầu trả hàng/ hoàn tiền -> Đã hoàn tiền 
+            // Đơn hàng không được quá 3 ngày
+            if (order.Status == "Yêu cầu trả hàng/ hoàn tiền" && (DateTime.UtcNow - order.OrderDate).TotalDays > 3)
+                if (!(statusUpdateDto.NewStatus == "Đã hoàn tiền"))
                 {
-                    _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Từ 'Yêu cầu trả hàng/ hoàn tiền' chỉ có thể chuyển sang 'Đã hoàn tiền' hoặc 'Hoàn thành'.", orderId);
-                    throw new InvalidOperationException("Từ 'Yêu cầu trả hàng/ hoàn tiền' chỉ có thể chuyển sang 'Đã hoàn tiền' hoặc 'Hoàn thành'.");
+                    _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Đơn hàng đang yêu cầu trả hàng/ hoàn tiền.", orderId);
+                    throw new InvalidOperationException("Đơn hàng đang yêu cầu trả hàng/ hoàn tiền.");
                 }
-            }
-            var oldStatus = order.Status; 
 
-            // ✅ NEW: Xử lý hoàn trả stock cho các trường hợp khác nhau
-            if ((statusUpdateDto.NewStatus.Equals("Đã hủy", StringComparison.OrdinalIgnoreCase) &&
-                 (order.Status.Equals("Chờ xác nhận", StringComparison.OrdinalIgnoreCase) ||
-                  order.Status.Equals("Đang xử lý", StringComparison.OrdinalIgnoreCase))) ||
-                (statusUpdateDto.NewStatus.Equals("Đã hoàn tiền", StringComparison.OrdinalIgnoreCase) &&
-                 order.Status.Equals("Yêu cầu trả hàng/ hoàn tiền", StringComparison.OrdinalIgnoreCase)))
+
+            // Xử lý hoàn trả số lượng sản phẩm nếu đơn hàng bị hủy từ trạng thái chưa xử lý
+            if ((statusUpdateDto.NewStatus.Equals("Đã hủy", StringComparison.OrdinalIgnoreCase) && (order.Status.Equals("Chờ xác nhận", StringComparison.OrdinalIgnoreCase) || order.Status.Equals("Đang xử lý", StringComparison.OrdinalIgnoreCase)))
+                || (statusUpdateDto.NewStatus.Equals("Đã hoàn tiền", StringComparison.OrdinalIgnoreCase) && order.Status.Equals("Yêu cầu trả hàng/ hoàn tiền", StringComparison.OrdinalIgnoreCase))
+                )
             {
-                // ✅ Hoàn trả stock cho cancel và accept refund
                 foreach (var detail in order.OrderDetails)
                 {
                     if (detail.Product != null)
                     {
                         detail.Product.StockQuantity += detail.Quantity;
                         _context.Products.Update(detail.Product);
-                        _logger.LogInformation("Hoàn trả {Quantity} cho sản phẩm ProductID {ProductId} từ OrderID {OrderId} - Lý do: {Reason}.",
-                            detail.Quantity, detail.ProductID, orderId,
-                            statusUpdateDto.NewStatus == "Đã hủy" ? "Hủy đơn hàng" : "Đồng ý hoàn tiền");
+                        _logger.LogInformation("Hoàn trả {Quantity} cho sản phẩm ProductID {ProductId} từ đơn hàng hủy OrderID {OrderId}.", detail.Quantity, detail.ProductID, orderId);
                     }
                 }
             }
 
-            // ✅ NEW: Xử lý khi từ chối hoàn tiền (chuyển sang "Hoàn thành")
-            if (statusUpdateDto.NewStatus.Equals("Hoàn thành", StringComparison.OrdinalIgnoreCase) &&
-                order.Status.Equals("Yêu cầu trả hàng/ hoàn tiền", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogInformation("Seller từ chối hoàn tiền cho OrderID {OrderId}. Chuyển sang 'Hoàn thành'. Customer không thể yêu cầu hoàn lại.", orderId);
-                // ✅ KHÔNG hoàn trả stock - customer đã sử dụng sản phẩm
-            }
-
-            // ✅ NEW: Log khi tự động chuyển "Đã giao" → "Hoàn thành" (từ background service)
-            if (statusUpdateDto.NewStatus.Equals("Hoàn thành", StringComparison.OrdinalIgnoreCase) &&
-                order.Status.Equals("Đã giao", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogInformation("Tự động chuyển OrderID {OrderId} từ 'Đã giao' sang 'Hoàn thành' sau 3 ngày.", orderId);
-                // ✅ KHÔNG hoàn trả stock - đơn hàng hoàn thành bình thường
-            }
-
-            // ✅ Cập nhật trạng thái
             order.Status = statusUpdateDto.NewStatus;
-
-            // ✅ FIXED: Cập nhật UpdatedAt khi chuyển sang "Đã giao" để tính thời gian 3 ngày
-            if (statusUpdateDto.NewStatus == "Đã giao")
-            {
-                order.OrderDate = DateTime.UtcNow;
-                _logger.LogInformation("Cập nhật OrderDate cho OrderID {OrderId} khi chuyển sang 'Đã giao' để tính thời gian 3 ngày cho auto-complete.", orderId);
-            }
+            if (order.Status == "Đã giao") order.OrderDate = DateTime.UtcNow;
 
             _context.Orders.Update(order);
             int affectedRows = await _context.SaveChangesAsync();
 
             if (affectedRows > 0)
             {
-                _logger.LogInformation("Cập nhật trạng thái thành công cho OrderID {OrderId} từ '{OldStatus}' thành '{NewStatus}'.",
-                    orderId, oldStatus, statusUpdateDto.NewStatus);
+                _logger.LogInformation("Cập nhật trạng thái thành công cho OrderID {OrderId} thành {NewStatus}.", orderId, statusUpdateDto.NewStatus);
                 return true;
             }
             else
             {
                 _logger.LogWarning("Cập nhật trạng thái cho OrderID {OrderId}: SaveChanges không ảnh hưởng đến dòng nào (có thể trạng thái không đổi).", orderId);
-                return false;
+                return false; // Không có gì được cập nhật (có thể trạng thái đã là NewStatus)
             }
         }
-
-        // ✅ NEW HELPER METHOD: Validate status transitions
-        private bool IsValidStatusTransition(string currentStatus, string newStatus, string userRole)
+        public async Task<bool> UpdateOrderStatusForCustomerAsync(int orderId, OrderStatusUpdateDto statusUpdateDto, int userId)
         {
-            // Customer chỉ có thể chuyển "Đã giao" → "Yêu cầu trả hàng/ hoàn tiền"
-            if (userRole == "Customer")
+            _logger.LogInformation("Bắt đầu cập nhật trạng thái cho OrderID {OrderId} bởi UserID {userId} thành {NewStatus}",
+                orderId, userId, statusUpdateDto.NewStatus);
+
+            if (!ValidOrderStatuses.Contains(statusUpdateDto.NewStatus, StringComparer.OrdinalIgnoreCase))
             {
-                return currentStatus.Equals("Đã giao", StringComparison.OrdinalIgnoreCase) &&
-                       newStatus.Equals("Yêu cầu trả hàng/ hoàn tiền", StringComparison.OrdinalIgnoreCase);
+                _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Trạng thái mới '{NewStatus}' không hợp lệ.", orderId, statusUpdateDto.NewStatus);
+                throw new InvalidOperationException($"Trạng thái '{statusUpdateDto.NewStatus}' không hợp lệ.");
             }
 
-            // Seller transitions đã được validate ở trên
-            if (userRole == "Seller")
+            var order = await _context.Orders
+                                    .Include(o => o.OrderDetails)
+                                    .FirstOrDefaultAsync(o => o.OrderID == orderId);
+
+            if (order == null)
             {
-                return true; // Đã validate trong logic Seller ở trên
+                _logger.LogWarning("Cập nhật trạng thái thất bại: Không tìm thấy OrderID {OrderId}", orderId);
+                throw new KeyNotFoundException($"Đơn hàng với ID {orderId} không tồn tại.");
             }
 
-            // Admin có thể chuyển hầu hết (với một số hạn chế logic)
-            if (userRole == "Admin")
+            // Kiểm tra quyền (Customer sở hữu sản phẩm trong đơn hàng)
+            bool canUpdate = false;
+            if (userId == order.UserID)
             {
                 canUpdate = true;
             }
@@ -904,86 +837,12 @@ namespace ShopxEX1.Services.Implementations
                 _logger.LogInformation("Cập nhật trạng thái thành công cho OrderID {OrderId} thành {NewStatus}.", orderId, statusUpdateDto.NewStatus);
                 return true;
             }
-
-            return false;
+            else
+            {
+                _logger.LogWarning("Cập nhật trạng thái cho OrderID {OrderId}: SaveChanges không ảnh hưởng đến dòng nào (có thể trạng thái không đổi).", orderId);
+                return false; // Không có gì được cập nhật (có thể trạng thái đã là NewStatus)
+            }
         }
-
-
-        // ✅ FIXED: OrderService.cs - UpdateOrderStatusForCustomerAsync
-public async Task<bool> UpdateOrderStatusForCustomerAsync(int orderId, OrderStatusUpdateDto statusUpdateDto, int userId)
-{
-    _logger.LogInformation("Customer UserID {UserId} yêu cầu cập nhật OrderID {OrderId} thành {NewStatus}",
-        userId, orderId, statusUpdateDto.NewStatus);
-
-    // ✅ VALIDATE: Customer chỉ có thể yêu cầu hoàn tiền
-    if (statusUpdateDto.NewStatus != "Yêu cầu trả hàng/ hoàn tiền")
-    {
-        _logger.LogWarning("Customer UserID {UserId} cố gắng cập nhật OrderID {OrderId} thành trạng thái không được phép: {NewStatus}", 
-            userId, orderId, statusUpdateDto.NewStatus);
-        throw new InvalidOperationException("Khách hàng chỉ có thể yêu cầu trả hàng/ hoàn tiền.");
-    }
-
-    if (!ValidOrderStatuses.Contains(statusUpdateDto.NewStatus, StringComparer.OrdinalIgnoreCase))
-    {
-        _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Trạng thái mới '{NewStatus}' không hợp lệ.", orderId, statusUpdateDto.NewStatus);
-        throw new InvalidOperationException($"Trạng thái '{statusUpdateDto.NewStatus}' không hợp lệ.");
-    }
-
-    var order = await _context.Orders
-                            .Include(o => o.OrderDetails)
-                            .FirstOrDefaultAsync(o => o.OrderID == orderId);
-
-    if (order == null)
-    {
-        _logger.LogWarning("Cập nhật trạng thái thất bại: Không tìm thấy OrderID {OrderId}", orderId);
-        throw new KeyNotFoundException($"Đơn hàng với ID {orderId} không tồn tại.");
-    }
-
-    // ✅ VALIDATE: Chỉ owner mới được yêu cầu
-    if (userId != order.UserID)
-    {
-        _logger.LogWarning("Customer UserID {UserId} cố gắng cập nhật OrderID {OrderId} không thuộc về mình", userId, orderId);
-        throw new UnauthorizedAccessException("Bạn không có quyền cập nhật đơn hàng này.");
-    }
-
-    // ✅ VALIDATE: Chỉ từ "Đã giao"
-    if (order.Status != "Đã giao")
-    {
-        _logger.LogWarning("Customer UserID {UserId} cố gắng yêu cầu hoàn tiền cho OrderID {OrderId} với trạng thái không hợp lệ: {CurrentStatus}", 
-            userId, orderId, order.Status);
-        throw new InvalidOperationException("Chỉ có thể yêu cầu hoàn tiền khi đơn hàng đã được giao.");
-    }
-
-    // ✅ VALIDATE: Trong vòng 3 ngày (dùng OrderDate - đã được cập nhật khi "Đã giao")
-    var daysSinceDelivery = (DateTime.UtcNow - order.OrderDate).TotalDays;
-    
-    if (daysSinceDelivery > 3)
-    {
-        _logger.LogWarning("Customer UserID {UserId} cố gắng yêu cầu hoàn tiền cho OrderID {OrderId} quá thời hạn. Đã giao: {DeliveryDate}, Hiện tại: {CurrentTime}, Số ngày: {DaysPassed}", 
-            userId, orderId, order.OrderDate, DateTime.UtcNow, daysSinceDelivery);
-        throw new InvalidOperationException($"Đã quá thời hạn yêu cầu hoàn tiền (3 ngày kể từ ngày giao). Đơn hàng đã giao từ {daysSinceDelivery:F1} ngày trước.");
-    }
-
-    // ✅ UPDATE
-    var oldStatus = order.Status;
-    order.Status = statusUpdateDto.NewStatus;
-    // ✅ Không cần cập nhật OrderDate ở đây
-
-    _context.Orders.Update(order);
-    int affectedRows = await _context.SaveChangesAsync();
-
-    if (affectedRows > 0)
-    {
-        _logger.LogInformation("Customer UserID {UserId} đã yêu cầu hoàn tiền thành công cho OrderID {OrderId} từ '{OldStatus}' thành '{NewStatus}'", 
-            userId, orderId, oldStatus, statusUpdateDto.NewStatus);
-        return true;
-    }
-    else
-    {
-        _logger.LogWarning("Cập nhật trạng thái cho OrderID {OrderId}: SaveChanges không ảnh hưởng đến dòng nào", orderId);
-        return false;
-    }
-}
     }
 
 }
