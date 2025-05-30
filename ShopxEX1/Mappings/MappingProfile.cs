@@ -206,6 +206,8 @@ namespace ShopxEX1.Mappings
             // === Cart & CartItem Mappings ===
             CreateMap<CartItem, CartItemDto>()
                 .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product != null ? src.Product.ProductName : null))
+                .ForMember(dest => dest.ShopName, opt => opt.MapFrom(src => src.Product != null && src.Product.Seller != null ? src.Product.Seller.ShopName : null))
+                .ForMember(dest => dest.ShopIsActive, opt => opt.MapFrom(src => src.Product != null && src.Product.Seller != null ? src.Product.Seller.IsActive : false))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.Product != null ? src.Product.IsActive : false))
                 .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.Product != null ? src.Product.Price : 0))
                 .ForMember(dest => dest.ImageURL, opt => opt.MapFrom(src => src.Product != null ? src.Product.ImageURL : null))
@@ -236,6 +238,7 @@ namespace ShopxEX1.Mappings
                 .ForMember(dest => dest.CategoryID, opt => opt.MapFrom(src => src.Product != null && src.Product.Category != null ? src.Product.CategoryID : 0))
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Product != null && src.Product.Category != null ? src.Product.Category.CategoryName : "N/A"))
                 .ForMember(dest => dest.SellerID, opt => opt.MapFrom(src => src.Product != null && src.Product.Seller != null ? src.Product.SellerID : 0))
+                .ForMember(dest => dest.ShopIsActive, opt => opt.MapFrom(src => src.Product != null && src.Product.Seller != null ? src.Product.Seller.IsActive : false))
                 .ForMember(dest => dest.ShopName, opt => opt.MapFrom(src => src.Product != null && src.Product.Seller != null ? src.Product.Seller.ShopName : "N/A"));
 
             CreateMap<Order, OrderDto>()

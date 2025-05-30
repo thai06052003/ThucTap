@@ -425,7 +425,7 @@
                 contentElement.classList.add('hidden');
 
                 const token = getSession('token');
-                if (!token) { /* ... xử lý lỗi token ... */ return; }
+                if (!token) { return; }
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/Orders/${orderId}`, {
@@ -448,6 +448,7 @@
             }
 
             function renderOrderDetail(order) {
+                console.log(order)
                 breadcrumbIdSpan.textContent = `#${order.orderID}`;
                 orderIdSpan.textContent = order.orderID;
                 orderDateSpan.textContent = formatDate(new Date(order.orderDate));
@@ -467,12 +468,12 @@
                             <img src="${getImageUrl(item.productImageURL)}" alt="${item.productName}" class="product-image-detail">
                             <div class="product-details">
                                 <a href="/Customer/templates/product-detail.html?productId=${item.productID}" 
-                                                class="mb-2 text-lg text-gray-800 leading-tight hover:text-indigo-600 rounded-full ${!item.isActive ? 'no-event' : ''}">
+                                                class="mb-2 text-lg text-gray-800 leading-tight hover:text-indigo-600 rounded-full ${!item.isActive || !item.shopIsActive ? 'no-event' : ''}">
                                                 ${item.productName}
-                                                ${!item.isActive ? `<span class="text-xs font-medium px-3 py-1 ml-8 bg-gray-500 rounded-full w-24 text-center text-white">Đã ngừng bán</span>` : ''}
+                                                ${!item.isActive || !item.shopIsActive ? `<span class="text-xs font-medium px-3 py-1 ml-8 bg-gray-500 rounded-full w-24 text-center text-white">Đã ngừng bán</span>` : ''}
                                                 </a>
                                 <p class="product-category-detail">Phân loại: ${item.categoryName || 'Chưa phân loại'}</p>
-                                ${item.shopName && item.shopName !== "N/A" ? `<p class="product-shop-detail">Shop: ${item.shopName}</p>` : ''}
+                                ${item.shopName && item.shopName !== "N/A" ? `<a href="https://127.0.0.1:5500/Customer/templates/seller-profile.html?sellerId=${item.sellerID}" class="product-shop-detail hover:text-indigo-800 hover:underline">Shop: ${item.shopName}</a>` : ''}
                                 <p class="product-quantity-detail">Số lượng: ${item.quantity}</p>
                             </div>
                             <div class="ml-auto text-right">
@@ -492,7 +493,7 @@
 
                 // Render Action Buttons cho Customer
                 actionButtonsContainer.innerHTML = '';
-                if (order.status === ORDER_STATUSES.CHO_XAC_NHAN || order.status === ORDER_STATUSES.DANG_XU_LY) {
+                if (order.status === ORDER_STATUSES.CHO_XAC_NHAN) {
                     actionButtonsContainer.innerHTML += `
                         <button onclick="customerCancelOrder(${order.orderID})" class="action-button customer-cancel-order-btn">
                             <i class="fas fa-times-circle"></i>Hủy Đơn Hàng

@@ -87,6 +87,7 @@ namespace ShopxEX1.Services.Implementations
             var cart = await _context.Carts
                 .Include(c => c.CartItems.OrderByDescending(ci => ci.AddedAt))
                     .ThenInclude(ci => ci.Product)
+                    .ThenInclude(p => p.Seller)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.UserID == userId);
 

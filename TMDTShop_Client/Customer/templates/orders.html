@@ -125,7 +125,7 @@
                     <label for="customerStatusFilter" class="block text-sm font-medium text-gray-700 mb-1">Trạng
                         thái</label>
                     <select id="customerStatusFilter" name="status"
-                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                        class="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
                         <option value="">Tất cả</option>
                         <!-- Options sẽ được điền bởi JS -->
                     </select>
@@ -134,13 +134,13 @@
                     <label for="customerStartDateFilter" class="block text-sm font-medium text-gray-700 mb-1">Từ
                         ngày</label>
                     <input type="date" id="customerStartDateFilter" name="startDate"
-                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors" />
+                        class="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors" />
                 </div>
                 <div>
                     <label for="customerEndDateFilter" class="block text-sm font-medium text-gray-700 mb-1">Đến
                         ngày</label>
                     <input type="date" id="customerEndDateFilter" name="endDate"
-                        class="w-full border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors" />
+                        class="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition-colors" />
                 </div>
                 <div class="sm:col-span-2 lg:col-span-1 flex justify-end items-end">
                     <button type="submit"
@@ -233,6 +233,9 @@
             const pageInput = document.getElementById('customerPageInput');
             const goToPageBtn = document.getElementById('customerGoToPageBtn');
 
+            const relatedProductsGridEl = document.getElementById('relatedProductsGrid');
+
+            let currentProductData = null;
             let currentPage = 1;
             const DEFAULT_PAGE_SIZE = 5;
 
@@ -395,11 +398,13 @@
                     // Cố gắng lấy tên shop từ sản phẩm đầu tiên làm đại diện, hoặc hiển thị "Nhiều người bán"
                     // Logic này cần được cải thiện nếu bạn muốn nhóm theo người bán một cách chính xác
                     let representativeShopName = "ShopX Mall"; // Mặc định
+                    let representativeSellerID = null;
                     if (order.items && order.items.length > 0 && order.items[0].shopName && order.items[0].shopName !== "N/A") {
                         // Kiểm tra xem tất cả sản phẩm có cùng shopName không
                         const allSameShop = order.items.every(item => item.shopName === order.items[0].shopName);
                         if (allSameShop) {
                             representativeShopName = order.items[0].shopName;
+                            representativeSellerID = order.items[0].sellerID
                         } else {
                             representativeShopName = "Nhiều người bán"; // Hoặc không hiển thị gì cả
                         }
@@ -409,7 +414,7 @@
                         <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
                             <div class="flex items-center">
                                 <i class="fas fa-store text-indigo-600 mr-2"></i> <!-- Icon shop -->
-                                <span class="font-semibold text-gray-700 text-sm">${representativeShopName}</span>
+                                <a href="https://127.0.0.1:5500/Customer/templates/seller-profile.html?sellerId=${representativeSellerID}" class="font-semibold text-gray-700 text-sm hover:text-blue-500 hover:underline">${representativeShopName}</a>
                                 <!-- Nút Chat và Xem Shop có thể thêm sau nếu có API/link -->
                             </div>
                             <div class="text-xs font-medium uppercase ${statusClass === 'status-da-giao' ? 'text-green-600' : (statusClass === 'status-da-huy' ? 'text-red-600' : 'text-orange-500')}">
@@ -480,6 +485,179 @@
                     orderCard.innerHTML = orderHeaderHTML + itemsHtml + orderFooterHTML;
                     orderListContainer.appendChild(orderCard);
                 });
+            }
+
+            async function fetchProductDetails(productIdParam) {
+                try {
+                    console.log(`🔍 Fetching product details for ID: ${productIdParam}`);
+                    const response = await fetch(`${API_BASE_URL}/Products/Customer/${productIdParam}`); // Sử dụng endpoint customer
+
+                    if (!response.ok) {
+                        // ... (Xử lý lỗi fetchProductDetails giữ nguyên) ...
+                        let errorMessage = `Lỗi ${response.status}: Không thể tải sản phẩm.`;
+                        if (response.status === 404) errorMessage = 'Sản phẩm không tồn tại hoặc đã ngừng bán.';
+                        else if (response.status === 403) errorMessage = 'Bạn không có quyền truy cập sản phẩm này.';
+                        else if (response.status === 500) errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
+                        else {
+                            try { const errData = await response.json(); errorMessage = errData.message || errorMessage; } catch (e) { /* ignore */ }
+                        }
+                        throw new Error(errorMessage);
+                    }
+
+                    const productData = await response.json();
+                    console.log(`✅ Product data received:`, productData);
+
+                    if (!productData.isActive) { // Kiểm tra thêm ở client
+                        throw new Error('Sản phẩm này hiện không còn kinh doanh.');
+                    }
+
+                    currentProductData = productData;
+                    displayProductDetails(currentProductData);
+
+                    // SAU KHI HIỂN THỊ CHI TIẾT SẢN PHẨM CHÍNH, TẢI SẢN PHẨM LIÊN QUAN
+                    if (currentProductData && typeof currentProductData.categoryID === 'number') {
+                        fetchRelatedProducts(currentProductData.categoryID, currentProductData.productID);
+                    }
+
+                } catch (error) {
+                    console.error('❌ Error fetching product details:', error);
+                    const productDetailContainer = document.getElementById('productDetailContainer');
+                    if (productDetailContainer) {
+                        productDetailContainer.innerHTML = `<p class="text-center text-red-500 col-span-full py-8 text-lg">${error.message}</p>`;
+                    }
+                    // Ẩn các phần không cần thiết nếu lỗi
+                    const descriptionSection = document.querySelector('.mt-12.pt-8.border-t');
+                    if (descriptionSection) descriptionSection.style.display = 'none';
+                    const relatedSection = document.querySelector('section.mt-12.pt-8.border-t');
+                    if (relatedSection) relatedSection.style.display = 'none';
+                }
+            }
+
+            function displayProductDetails(product) {
+                // ... (Hàm displayProductDetails giữ nguyên như cậu đã cung cấp) ...
+                if (!product) return;
+
+                console.log('🎨 Displaying product details:', product);
+
+                document.title = `${product.productName || 'Chi tiết sản phẩm'} - ShopX`;
+
+                if (productIdHiddenEl) productIdHiddenEl.value = product.productID;
+                if (mainProductImage) mainProductImage.src = getProductImageUrl(product.imageURL);
+                if (productNameEl) productNameEl.textContent = product.productName || 'N/A';
+                if (productPriceEl) productPriceEl.textContent = formatCurrency(product.price);
+
+                if (sellerStoreNameEl) sellerStoreNameEl.textContent = product.sellerStoreName || 'Không rõ';
+                if (document.getElementById('sellerLink')) {
+                    document.getElementById('sellerLink').href = `seller-profile.html?id=${product.sellerID}`;
+                }
+
+                if (categoryNameDetailEl) categoryNameDetailEl.textContent = product.categoryName || 'Không rõ';
+                if (categoryLinkDetailEl) {
+                    categoryLinkDetailEl.href = `category-products.html?categoryId=${product.categoryID}`;
+                }
+
+                if (stockQuantityInfoEl) stockQuantityInfoEl.textContent = product.stockQuantity || 0;
+                if (quantityInput) {
+                    quantityInput.max = product.stockQuantity || 1;
+                    if (product.stockQuantity < 1) {
+                        quantityInput.value = 0;
+                        quantityInput.min = 0;
+                        quantityInput.disabled = true;
+                        if (addToCartBtn) {
+                            addToCartBtn.disabled = true;
+                            addToCartBtn.innerHTML = '<i class="fas fa-times-circle mr-2"></i>Hết hàng';
+                            addToCartBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                            addToCartBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                        }
+                        stockQuantityInfoEl.textContent = "Hết hàng";
+                    } else {
+                        quantityInput.value = 1;
+                        quantityInput.min = 1;
+                        quantityInput.disabled = false;
+                        if (addToCartBtn) {
+                            addToCartBtn.disabled = false;
+                            addToCartBtn.innerHTML = '<i class="fas fa-cart-plus mr-2"></i>Thêm vào giỏ hàng';
+                            addToCartBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                            addToCartBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                        }
+                    }
+                }
+
+                if (productDescriptionEl) {
+                    const description = product.description || 'Không có mô tả chi tiết cho sản phẩm này.';
+                    productDescriptionEl.innerHTML = description.replace(/\n/g, '<br>');
+                }
+
+                if (breadcrumbCategoryNameEl) breadcrumbCategoryNameEl.textContent = product.categoryName || 'Danh mục';
+                if (breadcrumbProductNameEl) breadcrumbProductNameEl.textContent = product.productName || 'Sản phẩm';
+                if (breadcrumbCategoryLinkEl) {
+                    breadcrumbCategoryLinkEl.href = `category-products.html?categoryId=${product.categoryID}`;
+                }
+
+                console.log('✅ Product details displayed successfully');
+            }
+
+            // --- HÀM MỚI ĐỂ TẢI VÀ HIỂN THỊ SẢN PHẨM LIÊN QUAN ---
+            async function fetchRelatedProducts(categoryId, currentProductId) {
+                if (!relatedProductsGridEl || !categoryId) return;
+
+                relatedProductsGridEl.innerHTML = '<p class="col-span-full text-center text-gray-500">Đang tải sản phẩm liên quan...</p>';
+                const pageSize = 5; // Số lượng sản phẩm liên quan muốn hiển thị
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/Products/Category/${categoryId}?pageNumber=1&pageSize=${pageSize}`);
+                    if (!response.ok) {
+                        throw new Error(`Không thể tải sản phẩm liên quan (Lỗi ${response.status})`);
+                    }
+                    const pagedResult = await response.json(); // API của cậu có thể trả về PagedResult<ProductSummaryDto>
+
+                    if (pagedResult && pagedResult.items && pagedResult.items.length > 0) {
+                        relatedProductsGridEl.innerHTML = ''; // Xóa thông báo "Đang tải..."
+                        let countDisplayed = 0;
+                        pagedResult.items.forEach(product => {
+                            // Chỉ hiển thị nếu khác sản phẩm hiện tại VÀ còn active VÀ còn hàng
+                            if (product.productID !== currentProductId && product.isActive && product.stockQuantity > 0 && countDisplayed < pageSize) {
+                                relatedProductsGridEl.innerHTML += renderRelatedProductItem(product);
+                                countDisplayed++;
+                            }
+                        });
+                        if (countDisplayed === 0) {
+                            relatedProductsGridEl.innerHTML = '<p class="col-span-full text-center text-gray-500">Không có sản phẩm liên quan nào.</p>';
+                        }
+                    } else {
+                        relatedProductsGridEl.innerHTML = '<p class="col-span-full text-center text-gray-500">Không có sản phẩm liên quan nào.</p>';
+                    }
+                } catch (error) {
+                    console.error('Lỗi tải sản phẩm liên quan:', error);
+                    relatedProductsGridEl.innerHTML = `<p class="col-span-full text-center text-red-500">Lỗi: ${error.message}</p>`;
+                }
+            }
+
+            // --- HÀM MỚI ĐỂ RENDER MỘT SẢN PHẨM LIÊN QUAN ---
+            // Giả sử sản phẩm liên quan là ProductSummaryDto hoặc có các thuộc tính tương tự
+            function renderRelatedProductItem(product) {
+                const imageUrl = getProductImageUrl(product.imageURL); // Tái sử dụng hàm getProductImageUrl
+                const productUrl = `product-detail.html?productId=${product.productID}`;
+
+                return `
+            <div class="related-product-card bg-white rounded-lg shadow-md overflow-hidden transition-all hover:shadow-lg">
+                <a href="${productUrl}" class="block">
+                    <img src="${imageUrl}" alt="${product.productName}" class="w-full h-40 object-cover">
+                </a>
+                <div class="p-3">
+                    <h3 class="text-sm font-semibold text-gray-800 mb-1 truncate" title="${product.productName}">
+                        <a href="${productUrl}" class="hover:text-blue-600">${product.productName}</a>
+                    </h3>
+                    <p class="text-xs text-gray-500 mb-2 truncate">
+                        ${product.categoryName || 'N/A'} <!-- Giả sử DTO có CategoryName -->
+                    </p>
+                    <div class="flex justify-between items-center">
+                        <span class="text-red-600 font-bold text-sm">${formatCurrency(product.price)}</span>
+                        <!-- Có thể thêm nút "Xem" nhỏ hoặc icon giỏ hàng nếu muốn -->
+                    </div>
+                </div>
+            </div>
+        `;
             }
 
             function updatePaginationUI(data) {
