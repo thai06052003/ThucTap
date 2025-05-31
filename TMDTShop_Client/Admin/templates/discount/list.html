@@ -20,34 +20,35 @@
             min-width: 90px;
             display: inline-block;
         }
-    
+
         .status-active {
             background-color: #dcfce7;
             color: #166534;
         }
+
         .status-inactive {
             background-color: #fee2e2;
             color: #991b1b;
         }
-    
+
         .status-expired {
             background-color: #f3f4f6;
             color: #4b5563;
         }
-    
+
         .status-upcoming {
             background-color: #fef9c3;
             color: #854d0e;
         }
-    
-    
-    
+
+
+
         .action-icon {
             padding: 0.3rem;
             border-radius: 0.25rem;
             transition: background-color 0.2s;
         }
-    
+
         .action-icon:hover {
             background-color: #e5e7eb;
         }
@@ -111,14 +112,17 @@
                             <table class="min-w-full bg-white border border-gray-200 rounded-md">
                                 <thead class="bg-gray-100 text-gray-600 uppercase text-xs">
                                     <tr>
-                                        <th class="py-3 px-4 text-left font-semibold">STT</th>
-                                        <th class="py-3 px-4 text-left font-semibold">Mã Giảm Giá</th>
-                                        <th class="py-3 px-4 text-center font-semibold">Phần trăm (%)</th>
-                                        <th class="py-3 px-4 text-left font-semibold">Ngày Bắt Đầu</th>
-                                        <th class="py-3 px-4 text-left font-semibold">Ngày Kết Thúc</th>
-                                        <th class="py-3 px-4 text-center font-semibold">Trạng Thái</th>
-                                        <th class="py-3 px-4 text-center font-semibold">Hiệu Lực</th>
-                                        <th class="py-3 px-4 text-center font-semibold">Hành Động</th>
+                                        <th class="py-3 text-center font-semibold">STT</th>
+                                        <th class="py-3 text-left font-semibold">Mã Giảm Giá</th>
+                                        <th class="py-3 text-center font-semibold">Phần trăm (%)</th>
+                                        <th class="py-3 text-center font-semibold">Ngân sách</th>
+                                        <th class="py-3 text-left font-semibold">Giá trị giảm tối đa</th>
+                                        <th class="py-3 text-left font-semibold">Ngân sách còn lại</th>
+                                        <th class="py-3 text-left font-semibold">Ngày Bắt Đầu</th>
+                                        <th class="py-3 text-left font-semibold">Ngày Kết Thúc</th>
+                                        <th class="py-3 text-center font-semibold">Trạng Thái</th>
+                                        <th class="py-3 text-center font-semibold">Hiệu Lực</th>
+                                        <th class="py-3 text-center font-semibold">Hành Động</th>
                                     </tr>
                                 </thead>
                                 <tbody id="discountTableBody" class="text-gray-700 text-sm divide-y divide-gray-200">
@@ -293,11 +297,14 @@
                         </button>
                     `;
                     row.innerHTML = `
-                        <td class="py-3 px-4 text-center">${stt}</td>
-                        <td class="py-3 px-4 font-medium">${discount.discountCode}</td>
-                        <td class="py-3 px-4 text-center">${discount.discountPercent.toFixed(2)}%</td>
-                        <td class="py-3 px-4">${formatDate(new Date(discount.startDate))}</td>
-                        <td class="py-3 px-4">${formatDate(new Date(discount.endDate))}</td>
+                        <td class="py-3 px-2 text-center">${stt}</td>
+                        <td class="py-3 px-2 font-medium">${discount.discountCode}</td>
+                        <td class="py-3 px-2 text-center">${discount.discountPercent.toFixed(2)}%</td>
+                        <td class="py-3 px-2 font-medium text-right">${formatCurrency(discount.budget)}</td>
+                        <td class="py-3 px-2 font-medium text-right">${formatCurrency(discount.maxDiscountPercent)}</td>
+                        <td class="py-3 px-2 font-medium text-right">${formatCurrency(discount.remainingBudget)}</td>
+                        <td class="py-3 px-2">${formatDate(new Date(discount.startDate))}</td>
+                        <td class="py-3 px-2">${formatDate(new Date(discount.endDate))}</td>
                         <td class="py-3 px-4 text-center">
                             <span class="status-badge ${discount.isActive ? 'status-active' : 'status-inactive'}">
                                 ${discount.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}

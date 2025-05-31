@@ -80,6 +80,22 @@
                             </div>
 
                             <div>
+                                <label for="budget" class="block text-sm font-medium text-gray-700 mb-1">Ngân sách <span class="text-red-500">*</span></label>
+                                <input type="number" id="budget" name="budget" required min="1"
+                                    class="border w-full border-gray-300 px-4 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                    placeholder="Nhập số từ 0.01">
+                                <p id="budgetError" class="error-message hidden"></p>
+                            </div>
+
+                            <div>
+                                <label for="maxDiscountPercent" class="block text-sm font-medium text-gray-700 mb-1">Giá trị giảm tối đa <span class="text-red-500">*</span></label>
+                                <input type="number" id="maxDiscountPercent" name="maxDiscountPercent" required min="1"
+                                    class="border w-full border-gray-300 px-4 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                    placeholder="Nhập số từ 0.01">
+                                <p id="maxDiscountPercentError" class="error-message hidden"></p>
+                            </div>
+
+                            <div>
                                 <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu
                                     <span class="text-red-500">*</span></label>
                                 <input type="date" id="startDate" name="startDate" required
@@ -134,6 +150,8 @@
             // Elements cho thông báo lỗi từng trường (tùy chọn, nếu muốn validate chi tiết hơn ở client)
             const discountCodeError = document.getElementById('discountCodeError');
             const discountPercentError = document.getElementById('discountPercentError');
+            const budgetError = document.getElementById('budgetError');
+            const maxDiscountPercentError = document.getElementById('maxDiscountPercentError');
             const startDateError = document.getElementById('startDateError');
             const endDateError = document.getElementById('endDateError');
             if (typeof API_BASE_URL === 'undefined' || typeof checkAuthToken !== 'function') {
@@ -158,6 +176,8 @@
                 const discountData = {
                     discountCode: formData.get('discountCode').trim().toUpperCase(), // Nên chuẩn hóa mã
                     discountPercent: parseFloat(formData.get('discountPercent')),
+                    budget: parseInt(formData.get('budget')),
+                    maxDiscountPercent: parseInt(formData.get('maxDiscountPercent')),
                     startDate: formData.get('startDate'), // Format YYYY-MM-DD
                     endDate: formData.get('endDate'),     // Format YYYY-MM-DD
                     isActive: form.elements.isActive.checked
@@ -171,6 +191,14 @@
                 }
                 if (isNaN(discountData.discountPercent) || discountData.discountPercent <= 0 || discountData.discountPercent > 100) {
                     displayFieldError(discountPercentError, "Phần trăm giảm phải từ 0.01 đến 100.");
+                    isValid = false;
+                }
+                if (isNaN(discountData.budget) || discountData.budget <= 0) {
+                    displayFieldError(budgetError, "Ngân sách phải từ 0.01.");
+                    isValid = false;
+                }
+                if (isNaN(discountData.maxDiscountPercent) || discountData.maxDiscountPercent <= 0 || discountData.maxDiscountPercent > discountData.budget) {
+                    displayFieldError(maxDiscountPercentError, "Giá trị giảm giá tối đa phải từ 0.01 và nhỏ hơn hoặc bằng ngân sách.");
                     isValid = false;
                 }
                 if (!discountData.startDate) {
@@ -248,7 +276,7 @@
 
             function clearFormMessages() {
                 formMessageDiv.innerHTML = '';
-                [discountCodeError, discountPercentError, startDateError, endDateError].forEach(el => {
+                [discountCodeError, discountPercentError, budget, maxDiscountPercent, startDateError, endDateError].forEach(el => {
                     if (el) {
                         el.textContent = '';
                         el.classList.add('hidden');

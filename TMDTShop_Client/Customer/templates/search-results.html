@@ -151,7 +151,7 @@
                             <h3 class="text-md font-semibold text-gray-800 mb-1 truncate" title="${product.productName}">
                                 <a href="product-detail.html?productId=${product.productID}" class="hover:text-blue-600">${product.productName}</a>
                             </h3>
-                            <p class="text-sm text-gray-500 mb-2 flex-grow-0">${product.shopName || 'ShopX'}</p>
+                            <a href="https://127.0.0.1:5500/Customer/templates/seller-profile.html?sellerId=${product.sellerID}" class="text-sm text-gray-500 mb-2 flex-grow-0 hover:text-blue-500 hover:underline">${product.shopName || 'ShopX'}</a>
                             <div class="mt-auto">
                                 <p class="text-lg font-bold text-red-600 mb-2">${priceFormatted}</p>
                                 <button onclick="addToCartFromSearch(${product.productID}, '${product.productName}', ${product.stockQuantity})" 

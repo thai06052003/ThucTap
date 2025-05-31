@@ -374,80 +374,31 @@
                 }
             }
 
-            // ✅ SỬA: order-detail.html - updateOrderStatusViaAPI function
-
-async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refreshCallback) {
-    const token = getSession('token');
-    if (!token && token != null) { 
-        alert('Bạn cần đăng nhập để có thể sử dụng chức năng này')
-        sessionStorage.clear();
-        window.location.assign('/Customer/templates/login.html')
-        return;
-    }
-    
-    try {
-        // ✅ FIXED: Sử dụng endpoint đúng cho Customer
-        let apiEndpoint;
-        let requestData;
-        
-        if (newStatus === 'Yêu cầu trả hàng/ hoàn tiền' || newStatus === 'Đã hủy') {
-            // ✅ Customer requests (hoàn tiền, hủy)
-            apiEndpoint = `${API_BASE_URL}/Orders/${orderId}/customer-status`;
-            requestData = { newStatus: newStatus };
-        } else {
-            // ✅ General status updates (cho seller/admin - không dành cho customer)
-            apiEndpoint = `${API_BASE_URL}/Orders/${orderId}/status`;
-            requestData = { newStatus: newStatus };
-        }
-        
-        console.log(`🌐 Calling API: ${apiEndpoint}`, requestData);
-        
-        const response = await fetch(apiEndpoint, {
-            method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${token}` 
-            },
-            body: JSON.stringify(requestData)
-        });
-        
-        console.log('📦 API Response Status:', response.status);
-        
-        if (response.ok) {
-            const responseData = await response.json();
-            console.log('✅ API Response Data:', responseData);
-            
-            alert(successMessage || responseData.message || `Cập nhật trạng thái đơn hàng #${orderId} thành công!`);
-            if (refreshCallback) refreshCallback();
-        } else {
-            const errorData = await response.json().catch(() => ({}));
-            console.error('❌ API Error Response:', errorData);
-            
-            // ✅ Enhanced error handling
-            let errorMessage = 'Có lỗi xảy ra khi cập nhật đơn hàng';
-            
-            if (response.status === 400) {
-                errorMessage = errorData.message || 'Yêu cầu không hợp lệ. Vui lòng kiểm tra lại thông tin đơn hàng.';
-            } else if (response.status === 401) {
-                errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
-                sessionStorage.clear();
-                window.location.assign('/Customer/templates/login.html');
-                return;
-            } else if (response.status === 403) {
-                errorMessage = 'Bạn không có quyền thực hiện thao tác này.';
-            } else if (response.status === 404) {
-                errorMessage = 'Không tìm thấy đơn hàng hoặc đơn hàng đã bị xóa.';
-            } else {
-                errorMessage = errorData.message || `Lỗi ${response.status}: ${response.statusText}`;
+            async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refreshCallback) {
+                const token = getSession('token');
+                if (!token && token != null) {
+                    alert('Bạn cần đăng nhập để có thể sử dụng chức năng này')
+                    sessionStorage.clear();
+                    window.location.assign('/Customer/templates/login.html')
+                }
+                try {
+                    const response = await fetch(`${API_BASE_URL}/Orders/${orderId}/order-status`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ newStatus: newStatus })
+                    });
+                    if (response.ok) {
+                        alert(successMessage || `Cập nhật trạng thái đơn hàng #${orderId} thành công!`);
+                        if (refreshCallback) refreshCallback();
+                    } else {
+                        const errorData = await response.json();
+                        alert(`Lỗi: ${errorData.message || response.statusText}`);
+                    }
+                } catch (error) {
+                    alert(`Lỗi kết nối: ${error.message}`);
+                }
             }
-            
-            alert(`Lỗi: ${errorMessage}`);
-        }
-    } catch (error) {
-        console.error('❌ Network/Request Error:', error);
-        alert(`Lỗi kết nối: ${error.message}`);
-    }
-}
+
 
             window.customerCancelOrder = (orderId) => {
                 if (confirm(`Bạn có chắc chắn muốn hủy đơn hàng #${orderId} không?`)) {
@@ -474,7 +425,7 @@ async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refre
                 contentElement.classList.add('hidden');
 
                 const token = getSession('token');
-                if (!token) { /* ... xử lý lỗi token ... */ return; }
+                if (!token) { return; }
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/Orders/${orderId}`, {
@@ -497,6 +448,7 @@ async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refre
             }
 
             function renderOrderDetail(order) {
+                console.log(order)
                 breadcrumbIdSpan.textContent = `#${order.orderID}`;
                 orderIdSpan.textContent = order.orderID;
                 orderDateSpan.textContent = formatDate(new Date(order.orderDate));
@@ -516,12 +468,12 @@ async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refre
                             <img src="${getImageUrl(item.productImageURL)}" alt="${item.productName}" class="product-image-detail">
                             <div class="product-details">
                                 <a href="/Customer/templates/product-detail.html?productId=${item.productID}" 
-                                                class="mb-2 text-lg text-gray-800 leading-tight hover:text-indigo-600 rounded-full ${!item.isActive ? 'no-event' : ''}">
+                                                class="mb-2 text-lg text-gray-800 leading-tight hover:text-indigo-600 rounded-full ${!item.isActive || !item.shopIsActive ? 'no-event' : ''}">
                                                 ${item.productName}
-                                                ${!item.isActive ? `<span class="text-xs font-medium px-3 py-1 ml-8 bg-gray-500 rounded-full w-24 text-center text-white">Đã ngừng bán</span>` : ''}
+                                                ${!item.isActive || !item.shopIsActive ? `<span class="text-xs font-medium px-3 py-1 ml-8 bg-gray-500 rounded-full w-24 text-center text-white">Đã ngừng bán</span>` : ''}
                                                 </a>
                                 <p class="product-category-detail">Phân loại: ${item.categoryName || 'Chưa phân loại'}</p>
-                                ${item.shopName && item.shopName !== "N/A" ? `<p class="product-shop-detail">Shop: ${item.shopName}</p>` : ''}
+                                ${item.shopName && item.shopName !== "N/A" ? `<a href="https://127.0.0.1:5500/Customer/templates/seller-profile.html?sellerId=${item.sellerID}" class="product-shop-detail hover:text-indigo-800 hover:underline">Shop: ${item.shopName}</a>` : ''}
                                 <p class="product-quantity-detail">Số lượng: ${item.quantity}</p>
                             </div>
                             <div class="ml-auto text-right">
@@ -540,60 +492,30 @@ async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refre
                 totalPaymentSpan.textContent = formatCurrency(order.totalPayment);
 
                 // Render Action Buttons cho Customer
-                // ✅ Hủy đơn hàng (chỉ khi chờ xác nhận hoặc đang xử lý)
-                 if (order.status === ORDER_STATUSES.CHO_XAC_NHAN || order.status === ORDER_STATUSES.DANG_XU_LY) {
-        actionButtonsContainer.innerHTML += `
-            <button onclick="customerCancelOrder(${order.orderID})" 
-                    class="action-button customer-cancel-order-btn"
-                    title="Hủy đơn hàng này">
-                <i class="fas fa-times-circle"></i>Hủy Đơn Hàng
-            </button>`;
-    }
-            
-                // ✅ FIXED: Yêu cầu hoàn tiền (chỉ khi đã giao và trong vòng 3 ngày)
-    if (order.status === ORDER_STATUSES.DA_GIAO && order.orderDate) {
-        const daysSinceDelivery = getDateDifference(order.orderDate);
-        const canReturn = daysSinceDelivery <= 3;
-        
-        console.log('🔄 Return eligibility check:', {
-            daysSinceDelivery,
-            canReturn,
-            orderDate: order.orderDate
-        });
-        
-        if (canReturn) {
-            const timeRemaining = getReturnTimeRemaining(order.orderDate);
-            
-            actionButtonsContainer.innerHTML += `
-                <button onclick="customerRequestReturn(${order.orderID})" 
-                        class="action-button customer-return-request-btn ml-0 sm:ml-3 mt-2 sm:mt-0"
-                        title="${timeRemaining}">
-                    <i class="fas fa-undo-alt"></i>Yêu cầu trả hàng/ hoàn tiền
-                    <span class="text-xs block">(${timeRemaining})</span>
-                </button>`;
-                
-            // ✅ Đánh giá sản phẩm
-            actionButtonsContainer.innerHTML += `
-                <button onclick="window.location.href='/Customer/templates/review.html?orderId=${order.orderID}'" 
-                        class="action-button bg-indigo-600 text-white hover:bg-indigo-700 ml-0 sm:ml-3 mt-2 sm:mt-0">
-                    <i class="fas fa-star"></i>Đánh Giá Sản Phẩm
-                </button>`;
-        } else {
-            // ✅ Hiển thị thông báo đã hết hạn
-            actionButtonsContainer.innerHTML += `
-                <div class="text-sm text-gray-500 ml-0 sm:ml-3 mt-2 sm:mt-0 p-2 bg-gray-100 rounded">
-                    <i class="fas fa-clock mr-1"></i>
-                    Đã hết thời hạn yêu cầu hoàn tiền (quá 3 ngày)
-                </div>`;
-        }
-    }
-    
-    // ✅ Mua lại (luôn hiển thị)
-    actionButtonsContainer.innerHTML += `
-        <button onclick="window.location.href='/Customer/templates/cart.html?rebuyOrderId=${order.orderID}'" 
-                class="action-button bg-gray-200 text-gray-700 hover:bg-gray-300 ml-0 sm:ml-3 mt-2 sm:mt-0">
-            <i class="fas fa-redo-alt"></i>Mua Lại
-        </button>`;
+                actionButtonsContainer.innerHTML = '';
+                if (order.status === ORDER_STATUSES.CHO_XAC_NHAN) {
+                    actionButtonsContainer.innerHTML += `
+                        <button onclick="customerCancelOrder(${order.orderID})" class="action-button customer-cancel-order-btn">
+                            <i class="fas fa-times-circle"></i>Hủy Đơn Hàng
+                        </button>`;
+                }
+
+                if (order.status === ORDER_STATUSES.DA_GIAO && order?.orderDate) {
+                    if (getDateDifference(order.orderDate) < 3) {
+                        actionButtonsContainer.innerHTML += `
+                        <button onclick="customerRequestReturn(${order.orderID})" class="action-button customer-return-request-btn ml-0 sm:ml-3 mt-2 sm:mt-0">
+                            <i class="fas fa-undo-alt"></i>Yêu cầu trả hàng/ hoàn tiền
+                            </button>`;
+                        actionButtonsContainer.innerHTML += `
+                            <button onclick="window.location.href='/Customer/templates/review.html?orderId=${order.orderID}'" class="action-button bg-indigo-600 text-white hover:bg-indigo-700 ml-0 sm:ml-3 mt-2 sm:mt-0">
+                                <i class="fas fa-star"></i>Đánh Giá Sản Phẩm
+                                </button>`;
+                    }
+                }
+                actionButtonsContainer.innerHTML += `
+                        <button onclick="window.location.href='/Customer/templates/cart.html?rebuyOrderId=${order.orderID}'" class="action-button bg-gray-200 text-gray-700 hover:bg-gray-300 ml-0 sm:ml-3 mt-2 sm:mt-0">
+                            <i class="fas fa-redo-alt"></i>Mua Lại
+                        </button>`;
             }
 
             const urlParams = new URLSearchParams(window.location.search);

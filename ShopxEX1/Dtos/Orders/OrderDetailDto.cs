@@ -11,6 +11,7 @@
         public string? ProductImageURL { get; set; } // Cần map từ Product
         public int SellerID { get; set; }
         public string ShopName { get; set; } = string.Empty; // Cần map từ Product -> seller
+        public string ShopIsActive { get; set; } = string.Empty; // Cần map từ Product -> seller
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; } // Giá lúc đặt hàng
         public decimal LineTotal => UnitPrice * Quantity;

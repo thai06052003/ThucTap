@@ -330,7 +330,7 @@
                                 <input type="text" id="shippingAddressInput"
                                     placeholder="Ví dụ: 123 Đường ABC, Phường XYZ, Quận 1, TP.HCM"
                                     class="p-3 border border-gray-300 rounded-md w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                <p id="shippingAddressError" class="text-red-500 text-xs mt-1 hidden"></p>
+                                <h2 id="shippingAddressError" class="text-red-500 text-base mt-1 hidden">* Bạn phải nhập đại chỉ giao hàng</h2>
                             </div>
                             <div>
                                 <label for="discountCodeInput" class="block text-sm font-medium text-gray-700 mb-1">Mã
@@ -376,7 +376,7 @@
                             <button id="checkoutSelectedButton"
                                 class="w-full sm:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition duration-150 ease-in-out flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-lg"
                                 disabled>
-                                Đặt hàng    (<span id="checkoutButtonSelectedCount">0</span>)
+                                Đặt hàng (<span id="checkoutButtonSelectedCount">0</span>)
                             </button>
                         </div>
                     </div>
@@ -461,9 +461,13 @@
 
 
             function renderCartItem(item) {
+                console.log("asdadsad")
+                console.log(item)
                 // ... (Logic render item giữ nguyên, chỉ cần đảm bảo nó không bị lỗi nếu item.product là null)
                 const imageUrl = window.getImageUrl(item.imageURL);
                 const priceFormatted = window.formatCurrency(item.price);
+                const shopName = item.shopName ?? "Shop không xác định";
+                const isSellerActive = item.shopIsActive === true || item.shopIsActive === 'True';
 
                 let itemClasses = "py-5 flex flex-col sm:flex-row items-start gap-4 product-item-container";
                 let checkboxReplacementHtml = '';
@@ -485,6 +489,9 @@
                     productNameClasses += " line-through text-gray-400 no-event";
                     priceClasses += " line-through text-gray-400";
                     lineTotalClasses += " line-through text-gray-400";
+                }
+                else if (!isSellerActive) {
+                    itemClasses += " unavailable";
                 } else if (item.availableStock === 0) {
                     itemClasses += " out-of-stock";
                     checkboxReplacementHtml = `<span class="item-status-notice item-status-out-of-stock" title="Sản phẩm đã hết hàng">Hết hàng</span>`;
@@ -504,11 +511,11 @@
                          data-stock="${item.availableStock}" 
                          data-is-active="${item.isActive}"
                          data-is-unavailable-for-purchase="${isActuallyUnavailableForPurchase}">
-                        <div class="flex items-center w-full sm:w-auto ${!item.isActive ? 'pointer-events-none' : ''}">
+                        <div class="flex items-center w-full sm:w-auto ${!item.isActive || !isSellerActive ? 'pointer-events-none' : ''}">
                              ${checkboxReplacementHtml ?
                         `<div class="h-5 mr-4 flex-shrink-0 flex items-center justify-center">${checkboxReplacementHtml}</div>`
                         :
-                        `<input type="checkbox" class="cart-item-checkbox form-checkbox mr-4 flex-shrink-0" 
+                        `<input type="checkbox" class="cart-item-checkbox form-checkbox mr-4 flex-shrink-0" ${!item.isActive || !isSellerActive ? 'disabled' : ''} 
                                    data-item-id="${item.cartItemID}">`
                     }
                             <img src="${imageUrl}" alt="${item.productName}" class="cart-item-image">
@@ -517,6 +524,12 @@
                             <a href="${item.isActive ? `product-detail.html?productId=${item.productID}` : 'javascript:void(0);'}" 
                                class="${productNameClasses}" 
                                title="${item.productName}">${item.productName}</a>
+
+                                <p class="text-xs text-gray-500 mb-1">
+                                    <i class="fas fa-store fa-fw mr-1 text-indigo-500"></i>
+                                    Shop: <span class="font-medium ${!isSellerActive ? 'line-through text-gray-400' : 'text-gray-700'}">${shopName}</span>
+                                    ${!isSellerActive ? '<span class="text-red-500 text-xs ml-1">(Shop tạm ngưng)</span>' : ''}
+                                </p>
                             
                             ${item.isActive && item.availableStock > 0 ?
                         `<p class="text-sm text-gray-500">Tồn kho: ${item.availableStock}</p>` :
@@ -594,7 +607,7 @@
                 cartContentEl.classList.remove('hidden');
             }
 
-            function handleSelectAllChange() { /* ... (giữ nguyên) ... */
+            function handleSelectAllChange() { 
                 const isChecked = selectAllCheckbox.checked;
                 document.querySelectorAll('.cart-item-checkbox:not([disabled])').forEach(checkbox => {
                     checkbox.checked = isChecked;
@@ -602,7 +615,7 @@
                 updateSelectedSummary();
             }
 
-            function attachEventListeners() { /* ... (giữ nguyên) ... */
+            function attachEventListeners() { 
                 selectAllCheckbox.removeEventListener('change', handleSelectAllChange);
                 selectAllCheckbox.addEventListener('change', handleSelectAllChange);
 
@@ -625,9 +638,9 @@
                 });
             }
 
-            function handleCheckboxChange() { /* ... (giữ nguyên) ... */ updateSelectedSummary(); }
+            function handleCheckboxChange() { updateSelectedSummary(); }
 
-            function handleQuantityChange(event) { /* ... (giữ nguyên, logic API gọi sau) ... */
+            function handleQuantityChange(event) {
                 const triggeredElement = event.target.closest('button, input'); // Đảm bảo lấy đúng element
                 if (!triggeredElement) return;
 
@@ -685,13 +698,12 @@
                 // Không cần gọi updateSelectedSummary() ở đây nữa, vì updateCartItemQuantity/removeCartItem sẽ gọi fetchCart() => renderCart() => updateSelectedSummary()
             }
 
-            function handleRemoveItem(event) { /* ... (giữ nguyên) ... */
+            function handleRemoveItem(event) { 
                 const itemId = event.target.closest('.remove-item').dataset.itemId;
                 removeCartItem(itemId);
             }
 
             function updateSelectedSummary() {
-                // ... (phần lấy selectedCheckboxes, selectedItemsCount, subtotal giữ nguyên) ...
                 const allVisibleAndEnabledCheckboxes = document.querySelectorAll('.cart-item-checkbox:not([disabled])');
                 const selectedAndEnabledCheckboxes = document.querySelectorAll('.cart-item-checkbox:checked:not([disabled])');
 
@@ -751,6 +763,8 @@
                     if (appliedDiscountDetails.remainingBudget < calculatedDiscountAmount && appliedDiscountDetails.remainingBudget > 0) {
                         discountMessageEl.textContent = `LƯU Ý: Mã ${appliedDiscountDetails.code} chỉ còn ${formatCurrency(appliedDiscountDetails.remainingBudget)} ngân sách. Số tiền giảm có thể bị điều chỉnh khi thanh toán.`;
                         discountMessageEl.className = 'text-xs mt-1 text-yellow-600 font-medium';
+                        confirm(`LƯU Ý: Mã ${appliedDiscountDetails.code} chỉ còn ${formatCurrency(appliedDiscountDetails.remainingBudget)} ngân sách so với giá trị giảm tối đa ${formatCurrency(appliedDiscountDetails.maxDiscountPercent)}. Số tiền giảm có thể bị điều chỉnh khi thanh toán.`)
+                        calculatedDiscountAmount = appliedDiscountDetails.remainingBudget
                         // Có thể giới hạn calculatedDiscountAmount ở đây để người dùng thấy trước, nhưng backend vẫn là quyết định cuối
                         // calculatedDiscountAmount = Math.min(calculatedDiscountAmount, appliedDiscountDetails.remainingBudget);
                     } else if (appliedDiscountDetails.remainingBudget <= 0) {
@@ -795,15 +809,49 @@
             }
 
 
-            async function fetchCart() { /* ... (giữ nguyên, nhưng renderCart sẽ gọi updateSelectedSummary) ... */
+            async function fetchCart() {
                 cartLoadingEl.classList.remove('hidden');
                 cartContentEl.classList.add('hidden');
                 const token = getSession('token');
-                if (!token) { window.location.href = '/Customer/templates/login.html'; return; } // Đảm bảo URL đúng
+                if (!token) { window.location.href = '/Customer/templates/login.html'; return; }
                 try {
                     const response = await fetch(`${API_BASE_URL}/Cart`, { headers: { 'Authorization': `Bearer ${token}` } });
                     if (response.ok) {
-                        renderCart(await response.json());
+                        const cartData = await response.json();
+                        renderCart(cartData); // Render giỏ hàng như bình thường
+
+                        // ***** THÊM LOGIC XỬ LÝ AUTO-SELECT Ở ĐÂY *****
+                        const cartItemIdToSelect = getQueryParam('selectCartItemId');
+                        const productIdToSelect = getQueryParam('selectProductId');
+
+                        if (cartItemIdToSelect) {
+                            const checkbox = document.querySelector(`.cart-item-checkbox[data-item-id="${cartItemIdToSelect}"]`);
+                            if (checkbox && !checkbox.disabled) {
+                                checkbox.checked = true;
+                                // Cuộn đến item đó nếu cần
+                                checkbox.closest('.product-item-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        } else if (productIdToSelect && cartData && cartData.cartItems) {
+                            // Nếu chỉ có productId, tìm cartItemId tương ứng
+                            const itemToSelect = cartData.cartItems.find(item => item.productID == productIdToSelect && item.isActive && item.product && item.product.seller && item.product.seller.isActive);
+                            if (itemToSelect) {
+                                const checkbox = document.querySelector(`.cart-item-checkbox[data-item-id="${itemToSelect.cartItemID}"]`);
+                                if (checkbox && !checkbox.disabled) {
+                                    checkbox.checked = true;
+                                    checkbox.closest('.product-item-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
+                            }
+                        }
+                        updateSelectedSummary(); // Cập nhật lại tổng tiền sau khi tự động chọn
+                        // Xóa query params khỏi URL để tránh chọn lại khi refresh (tùy chọn)
+                        if (cartItemIdToSelect || productIdToSelect) {
+                            const url = new URL(window.location);
+                            url.searchParams.delete('selectCartItemId');
+                            url.searchParams.delete('selectProductId');
+                            // url.searchParams.delete('directBuy'); // Nếu đã dùng xong
+                            window.history.replaceState({}, document.title, url.pathname + url.search);
+                        }
+
                     }
                     else if (response.status === 401) { sessionStorage.removeItem('token'); window.location.href = '/Customer/templates/login.html'; }
                     else {
@@ -824,7 +872,7 @@
                 }
             }
 
-            async function updateCartItemQuantity(cartItemId, newQuantity) { /* ... (giữ nguyên) ... */
+            async function updateCartItemQuantity(cartItemId, newQuantity) { 
                 const token = getSession('token');
                 if (!token) return;
 
@@ -854,7 +902,7 @@
                 }
             }
 
-            async function removeCartItem(cartItemId, silent = false) { /* ... (giữ nguyên) ... */
+            async function removeCartItem(cartItemId, silent = false) { 
                 const token = getSession('token');
                 if (!token) return;
 
@@ -945,7 +993,6 @@
                         let validDiscountsExist = false;
                         discounts.forEach(discount => { // discount ở đây là DiscountDto
                             const now = new Date();
-                            // Parse lại ngày tháng từ DTO vì có thể là string
                             const startDate = new Date(discount.startDate);
                             const endDate = new Date(discount.endDate);
                             endDate.setHours(23, 59, 59, 999); // Đảm bảo so sánh đến cuối ngày
@@ -1008,18 +1055,18 @@
                 }
             }
 
-            if (openDiscountModalBtn) { /* ... (giữ nguyên) ... */
+            if (openDiscountModalBtn) { 
                 openDiscountModalBtn.addEventListener('click', () => {
                     discountModal.classList.add('active');
                     loadDiscountsForModal();
                 });
             }
-            if (closeDiscountModalBtn) { /* ... (giữ nguyên) ... */
+            if (closeDiscountModalBtn) { 
                 closeDiscountModalBtn.addEventListener('click', () => {
                     discountModal.classList.remove('active');
                 });
             }
-            if (discountModal) { /* ... (giữ nguyên) ... */
+            if (discountModal) { 
                 discountModal.addEventListener('click', (event) => {
                     if (event.target === discountModal) {
                         discountModal.classList.remove('active');
@@ -1045,11 +1092,11 @@
             }
 
             // Event listener cho nút Thanh toán
-            if (checkoutSelectedButton) { /* ... (giữ nguyên, chỉ cần đảm bảo payload gửi đi đúng) ... */
+            if (checkoutSelectedButton) {
                 checkoutSelectedButton.addEventListener('click', async () => {
                     const selectedCheckboxes = document.querySelectorAll('.cart-item-checkbox:checked:not([disabled])');
 
-                    if (selectedCheckboxes.length === 0) { /* ... */ return; }
+                    if (selectedCheckboxes.length === 0) { return; }
 
                     let proceedWithCheckout = true;
                     const problematicItemsMessages = [];
@@ -1094,7 +1141,10 @@
                     let isValidAddress = true;
                     shippingAddressError.classList.add('hidden');
                     const shippingAddress = shippingAddressInput.value.trim();
-                    if (!shippingAddress) { /* ... */ isValidAddress = false; }
+                    if (!shippingAddress) { 
+                        shippingAddressError.classList.remove('hidden'); 
+                        isValidAddress = false; 
+                    }
                     if (!isValidAddress) return;
 
                     const orderPayload = {
@@ -1159,11 +1209,29 @@
             }
 
             // Initial Load
-            fetchCart();
+            const directBuyProductId = getQueryParam('productId'); // Lấy từ URL của product-detail
+            const directBuyQuantity = getQueryParam('quantity');
+            const isDirectBuy = getQueryParam('directBuy') === 'true';
+
+            if (isDirectBuy && directBuyProductId && directBuyQuantity) {
+                // Trường hợp này đã được xử lý bởi logic mới của nút "Mua ngay" trong product-detail.html
+                // Nó sẽ gọi API thêm vào giỏ, sau đó chuyển hướng sang cart.html với selectCartItemId.
+                // Vì vậy, không cần logic directBuy đặc biệt ở đây nữa nếu product-detail đã thêm vào giỏ.
+                // Chỉ cần đảm bảo fetchCart() được gọi để tải và auto-select.
+                fetchCart();
+            } else {
+                fetchCart(); // Tải giỏ hàng bình thường
+            }
             // Load địa chỉ giao hàng từ User (nếu có)
             const currentUser = getSession('currentUser');
             if (currentUser && currentUser.address && shippingAddressInput) {
                 shippingAddressInput.value = currentUser.address;
+            }
+
+            // Hàm để đọc query params từ URL
+            function getQueryParam(param) {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(param);
             }
         }
 
