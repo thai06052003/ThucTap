@@ -70,22 +70,104 @@ namespace ShopxEX1.Controllers
         [HttpPost("admin")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateNotification([FromBody] CreateNotificationDto dto)
+{
+    using var transaction = await _context.Database.BeginTransactionAsync();
+    
+    try
+    {
+        Console.WriteLine($"🔔 [ADMIN CREATE] Starting notification creation");
+        
+        if (!ModelState.IsValid)
         {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
-
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var result = await _notificationService.CreateNotificationAsync(dto, userId);
-                return CreatedAtAction(nameof(GetNotificationById), new { id = result.NotificationID }, result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
+            Console.WriteLine("❌ [ADMIN CREATE] Model validation failed");
+            return BadRequest(ModelState);
         }
 
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        
+        // ✅ GET VIETNAM TIMEZONE - SAME AS SELLER
+        var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        var vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
+        
+        // ✅ CHECK FOR DUPLICATES WITH VIETNAM TIME
+        var duplicateCheck = await _context.Notifications
+            .Where(n => n.CreatedBy == userId && 
+                       n.Title == dto.Title && 
+                       n.CreatedAt >= vietnamNow.AddMinutes(-1)) // Vietnam time comparison
+            .FirstOrDefaultAsync();
+            
+        if (duplicateCheck != null)
+        {
+            Console.WriteLine($"❌ [ADMIN CREATE] Duplicate notification detected: {duplicateCheck.NotificationID}");
+            await transaction.RollbackAsync();
+            return BadRequest(new { message = "Thông báo này đã được tạo gần đây. Vui lòng chờ 1 phút trước khi tạo lại." });
+        }
+        
+        // ✅ CONVERT SCHEDULED TIME IF PROVIDED
+        DateTime? utcScheduledAt = null;
+        if (dto.ScheduledAt.HasValue)
+        {
+            // Convert from Vietnam timezone to UTC for storage
+            utcScheduledAt = TimeZoneInfo.ConvertTimeToUtc(dto.ScheduledAt.Value, vietnamTimeZone);
+            
+            // Validate future time
+            if (utcScheduledAt <= DateTime.UtcNow)
+            {
+                return BadRequest(new { message = "Thời gian lên lịch phải lớn hơn thời gian hiện tại" });
+            }
+        }
+        
+        // ✅ CREATE WITH PROPER TIMEZONE
+        var notification = new Notification
+        {
+            Title = dto.Title,
+            Content = dto.Content,
+            Type = dto.Type,
+            Icon = dto.Icon ?? "fa-bell",
+            ActionText = dto.ActionText,
+            ActionUrl = dto.ActionUrl,
+            TargetAudience = dto.TargetAudience,
+            CreatedBy = userId,
+            CreatedAt = vietnamNow, // Store Vietnam time
+            ScheduledAt = utcScheduledAt, // Store UTC for scheduling
+            Status = "draft",
+            TotalSent = 0,
+            TotalRead = 0
+        };
+        
+        _context.Notifications.Add(notification);
+        await _context.SaveChangesAsync();
+        
+        await transaction.CommitAsync();
+        
+        Console.WriteLine($"✅ [ADMIN CREATE] Successfully created notification {notification.NotificationID} at {vietnamNow}");
+        
+        // ✅ RETURN WITH VIETNAM TIME
+        var result = new
+        {
+            notification.NotificationID,
+            notification.Title,
+            notification.Content,
+            notification.Type,
+            notification.Status,
+            CreatedAt = vietnamNow,
+            ScheduledAt = dto.ScheduledAt, // Return original client time
+            VietnamTime = vietnamNow.ToString("dd/MM/yyyy HH:mm:ss")
+        };
+        
+        return CreatedAtAction(
+            nameof(GetNotificationById), 
+            new { id = result.NotificationID }, 
+            result
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [ADMIN CREATE] Exception: {ex.Message}");
+        await transaction.RollbackAsync();
+        return StatusCode(500, new { message = "Lỗi hệ thống khi tạo thông báo", error = ex.Message });
+    }
+}
         [HttpPut("admin/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateNotification(int id, [FromBody] UpdateNotificationDto dto)
@@ -129,21 +211,49 @@ namespace ShopxEX1.Controllers
         [HttpPost("admin/{id}/send")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SendNotification(int id)
-        {
-            try
-            {
-                var result = await _notificationService.SendNotificationAsync(id);
-                if (!result)
-                    return BadRequest(new { message = "Cannot send notification" });
+{
+    try
+    {
+        Console.WriteLine($"📤 [ADMIN SEND] Sending notification {id}");
+        
+        // ✅ ENHANCE SEND RESULT WITH TIMEZONE
+        var result = await _notificationService.SendNotificationAsync(id);
 
-                return Ok(new { message = "Notification sent successfully" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = ex.Message });
-            }
+        if (!result)
+        {
+            return BadRequest(new { message = "Cannot send notification" });
+        }
+        
+        // ✅ UPDATE sentAt WITH VIETNAM TIMEZONE
+        var notification = await _context.Notifications.FindAsync(id);
+        if (notification != null)
+        {
+            var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
+            
+            notification.SentAt = vietnamNow;
+            notification.Status = "sent";
+            
+            await _context.SaveChangesAsync();
+            
+            Console.WriteLine($"✅ [ADMIN SEND] Notification {id} sent successfully at {vietnamNow}");
+
+            return Ok(new { 
+                message = "Notification sent successfully",
+                sentAt = vietnamNow,
+                vietnamTime = vietnamNow.ToString("dd/MM/yyyy HH:mm:ss"),
+                totalRecipients = notification.TotalSent
+            });
         }
 
+        return Ok(new { message = "Notification sent successfully" });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [ADMIN SEND ERROR] {ex.Message}");
+        return StatusCode(500, new { message = ex.Message });
+    }
+}
         // ============================================
         // USER ENDPOINTS
         // ============================================

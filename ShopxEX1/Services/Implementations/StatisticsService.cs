@@ -24,25 +24,40 @@ namespace ShopxEX1.Services
             _context = context;
         }
 
-        public async Task<SellerDashboardDto> GetSellerDashboardStatsAsync(int sellerId)
+      public async Task<SellerDashboardDto> GetSellerDashboardStatsAsync(int sellerId)
 {
     try
     {
-        Console.WriteLine($"=== GetSellerDashboardStatsAsync FIXED EF TRANSLATION for sellerId: {sellerId} ===");
-        
-        // ✅ Date calculations
-        var today = DateTime.Today;
-        var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
-        var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
-        var firstDayOfLastMonth = firstDayOfMonth.AddMonths(-1);
-        var lastDayOfLastMonth = firstDayOfMonth.AddDays(-1);
-        var firstDayOfWeek = today.AddDays(-(int)today.DayOfWeek + (int)DayOfWeek.Monday);
+        Console.WriteLine($"=== GetSellerDashboardStatsAsync FIXED DATE LOGIC for sellerId: {sellerId} ===");
 
-        // ✅ Product counts
+        // ✅ FIXED: Date calculations with proper timezone and range
+        var now = DateTime.Now; // Use local time instead of UTC
+        var today = now.Date;
+        
+        // ✅ FIXED: Proper month boundaries
+        var firstDayOfMonth = new DateTime(now.Year, now.Month, 1);
+        var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1).AddHours(23).AddMinutes(59).AddSeconds(59);
+        
+        var firstDayOfLastMonth = firstDayOfMonth.AddMonths(-1);
+        var lastDayOfLastMonth = firstDayOfMonth.AddDays(-1).AddHours(23).AddMinutes(59).AddSeconds(59);
+        
+        // ✅ FIXED: Week boundary (Monday to Sunday)
+        var daysSinceMonday = ((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+        var firstDayOfWeek = today.AddDays(-daysSinceMonday);
+        var lastDayOfWeek = firstDayOfWeek.AddDays(6).AddHours(23).AddMinutes(59).AddSeconds(59);
+
+        Console.WriteLine($"Date ranges:");
+        Console.WriteLine($"  Today: {today:yyyy-MM-dd}");
+        Console.WriteLine($"  This month: {firstDayOfMonth:yyyy-MM-dd} to {lastDayOfMonth:yyyy-MM-dd}");
+        Console.WriteLine($"  Last month: {firstDayOfLastMonth:yyyy-MM-dd} to {lastDayOfLastMonth:yyyy-MM-dd}");
+        Console.WriteLine($"  This week: {firstDayOfWeek:yyyy-MM-dd} to {lastDayOfWeek:yyyy-MM-dd}");
+
+        // Product counts (unchanged)
         var productStats = await _context.Products
             .Where(p => p.SellerID == sellerId)
             .GroupBy(p => 1)
-            .Select(g => new { 
+            .Select(g => new
+            {
                 Total = g.Count(),
                 Available = g.Count(p => p.StockQuantity > 0)
             })
@@ -51,7 +66,7 @@ namespace ShopxEX1.Services
         var totalProductCount = productStats?.Total ?? 0;
         var availableProductCount = productStats?.Available ?? 0;
 
-        // ✅ FIXED: Load orders without complex LINQ expressions
+        // ✅ FIXED: Load orders with proper date filtering
         var orders = await _context.Orders
             .Where(o => _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId))
             .Include(o => o.User)
@@ -62,86 +77,98 @@ namespace ShopxEX1.Services
 
         Console.WriteLine($"Found {orders.Count} total orders for seller {sellerId}");
 
-        // ✅ FIXED: Order status counts - Client-side evaluation
+        // Order status counts (unchanged - already correct)
         var orderStatusCounts = new
         {
-            Pending = orders.Count(o => o.Status.Equals("Chờ xác nhận", StringComparison.OrdinalIgnoreCase)),
-            Processing = orders.Count(o => o.Status.Equals("Đang xử lý", StringComparison.OrdinalIgnoreCase)),
-            Shipping = orders.Count(o => o.Status.Equals("Đang giao", StringComparison.OrdinalIgnoreCase)),
-            Delivered = orders.Count(o => o.Status.Equals("Đã giao", StringComparison.OrdinalIgnoreCase)),
-            Completed = orders.Count(o => o.Status.Equals("Hoàn thành", StringComparison.OrdinalIgnoreCase)),
-            RefundRequested = orders.Count(o => o.Status.Equals("Yêu cầu trả hàng/ hoàn tiền", StringComparison.OrdinalIgnoreCase)),
-            Cancelled = orders.Count(o => o.Status.Equals("Đã hủy", StringComparison.OrdinalIgnoreCase)),
-            Refunded = orders.Count(o => o.Status.Equals("Đã hoàn tiền", StringComparison.OrdinalIgnoreCase))
+            Pending = orders.Count(o => string.Equals(o.Status, OrderStatuses.PENDING, StringComparison.OrdinalIgnoreCase)),
+            Processing = orders.Count(o => string.Equals(o.Status, OrderStatuses.PROCESSING, StringComparison.OrdinalIgnoreCase)),
+            Shipping = orders.Count(o => string.Equals(o.Status, OrderStatuses.SHIPPING, StringComparison.OrdinalIgnoreCase)),
+            Delivered = orders.Count(o => string.Equals(o.Status, OrderStatuses.DELIVERED, StringComparison.OrdinalIgnoreCase)),
+            RefundRequested = orders.Count(o => string.Equals(o.Status, OrderStatuses.REFUND_REQUESTED, StringComparison.OrdinalIgnoreCase)),
+            Cancelled = orders.Count(o => string.Equals(o.Status, OrderStatuses.CANCELLED, StringComparison.OrdinalIgnoreCase)),
+            Refunded = orders.Count(o => string.Equals(o.Status, OrderStatuses.REFUNDED, StringComparison.OrdinalIgnoreCase)),
+            RefundRejected = orders.Count(o => string.Equals(o.Status, OrderStatuses.REFUND_REJECTED, StringComparison.OrdinalIgnoreCase))
         };
 
-        Console.WriteLine($"Order Status Breakdown: P:{orderStatusCounts.Pending}, Pr:{orderStatusCounts.Processing}, S:{orderStatusCounts.Shipping}, D:{orderStatusCounts.Delivered}, C:{orderStatusCounts.Completed}, RR:{orderStatusCounts.RefundRequested}, Can:{orderStatusCounts.Cancelled}, Ref:{orderStatusCounts.Refunded}");
-
-        // ✅ FIXED: Revenue calculation - CHỈ từ đơn hàng "Hoàn thành" (Client-side)
-        var completedOrderDetails = orders
-            .Where(o => o.Status.Equals("Hoàn thành", StringComparison.OrdinalIgnoreCase)) // ✅ Client-side filtering
+        // ✅ FIXED: Revenue calculation with correct date filtering
+        var revenueCountableOrderDetails = orders
+            .Where(o => OrderStatuses.IsRevenueCountable(o.Status))
             .SelectMany(o => o.OrderDetails)
             .Where(od => od.Product.SellerID == sellerId)
             .ToList();
 
-        Console.WriteLine($"Revenue calculation based on {completedOrderDetails.Count} order details from COMPLETED orders only");
+        Console.WriteLine($"Found {revenueCountableOrderDetails.Count} revenue-countable order details");
 
-        // ✅ Revenue calculations - CHỈ từ đơn hàng "Hoàn thành"
-        var totalRevenue = completedOrderDetails.Sum(od => od.UnitPrice * od.Quantity);
+        // ✅ FIXED: Revenue calculations with proper date ranges
+        var totalRevenue = revenueCountableOrderDetails.Sum(od => od.UnitPrice * od.Quantity);
         
-        var revenueToday = completedOrderDetails
+        var revenueToday = revenueCountableOrderDetails
             .Where(od => od.Order.OrderDate.Date == today)
             .Sum(od => od.UnitPrice * od.Quantity);
-            
-        var revenueThisWeek = completedOrderDetails
-            .Where(od => od.Order.OrderDate.Date >= firstDayOfWeek && od.Order.OrderDate.Date <= today)
+        
+        var revenueThisWeek = revenueCountableOrderDetails
+            .Where(od => od.Order.OrderDate >= firstDayOfWeek && od.Order.OrderDate <= lastDayOfWeek)
             .Sum(od => od.UnitPrice * od.Quantity);
-            
-        var revenueThisMonth = completedOrderDetails
-            .Where(od => od.Order.OrderDate.Date >= firstDayOfMonth && od.Order.OrderDate.Date <= today)
+        
+        var revenueThisMonth = revenueCountableOrderDetails
+            .Where(od => od.Order.OrderDate >= firstDayOfMonth && od.Order.OrderDate <= lastDayOfMonth)
             .Sum(od => od.UnitPrice * od.Quantity);
-            
-        var revenueLastMonth = completedOrderDetails
-            .Where(od => od.Order.OrderDate.Date >= firstDayOfLastMonth && od.Order.OrderDate.Date <= lastDayOfLastMonth)
+        
+        var revenueLastMonth = revenueCountableOrderDetails
+            .Where(od => od.Order.OrderDate >= firstDayOfLastMonth && od.Order.OrderDate <= lastDayOfLastMonth)
             .Sum(od => od.UnitPrice * od.Quantity);
 
-        // ✅ Growth calculation
-        var revenueTrendPercentage = revenueLastMonth > 0 
-            ? Math.Round(((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100, 2)
-            : (revenueThisMonth > 0 ? 100 : 0);
+        Console.WriteLine($"Revenue breakdown:");
+        Console.WriteLine($"  Total: {totalRevenue:C}");
+        Console.WriteLine($"  Today: {revenueToday:C}");
+        Console.WriteLine($"  This week: {revenueThisWeek:C}");
+        Console.WriteLine($"  This month: {revenueThisMonth:C}");
+        Console.WriteLine($"  Last month: {revenueLastMonth:C}");
 
-        Console.WriteLine($"COMPLETED Orders Revenue: Total={totalRevenue:C}, Today={revenueToday:C}, Week={revenueThisWeek:C}, Month={revenueThisMonth:C}, LastMonth={revenueLastMonth:C}, Growth={revenueTrendPercentage}%");
+        // ✅ FIXED: Growth calculation with safety checks
+        decimal revenueTrendPercentage = 0;
+        
+        if (revenueLastMonth > 0)
+        {
+            revenueTrendPercentage = Math.Round(((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100, 2);
+        }
+        else if (revenueThisMonth > 0)
+        {
+            revenueTrendPercentage = 100; // New revenue, 100% growth
+        }
+        else
+        {
+            revenueTrendPercentage = 0; // No data, neutral
+        }
 
-        // ✅ Potential revenue (đơn hàng đã giao nhưng chưa hoàn thành)
-        var potentialRevenueOrderDetails = orders
-            .Where(o => o.Status.Equals("Đã giao", StringComparison.OrdinalIgnoreCase))
-            .SelectMany(o => o.OrderDetails)
-            .Where(od => od.Product.SellerID == sellerId)
-            .ToList();
-
-        var potentialRevenue = potentialRevenueOrderDetails.Sum(od => od.UnitPrice * od.Quantity);
-
-        Console.WriteLine($"Potential Revenue (Delivered but not Completed): {potentialRevenue:C}");
+        Console.WriteLine($"Revenue trend calculation:");
+        Console.WriteLine($"  This month: {revenueThisMonth:C}");
+        Console.WriteLine($"  Last month: {revenueLastMonth:C}");
+        Console.WriteLine($"  Trend: {revenueTrendPercentage:F2}%");
 
         return new SellerDashboardDto
         {
+            // Revenue metrics
             TotalRevenue = totalRevenue,
-            TotalOrderCount = orders.Count,
-            TotalProductCount = totalProductCount,
-            AvailableProductCount = availableProductCount,
-            PendingOrdersCount = orderStatusCounts.Pending,
-            ProcessingOrdersCount = orderStatusCounts.Processing,
-            CompletedOrdersCount = orderStatusCounts.Completed, // CHỈ "Hoàn thành"
-            CancelledOrdersCount = orderStatusCounts.Cancelled + orderStatusCounts.Refunded + orderStatusCounts.RefundRequested,
             RevenueToday = revenueToday,
             RevenueThisWeek = revenueThisWeek,
             RevenueThisMonth = revenueThisMonth,
             RevenueLastMonth = revenueLastMonth,
             RevenueTrendPercentage = revenueTrendPercentage,
-            // ✅ NEW: Additional metrics
-            DeliveredOrdersCount = orderStatusCounts.Delivered, // Đã giao nhưng chưa hoàn thành
-            PotentialRevenue = potentialRevenue, // Doanh thu tiềm năng từ đơn đã giao
-            RefundRequestedCount = orderStatusCounts.RefundRequested
+
+            // Order counts
+            TotalOrderCount = orders.Count,
+            PendingOrdersCount = orderStatusCounts.Pending,
+            ProcessingOrdersCount = orderStatusCounts.Processing,
+            ShippingOrdersCount = orderStatusCounts.Shipping,
+            DeliveredOrdersCount = orderStatusCounts.Delivered,
+            RefundRequestedCount = orderStatusCounts.RefundRequested,
+            CancelledOrdersCount = orderStatusCounts.Cancelled + orderStatusCounts.Refunded,
+            RefundRejectedCount = orderStatusCounts.RefundRejected,
+
+            // Product metrics
+            TotalProductCount = totalProductCount,
+            AvailableProductCount = availableProductCount
         };
     }
     catch (Exception ex)
@@ -150,7 +177,7 @@ namespace ShopxEX1.Services
         throw new ApplicationException($"Failed to get dashboard stats for seller {sellerId}: {ex.Message}", ex);
     }
 }
-        
+
         /// <summary>
         /// Lấy doanh thu theo khoảng thời gian
         /// </summary>
@@ -158,23 +185,22 @@ namespace ShopxEX1.Services
         {
             try
             {
-                Console.WriteLine($"=== GetRevenueStatsAsync FIXED for sellerId: {sellerId}, {startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd} ===");
+                Console.WriteLine($"=== GetRevenueStatsAsync for sellerId: {sellerId}, {startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd} ===");
 
-                // Đảm bảo endDate luôn có giá trị đến cuối ngày
                 endDate = endDate.AddHours(23).AddMinutes(59).AddSeconds(59);
 
-                // ✅ FIXED: Replace OrderStatuses.IsRevenueCountable() với direct string comparison
                 var orderDetails = await _context.OrderDetails
-                    .Include(od => od.Order)
-                    .Include(od => od.Product)
-                    .Where(od => od.Product.SellerID == sellerId &&
-                           od.Order.OrderDate >= startDate &&
-                           od.Order.OrderDate <= endDate &&
-                           od.Order.Status == "Hoàn thành") // ✅ Direct comparison thay vì method call
-                    .AsNoTracking()
-                    .ToListAsync();
+            .Include(od => od.Order)
+            .Include(od => od.Product)
+            .Where(od => od.Product.SellerID == sellerId &&
+                   od.Order.OrderDate >= startDate &&
+                   od.Order.OrderDate <= endDate &&
+                   (od.Order.Status == OrderStatuses.DELIVERED ||
+                    od.Order.Status == OrderStatuses.REFUND_REJECTED)) // ✅ CẢ 2 TRẠNG THÁI
+            .AsNoTracking()
+            .ToListAsync();
 
-                Console.WriteLine($"Found {orderDetails.Count} order details from COMPLETED orders only");
+                Console.WriteLine($"Found {orderDetails.Count} order details from delivered orders");
 
                 // Rest of grouping logic remains the same...
                 var result = new List<RevenueStatDto>();
@@ -182,12 +208,10 @@ namespace ShopxEX1.Services
                 switch (groupBy.ToLower())
                 {
                     case "week":
-                        // Nhóm theo tuần
                         var weeklyStats = orderDetails
                             .GroupBy(od =>
                             {
                                 var date = od.Order.OrderDate.Date;
-                                // Lấy ngày đầu tuần (thứ Hai)
                                 int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
                                 return date.AddDays(-diff);
                             })
@@ -205,7 +229,6 @@ namespace ShopxEX1.Services
                         break;
 
                     case "month":
-                        // Nhóm theo tháng
                         var monthlyStats = orderDetails
                             .GroupBy(od => new DateTime(od.Order.OrderDate.Year, od.Order.OrderDate.Month, 1))
                             .Select(g => new RevenueStatDto
@@ -221,25 +244,7 @@ namespace ShopxEX1.Services
                         result = monthlyStats;
                         break;
 
-                    case "year":
-                        // Nhóm theo năm
-                        var yearlyStats = orderDetails
-                            .GroupBy(od => new DateTime(od.Order.OrderDate.Year, 1, 1))
-                            .Select(g => new RevenueStatDto
-                            {
-                                Date = g.Key,
-                                Period = g.Key.ToString("yyyy"),
-                                Revenue = g.Sum(od => od.UnitPrice * od.Quantity),
-                                OrdersCount = g.Select(od => od.OrderID).Distinct().Count(),
-                                ProductsSold = g.Sum(od => od.Quantity)
-                            })
-                            .OrderBy(s => s.Date)
-                            .ToList();
-                        result = yearlyStats;
-                        break;
-
                     default: // "day"
-                             // Nhóm theo ngày
                         var dailyStats = orderDetails
                             .GroupBy(od => od.Order.OrderDate.Date)
                             .Select(g => new RevenueStatDto
@@ -279,22 +284,22 @@ namespace ShopxEX1.Services
     {
         endDate = endDate.AddHours(23).AddMinutes(59).AddSeconds(59);
 
-        // ✅ FIXED: Replace complex LINQ with direct status comparison
+        // ✅ FIXED: từ "Đã giao" VÀ "Từ chối hoàn tiền"
         var query = _context.OrderDetails
             .Include(od => od.Order)
             .Include(od => od.Product)
             .Where(od => od.Product.SellerID == sellerId &&
                    od.Order.OrderDate >= startDate &&
                    od.Order.OrderDate <= endDate &&
-                   od.Order.Status != "Đã hủy" &&
-                   od.Order.Status != "Đã hoàn tiền");
+                   (od.Order.Status == OrderStatuses.DELIVERED || 
+                    od.Order.Status == OrderStatuses.REFUND_REJECTED)); // ✅ CẢ 2 TRẠNG THÁI
 
         if (categoryId.HasValue)
         {
             query = query.Where(od => od.Product.CategoryID == categoryId.Value);
         }
 
-        var orderDetailsList = await query.ToListAsync();
+        var orderDetailsList = await query.AsNoTracking().ToListAsync();
 
         var topProducts = orderDetailsList
             .GroupBy(od => new
@@ -319,66 +324,133 @@ namespace ShopxEX1.Services
             .Take(count)
             .ToList();
 
-        Console.WriteLine($"✅ Top selling products: {topProducts.Count} items");
+        Console.WriteLine($"✅ Top selling products: {topProducts.Count} items (from revenue-countable orders)");
         return topProducts;
     }
     catch (Exception ex)
     {
         Console.WriteLine($"ERROR in GetTopSellingProductsAsync: {ex.Message}");
-        throw;
+        throw new ApplicationException($"Failed to get top selling products for seller {sellerId}: {ex.Message}", ex);
     }
 }
-
 
 
         /// <summary>
         /// Lấy số liệu đơn hàng theo trạng thái - FIXED: Mapping đúng trạng thái database
         /// </summary>
-        public async Task<OrderStatusStatsDto> GetOrderStatusStatsAsync(int sellerId)
+       public async Task<OrderStatusStatsDto> GetOrderStatusStatsAsync(int sellerId)
         {
             try
             {
                 Console.WriteLine($"=== GetOrderStatusStatsAsync FIXED for sellerId: {sellerId} ===");
 
+                // ✅ Load tất cả orders trước
                 var orders = await _context.Orders
                     .Where(o => _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId))
                     .AsNoTracking()
                     .ToListAsync();
 
-                Console.WriteLine($"Found {orders.Count} unique orders for seller {sellerId}");
+                Console.WriteLine($"Found {orders.Count} total orders for seller {sellerId}");
 
-                // ✅ FIXED: Mapping chính xác
-                var result = new OrderStatusStatsDto
+                // ✅ FIXED: Client-side evaluation với OrderStatuses constants
+                var stats = new OrderStatusStatsDto
                 {
-                    Pending = orders.Count(o => o.Status.Equals(OrderStatuses.PENDING, StringComparison.OrdinalIgnoreCase)),
-                    Processing = orders.Count(o => o.Status.Equals(OrderStatuses.PROCESSING, StringComparison.OrdinalIgnoreCase)),
-                    Shipping = orders.Count(o => o.Status.Equals(OrderStatuses.SHIPPING, StringComparison.OrdinalIgnoreCase)),
-                    Delivered = orders.Count(o => o.Status.Equals(OrderStatuses.DELIVERED, StringComparison.OrdinalIgnoreCase)),
-                    RefundRequested = orders.Count(o => o.Status.Equals(OrderStatuses.REFUND_REQUESTED, StringComparison.OrdinalIgnoreCase)),
-                    Cancelled = orders.Count(o => o.Status.Equals(OrderStatuses.CANCELLED, StringComparison.OrdinalIgnoreCase)),
-                    Refunded = orders.Count(o => o.Status.Equals(OrderStatuses.REFUNDED, StringComparison.OrdinalIgnoreCase)),
-                    Completed = orders.Count(o => o.Status.Equals(OrderStatuses.COMPLETED, StringComparison.OrdinalIgnoreCase))
+                    Pending = orders.Count(o => string.Equals(o.Status, OrderStatuses.PENDING, StringComparison.OrdinalIgnoreCase)),
+                    Processing = orders.Count(o => string.Equals(o.Status, OrderStatuses.PROCESSING, StringComparison.OrdinalIgnoreCase)),
+                    Shipping = orders.Count(o => string.Equals(o.Status, OrderStatuses.SHIPPING, StringComparison.OrdinalIgnoreCase)),
+                    Delivered = orders.Count(o => string.Equals(o.Status, OrderStatuses.DELIVERED, StringComparison.OrdinalIgnoreCase)),
+                    RefundRequested = orders.Count(o => string.Equals(o.Status, OrderStatuses.REFUND_REQUESTED, StringComparison.OrdinalIgnoreCase)),
+                    Cancelled = orders.Count(o => string.Equals(o.Status, OrderStatuses.CANCELLED, StringComparison.OrdinalIgnoreCase)),
+                    Refunded = orders.Count(o => string.Equals(o.Status, OrderStatuses.REFUNDED, StringComparison.OrdinalIgnoreCase)),
+                    RefundRejected = orders.Count(o => string.Equals(o.Status, OrderStatuses.REFUND_REJECTED, StringComparison.OrdinalIgnoreCase)) // ✅ THÊM MỚI
+
                 };
 
-                return result;
+                Console.WriteLine($"Order Status Stats: Pending={stats.Pending}, Processing={stats.Processing}, Shipping={stats.Shipping}, Delivered={stats.Delivered}, RefundRequested={stats.RefundRequested}, Cancelled={stats.Cancelled}, Refunded={stats.Refunded}");
+                Console.WriteLine($"Computed Stats: Total={stats.Total}, Active={stats.ActiveOrders}, Successful={stats.SuccessfulOrders}, Problematic={stats.ProblematicOrders}");
+
+                return stats;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"ERROR in GetOrderStatusStatsAsync: {ex.Message}");
-                return new OrderStatusStatsDto();
+                throw new ApplicationException($"Failed to get order status stats for seller {sellerId}: {ex.Message}", ex);
+            }
+        }
+        /// <summary>
+        /// Lấy danh sách đơn hàng theo trạng thái 
+        /// </summary>
+        public async Task<List<OrderByStatusDto>> GetOrdersByStatusAsync(int sellerId, List<string> statuses)
+        {
+            try
+            {
+                Console.WriteLine($"=== GetOrdersByStatusAsync FIXED SQL TRANSLATION for sellerId: {sellerId}, statuses: [{string.Join(", ", statuses)}] ===");
+
+                if (!statuses.Any())
+                {
+                    Console.WriteLine("No statuses provided");
+                    return new List<OrderByStatusDto>();
+                }
+
+                // ✅ FIXED: Load tất cả orders trước, KHÔNG dùng .Contains() với List<string>
+                var allOrders = await _context.Orders
+                    .Where(o => _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId))
+                    .Include(o => o.User)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Product)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                Console.WriteLine($"Loaded {allOrders.Count} total orders for seller {sellerId}");
+
+                // ✅ FIXED: Client-side filtering với string comparison
+                var filteredOrders = allOrders
+                    .Where(o => statuses.Any(s => 
+                        string.Equals(o.Status, s, StringComparison.OrdinalIgnoreCase)))
+                    .OrderByDescending(o => o.OrderDate)
+                    .ToList();
+
+                Console.WriteLine($"Filtered to {filteredOrders.Count} orders matching statuses: [{string.Join(", ", statuses)}]");
+
+                // ✅ Map to DTO
+                var result = filteredOrders.Select(o => new OrderByStatusDto
+                {
+                    OrderID = o.OrderID,
+                    Status = o.Status,
+                    OrderDate = o.OrderDate,
+                    TotalAmount = o.OrderDetails
+                        .Where(od => od.Product.SellerID == sellerId)
+                        .Sum(od => od.UnitPrice * od.Quantity),
+                    CustomerName = o.User?.FullName ?? "Khách hàng",
+                    CustomerEmail = o.User?.Email ?? "",
+                    CustomerPhone = o.User?.Phone ?? "",
+                    ShippingAddress = o.ShippingAddress ?? "",
+                    TotalItems = o.OrderDetails
+                        .Where(od => od.Product.SellerID == sellerId)
+                        .Sum(od => od.Quantity),
+                    CreatedToday = o.OrderDate.Date == DateTime.Today
+                }).ToList();
+
+                Console.WriteLine($"✅ Returning {result.Count} orders by status");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR in GetOrdersByStatusAsync: {ex.Message}");
+                throw new ApplicationException($"Failed to get orders by status for seller {sellerId}: {ex.Message}", ex);
             }
         }
 
-/// <summary>
-/// Lấy dữ liệu biểu đồ doanh thu với multiple metrics - THAY THẾ GetLast7DaysStatsAsync
-/// </summary>
+        /// <summary>
+        /// Lấy dữ liệu biểu đồ doanh thu với multiple metrics - THAY THẾ GetLast7DaysStatsAsync
+        /// </summary>
         public async Task<ChartAnalyticsDto> GetRevenueChartAnalyticsAsync(int sellerId, int days = 7)
-{
-    try
-    {
-        Console.WriteLine($"=== GetRevenueChartAnalyticsAsync for sellerId: {sellerId}, days: {days} ===");
+        {
+            try
+            {
+                Console.WriteLine($"=== GetRevenueChartAnalyticsAsync for sellerId: {sellerId}, days: {days} ===");
 
-            // Tính toán khoảng thời gian
+                // Tính toán khoảng thời gian
                 var endDate = DateTime.Today;
                 var startDate = endDate.AddDays(-days + 1);
 
@@ -389,10 +461,10 @@ namespace ShopxEX1.Services
                     .Include(od => od.Order)
                     .Include(od => od.Product)
                     .Where(od => od.Product.SellerID == sellerId &&
-                           od.Order.OrderDate.Date >= startDate &&
-                           od.Order.OrderDate.Date <= endDate &&
-                           od.Order.Status != "Đã hủy" &&
-                           od.Order.Status != "Đã hoàn tiền")
+                        od.Order.OrderDate.Date >= startDate &&
+                        od.Order.OrderDate.Date <= endDate &&
+                        (od.Order.Status == OrderStatuses.DELIVERED || 
+                            od.Order.Status == OrderStatuses.REFUND_REJECTED)) // ✅ CẢ 2 TRẠNG THÁI
                     .AsNoTracking()
                     .ToListAsync();
 
@@ -400,28 +472,28 @@ namespace ShopxEX1.Services
 
                 // Tạo dữ liệu đầy đủ cho mỗi ngày (bao gồm cả ngày không có dữ liệu)
                 var dailyData = new List<DailyChartDataDto>();
-                var previousPeriodData = new List<DailyChartDataDto>();
-
                 // Dữ liệu kỳ hiện tại
                 for (int i = 0; i < days; i++)
                 {
                     var currentDate = startDate.AddDays(i);
-                    var dayData = orderDetails.Where(od => od.Order.OrderDate.Date == currentDate).ToList();
+                    var dayData = orderDetails.Where(od => od.Order.OrderDate.Date == currentDate.Date).ToList();
+
+                    var uniqueCustomers = dayData.Select(od => od.Order.UserID).Distinct().Count();
+                    var ordersCount = dayData.Select(od => od.OrderID).Distinct().Count();
+                    var revenue = dayData.Sum(od => od.UnitPrice * od.Quantity);
 
                     dailyData.Add(new DailyChartDataDto
                     {
                         Date = currentDate,
                         DayLabel = currentDate.ToString("dd/MM"),
                         DayName = GetVietnameseDayName(currentDate.DayOfWeek),
-                        Revenue = dayData.Sum(od => od.UnitPrice * od.Quantity),
-                        OrdersCount = dayData.Select(od => od.OrderID).Distinct().Count(),
+                        Revenue = revenue,
+                        OrdersCount = ordersCount,
                         ProductsSold = dayData.Sum(od => od.Quantity),
-                        UniqueCustomers = dayData.Select(od => od.Order.UserID).Distinct().Count(),
-                        AverageOrderValue = dayData.Any() ?
-                            dayData.GroupBy(od => od.OrderID).Average(g => g.Sum(od => od.UnitPrice * od.Quantity)) : 0
+                        UniqueCustomers = uniqueCustomers,
+                        AverageOrderValue = ordersCount > 0 ? revenue / ordersCount : 0
                     });
                 }
-
                 // Dữ liệu kỳ trước để so sánh (cùng số ngày, nhưng trước đó)
                 var prevStartDate = startDate.AddDays(-days);
                 var prevEndDate = startDate.AddDays(-1);
@@ -430,32 +502,35 @@ namespace ShopxEX1.Services
                     .Include(od => od.Order)
                     .Include(od => od.Product)
                     .Where(od => od.Product.SellerID == sellerId &&
-                           od.Order.OrderDate.Date >= prevStartDate &&
-                           od.Order.OrderDate.Date <= prevEndDate &&
-                           od.Order.Status != "Đã hủy" &&
-                           od.Order.Status != "Đã hoàn tiền")
+                        od.Order.OrderDate.Date >= prevStartDate &&
+                        od.Order.OrderDate.Date <= prevEndDate &&
+                        (od.Order.Status == OrderStatuses.DELIVERED || 
+                            od.Order.Status == OrderStatuses.REFUND_REJECTED)) // ✅ CONSISTENT
                     .AsNoTracking()
                     .ToListAsync();
 
+                var previousPeriodData = new List<DailyChartDataDto>();
                 for (int i = 0; i < days; i++)
                 {
                     var currentDate = prevStartDate.AddDays(i);
-                    var dayData = prevOrderDetails.Where(od => od.Order.OrderDate.Date == currentDate).ToList();
+                    var dayData = prevOrderDetails.Where(od => od.Order.OrderDate.Date == currentDate.Date).ToList();
+
+                    var uniqueCustomers = dayData.Select(od => od.Order.UserID).Distinct().Count();
+                    var ordersCount = dayData.Select(od => od.OrderID).Distinct().Count();
+                    var revenue = dayData.Sum(od => od.UnitPrice * od.Quantity);
 
                     previousPeriodData.Add(new DailyChartDataDto
                     {
                         Date = currentDate,
                         DayLabel = currentDate.ToString("dd/MM"),
                         DayName = GetVietnameseDayName(currentDate.DayOfWeek),
-                        Revenue = dayData.Sum(od => od.UnitPrice * od.Quantity),
-                        OrdersCount = dayData.Select(od => od.OrderID).Distinct().Count(),
+                        Revenue = revenue,
+                        OrdersCount = ordersCount,
                         ProductsSold = dayData.Sum(od => od.Quantity),
-                        UniqueCustomers = dayData.Select(od => od.Order.UserID).Distinct().Count(),
-                        AverageOrderValue = dayData.Any() ?
-                            dayData.GroupBy(od => od.OrderID).Average(g => g.Sum(od => od.UnitPrice * od.Quantity)) : 0
+                        UniqueCustomers = uniqueCustomers,
+                        AverageOrderValue = ordersCount > 0 ? revenue / ordersCount : 0
                     });
                 }
-
                 // Tính toán các metrics tổng hợp
                 var currentMetrics = CalculatePeriodMetrics(dailyData, "Kỳ hiện tại");
                 var previousMetrics = CalculatePeriodMetrics(previousPeriodData, "Kỳ trước");
@@ -624,96 +699,95 @@ namespace ShopxEX1.Services
         /// Lấy danh sách top khách hàng của seller
         /// </summary>
         public async Task<List<TopCustomerDto>> GetTopCustomersAsync(int sellerId, DateTime? startDate = null, DateTime? endDate = null, int count = 10)
-        {
-            try
-            {
-                var end = endDate ?? DateTime.Today;
-                var start = startDate ?? end.AddDays(-90); // Default 3 months
-                end = end.AddHours(23).AddMinutes(59).AddSeconds(59);
-
-                Console.WriteLine($"=== GetTopCustomersAsync for sellerId: {sellerId}, {start:yyyy-MM-dd} to {end:yyyy-MM-dd} ===");
-
-                // Lấy orders của seller trong kỳ
-                var orders = await _context.Orders
-                    .Where(o => _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId) &&
-                           o.OrderDate >= start && o.OrderDate <= end &&
-                           o.Status != "Đã hủy" && o.Status != "Đã hoàn tiền")
-                    .Include(o => o.User)
-                    .Include(o => o.OrderDetails)
-                        .ThenInclude(od => od.Product)
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                // Group by customer và tính toán metrics
-                var topCustomers = orders
-                    .GroupBy(o => new { o.UserID, o.User.FullName, o.User.Email })
-                    .Select(g => new TopCustomerDto
-                    {
-                        CustomerID = g.Key.UserID,
-                        CustomerName = g.Key.FullName ?? "Khách hàng",
-                        Email = g.Key.Email ?? "",
-                        TotalOrders = g.Count(),
-                        TotalSpent = g.Sum(o => o.OrderDetails
-                            .Where(od => od.Product.SellerID == sellerId)
-                            .Sum(od => od.UnitPrice * od.Quantity)),
-                        AverageOrderValue = g.Average(o => o.OrderDetails
-                            .Where(od => od.Product.SellerID == sellerId)
-                            .Sum(od => od.UnitPrice * od.Quantity)),
-                        FirstOrderDate = g.Min(o => o.OrderDate),
-                        LastOrderDate = g.Max(o => o.OrderDate),
-                        CustomerLifetimeValue = 0, // Simplified - just use TotalSpent
-                        IsVIP = false // Simplified - can add logic later
-                    })
-                    .OrderByDescending(c => c.TotalSpent)
-                    .Take(count)
-                    .ToList();
-
-                // Mark VIP customers (top 20% by spending)
-                if (topCustomers.Any())
-                {
-                    var vipThreshold = topCustomers.Take(Math.Max(1, topCustomers.Count / 5)).Min(c => c.TotalSpent);
-                    topCustomers.ForEach(c => c.IsVIP = c.TotalSpent >= vipThreshold);
-
-                    // Set CLV = TotalSpent for simplicity
-                    topCustomers.ForEach(c => c.CustomerLifetimeValue = c.TotalSpent);
-                }
-
-                Console.WriteLine($"Found {topCustomers.Count} top customers");
-                return topCustomers;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"ERROR in GetTopCustomersAsync: {ex.Message}");
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// Lấy thống kê lợi nhuận thực tế đơn giản
-        /// </summary>
-       public async Task<ProfitAnalysisDto> GetProfitAnalysisAsync(int sellerId, DateTime? startDate = null, DateTime? endDate = null)
 {
     try
     {
         var end = endDate ?? DateTime.Today;
-        var start = startDate ?? new DateTime(end.Year, end.Month, 1); // Default: tháng hiện tại
+        var start = startDate ?? end.AddDays(-90);
+        end = end.AddHours(23).AddMinutes(59).AddSeconds(59);
+
+        Console.WriteLine($"=== GetTopCustomersAsync for sellerId: {sellerId}, {start:yyyy-MM-dd} to {end:yyyy-MM-dd} ===");
+
+        var orders = await _context.Orders
+            .Where(o => _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId) &&
+                   o.OrderDate >= start && o.OrderDate <= end &&
+                   (o.Status == OrderStatuses.DELIVERED || 
+                    o.Status == OrderStatuses.REFUND_REJECTED)) // ✅ FIXED: Revenue-countable orders only
+            .Include(o => o.User)
+            .Include(o => o.OrderDetails)
+                .ThenInclude(od => od.Product)
+            .AsNoTracking()
+            .ToListAsync();
+
+        var topCustomers = orders
+            .GroupBy(o => new { o.UserID, o.User.FullName, o.User.Email })
+            .Select(g => new TopCustomerDto
+            {
+                CustomerID = g.Key.UserID,
+                CustomerName = g.Key.FullName ?? "Khách hàng",
+                Email = g.Key.Email ?? "",
+                TotalOrders = g.Count(),
+                TotalSpent = g.Sum(o => o.OrderDetails
+                    .Where(od => od.Product.SellerID == sellerId)
+                    .Sum(od => od.UnitPrice * od.Quantity)),
+                AverageOrderValue = g.Average(o => o.OrderDetails
+                    .Where(od => od.Product.SellerID == sellerId)
+                    .Sum(od => od.UnitPrice * od.Quantity)),
+                FirstOrderDate = g.Min(o => o.OrderDate),
+                LastOrderDate = g.Max(o => o.OrderDate),
+                CustomerLifetimeValue = 0,
+                IsVIP = false
+            })
+            .OrderByDescending(c => c.TotalSpent)
+            .Take(count)
+            .ToList();
+
+        if (topCustomers.Any())
+        {
+            var vipThreshold = topCustomers.Take(Math.Max(1, topCustomers.Count / 5)).Min(c => c.TotalSpent);
+            topCustomers.ForEach(c =>
+            {
+                c.IsVIP = c.TotalSpent >= vipThreshold;
+                c.CustomerLifetimeValue = c.TotalSpent;
+            });
+        }
+
+        Console.WriteLine($"Found {topCustomers.Count} top customers (from revenue-countable orders)");
+        return topCustomers;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"ERROR in GetTopCustomersAsync: {ex.Message}");
+        throw;
+    }
+}
+
+        /// <summary>
+        /// Lấy thống kê lợi nhuận thực tế đơn giản
+        /// </summary>
+        public async Task<ProfitAnalysisDto> GetProfitAnalysisAsync(int sellerId, DateTime? startDate = null, DateTime? endDate = null)
+{
+    try
+    {
+        var end = endDate ?? DateTime.Today;
+        var start = startDate ?? new DateTime(end.Year, end.Month, 1);
         end = end.AddHours(23).AddMinutes(59).AddSeconds(59);
 
         Console.WriteLine($"=== FIXED Profit Analysis for sellerId: {sellerId}, {start:yyyy-MM-dd} to {end:yyyy-MM-dd} ===");
 
-        // ✅ FIXED: Load all order details first, then filter client-side
-        var completedOrderDetails = await _context.OrderDetails
+        // ✅ FIXED: CHỈ từ "Đã giao" VÀ "Từ chối hoàn tiền" cho profit analysis
+        var revenueCountableOrderDetails = await _context.OrderDetails
             .Include(od => od.Order)
             .Include(od => od.Product)
             .Where(od => od.Product.SellerID == sellerId &&
                    od.Order.OrderDate >= start &&
                    od.Order.OrderDate <= end &&
-                   od.Order.Status == "Hoàn thành") // ✅ Direct string comparison
+                   (od.Order.Status == OrderStatuses.DELIVERED || 
+                    od.Order.Status == OrderStatuses.REFUND_REJECTED)) // ✅ CẢ 2 TRẠNG THÁI
             .AsNoTracking()
             .ToListAsync();
 
-        if (!completedOrderDetails.Any())
+        if (!revenueCountableOrderDetails.Any())
         {
             return new ProfitAnalysisDto
             {
@@ -722,30 +796,28 @@ namespace ShopxEX1.Services
             };
         }
 
-        // Rest of the method remains the same...
-        var totalRevenue = completedOrderDetails.Sum(od => od.UnitPrice * od.Quantity);
-        var totalOrders = completedOrderDetails.Select(od => od.OrderID).Distinct().Count();
-        var totalQuantitySold = completedOrderDetails.Sum(od => od.Quantity);
+        var totalRevenue = revenueCountableOrderDetails.Sum(od => od.UnitPrice * od.Quantity);
+        var totalOrders = revenueCountableOrderDetails.Select(od => od.OrderID).Distinct().Count();
+        var totalQuantitySold = revenueCountableOrderDetails.Sum(od => od.Quantity);
 
-        Console.WriteLine($"Base metrics: Revenue={totalRevenue:C}, Orders={totalOrders}, Quantity={totalQuantitySold}");
+        Console.WriteLine($"Base metrics: Revenue={totalRevenue:C}, Orders={totalOrders}, Quantity={totalQuantitySold} (from Delivered + RefundRejected)");
 
-        // Continue with existing profit analysis logic...
         decimal totalCOGS = 0;
         var productProfitDetails = new List<ProductProfitDto>();
 
-        var productGroups = completedOrderDetails
+        var productGroups = revenueCountableOrderDetails
             .GroupBy(od => new { od.ProductID, od.Product.ProductName, od.Product.CategoryID })
             .ToList();
 
         foreach (var productGroup in productGroups)
         {
-            var productRevenue = productGroup.Sum(od => od.UnitPrice * od.Quantity);
             var productQuantity = productGroup.Sum(od => od.Quantity);
-            var avgSellingPrice = productRevenue / productQuantity;
+            var avgPrice = productGroup.Average(od => od.UnitPrice);
+            var productRevenue = productGroup.Sum(od => od.UnitPrice * od.Quantity);
 
-            decimal estimatedCOGSPercentage = EstimateCOGSPercentage(productGroup.Key.CategoryID, avgSellingPrice);
-            decimal productCOGS = productRevenue * (estimatedCOGSPercentage / 100);
-            
+            var cogsPercentage = EstimateCOGSPercentage(productGroup.Key.CategoryID, avgPrice);
+            var productCOGS = productRevenue * (cogsPercentage / 100);
+
             totalCOGS += productCOGS;
 
             productProfitDetails.Add(new ProductProfitDto
@@ -773,7 +845,7 @@ namespace ShopxEX1.Services
             .Take(10)
             .ToList();
 
-        Console.WriteLine($"Profit Analysis: Gross={grossProfit:C} ({grossProfitMargin:F1}%), Net={netProfit:C} ({netProfitMargin:F1}%)");
+        Console.WriteLine($"Profit Analysis: Gross={grossProfit:C} ({grossProfitMargin:F1}%), Net={netProfit:C} ({netProfitMargin:F1}%) from revenue-countable orders");
 
         return new ProfitAnalysisDto
         {
@@ -789,7 +861,8 @@ namespace ShopxEX1.Services
             TotalQuantitySold = totalQuantitySold,
             AverageOrderProfit = avgOrderProfit,
             TopProfitableProducts = topProfitableProducts,
-            Notes = GenerateProfitAnalysisNotes(grossProfitMargin, netProfitMargin, totalRevenue)
+            Notes = GenerateProfitAnalysisNotes(grossProfitMargin, netProfitMargin, totalRevenue) + 
+                   " | Phân tích từ đơn hàng 'Đã giao' và 'Từ chối hoàn tiền'."
         };
     }
     catch (Exception ex)
@@ -802,11 +875,11 @@ namespace ShopxEX1.Services
         };
     }
 }
-// ✅ HELPER: Ước tính COGS percentage dựa trên category và price range
-private decimal EstimateCOGSPercentage(int categoryId, decimal avgPrice)
-{
-    // ✅ REALISTIC: Industry-based COGS estimates
-    var categoryCogsEstimates = new Dictionary<int, decimal>
+        // ✅ HELPER: Ước tính COGS percentage dựa trên category và price range
+        private decimal EstimateCOGSPercentage(int categoryId, decimal avgPrice)
+        {
+            // ✅ REALISTIC: Industry-based COGS estimates
+            var categoryCogsEstimates = new Dictionary<int, decimal>
     {
         // Electronics: 65-75%
         { 1, 70 }, // Điện tử
@@ -833,248 +906,78 @@ private decimal EstimateCOGSPercentage(int categoryId, decimal avgPrice)
         { 12, 45 }, // Sức khỏe
     };
 
-    var baseCOGS = categoryCogsEstimates.GetValueOrDefault(categoryId, 55); // Default 55%
+            var baseCOGS = categoryCogsEstimates.GetValueOrDefault(categoryId, 55); // Default 55%
 
-    // ✅ Adjust based on price range (higher price = potentially lower COGS%)
-    if (avgPrice > 1000000) // > 1M VND - luxury/premium
-        baseCOGS -= 5;
-    else if (avgPrice < 100000) // < 100K VND - budget
-        baseCOGS += 5;
+            // ✅ Adjust based on price range (higher price = potentially lower COGS%)
+            if (avgPrice > 1000000) // > 1M VND - luxury/premium
+                baseCOGS -= 5;
+            else if (avgPrice < 100000) // < 100K VND - budget
+                baseCOGS += 5;
 
-    return Math.Min(Math.Max(baseCOGS, 25), 80); // Clamp between 25-80%
-}
-
-// ✅ HELPER: Tính toán operating expenses
-private decimal CalculateOperatingExpenses(decimal revenue, int orderCount, int sellerId)
-{
-    // ✅ REALISTIC: Operating expense components
-    
-    // 1. Platform fees (2-5% of revenue)
-    decimal platformFees = revenue * 0.03m; // 3% platform fee
-    
-    // 2. Payment processing (2-3% of revenue)
-    decimal paymentFees = revenue * 0.025m; // 2.5% payment processing
-    
-    // 3. Shipping costs (estimated per order)
-    decimal avgShippingCost = 30000m; // 30K VND per order average
-    decimal totalShippingCosts = orderCount * avgShippingCost;
-    
-    // 4. Marketing expenses (5-10% of revenue for active sellers)
-    decimal marketingExpenses = revenue * 0.07m; // 7% marketing
-    
-    // 5. Packaging & handling (1-2% of revenue)
-    decimal packagingCosts = revenue * 0.015m; // 1.5% packaging
-    
-    // 6. Customer service & returns (1-3% of revenue)
-    decimal customerServiceCosts = revenue * 0.02m; // 2% customer service
-    
-    var totalOpex = platformFees + paymentFees + totalShippingCosts + 
-                   marketingExpenses + packagingCosts + customerServiceCosts;
-
-    Console.WriteLine($"Operating Expenses Breakdown: Platform={platformFees:C}, Payment={paymentFees:C}, Shipping={totalShippingCosts:C}, Marketing={marketingExpenses:C}, Packaging={packagingCosts:C}, Service={customerServiceCosts:C}");
-
-    return totalOpex;
-}
-
-// ✅ HELPER: Generate analysis notes
-private string GenerateProfitAnalysisNotes(decimal grossMargin, decimal netMargin, decimal revenue)
-{
-    var notes = new List<string>();
-    
-    // Revenue assessment
-    if (revenue < 1000000) // < 1M
-        notes.Add("💡 Doanh thu còn thấp - cần tăng cường marketing và mở rộng sản phẩm");
-    else if (revenue > 10000000) // > 10M
-        notes.Add("✅ Doanh thu tốt - duy trì và tối ưu hóa hiệu quả");
-    
-    // Gross margin assessment
-    if (grossMargin < 20)
-        notes.Add("⚠️ Biên lợi nhuận gộp thấp - cần xem xét lại giá bán hoặc chi phí nhập hàng");
-    else if (grossMargin > 40)
-        notes.Add("✅ Biên lợi nhuận gộp tốt - có thể cân nhắc giảm giá để tăng volume");
-    
-    // Net margin assessment  
-    if (netMargin < 5)
-        notes.Add("🔴 Lợi nhuận ròng thấp - cần tối ưu chi phí vận hành");
-    else if (netMargin > 15)
-        notes.Add("🎯 Lợi nhuận ròng xuất sắc - có thể đầu tư mở rộng");
-    
-    // General recommendations
-    notes.Add("📊 Số liệu dựa trên ước tính thị trường - để có phân tích chính xác hơn, hãy cập nhật chi phí thực tế của sản phẩm");
-    
-    return string.Join(" | ", notes);
-}
-
-        /// <summary>
-        /// Lấy danh sách đơn hàng theo trạng thái - RAW SQL BACKUP
-        /// </summary>
-        public async Task<List<OrderByStatusDto>> GetOrdersByStatusAsync(int sellerId, List<string> statuses)
-        {
-            try
-            {
-                Console.WriteLine($"=== GetOrdersByStatusAsync RAW SQL BACKUP for sellerId: {sellerId}, statuses: {string.Join(", ", statuses)} ===");
-
-                // FIX 1: Kiểm tra connection string
-                var connectionString = _context.Database.GetConnectionString();
-                if (string.IsNullOrEmpty(connectionString))
-                {
-                    throw new InvalidOperationException("Connection string is null or empty");
-                }
-
-                Console.WriteLine($"Using connection string: {connectionString.Substring(0, Math.Min(50, connectionString.Length))}...");
-
-                // FIX 2: Đơn giản hóa detection user table
-                string userTableName = null;
-                string userIdField = null;
-
-                try
-                {
-                    // Test với Entity Framework model mapping
-                    var testUser = await _context.Users.FirstOrDefaultAsync();
-                    userTableName = "Users";
-                    userIdField = "UserID";  // Theo model User.cs
-                    Console.WriteLine("Using Users table with UserID field");
-                }
-                catch
-                {
-                    try
-                    {
-                        // Fallback: Test AspNetUsers
-                        await _context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'AspNetUsers'");
-                        userTableName = "AspNetUsers";
-                        userIdField = "Id";
-                        Console.WriteLine("Using AspNetUsers table with Id field");
-                    }
-                    catch
-                    {
-                        Console.WriteLine("No user table found, proceeding without user info");
-                    }
-                }
-
-                // FIX 3: Build SQL query đơn giản hơn
-                var statusPlaceholders = string.Join(",", statuses.Select((_, i) => $"@status{i}"));
-
-                string sql;
-                if (userTableName != null)
-                {
-                    sql = $@"
-                SELECT DISTINCT
-                    o.OrderID,
-                    o.Status,
-                    o.OrderDate,
-                    ISNULL(o.ShippingAddress, '') as ShippingAddress,
-                    ISNULL(u.FullName, 'Khách hàng') as CustomerName,
-                    ISNULL(u.Email, '') as CustomerEmail,
-                    ISNULL(u.Phone, '') as CustomerPhone,
-                    COALESCE((
-                        SELECT SUM(od2.UnitPrice * od2.Quantity)
-                        FROM OrderDetails od2
-                        INNER JOIN Products p2 ON od2.ProductID = p2.ProductID
-                        WHERE od2.OrderID = o.OrderID AND p2.SellerID = @sellerId
-                    ), 0) as TotalAmount,
-                    COALESCE((
-                        SELECT SUM(od3.Quantity)
-                        FROM OrderDetails od3
-                        INNER JOIN Products p3 ON od3.ProductID = p3.ProductID
-                        WHERE od3.OrderID = o.OrderID AND p3.SellerID = @sellerId
-                    ), 0) as TotalItems,
-                    CASE WHEN CAST(o.OrderDate AS DATE) = CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END as CreatedToday
-                FROM Orders o
-                INNER JOIN OrderDetails od ON o.OrderID = od.OrderID
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                LEFT JOIN {userTableName} u ON o.UserID = u.{userIdField}
-                WHERE p.SellerID = @sellerId 
-                AND o.Status IN ({statusPlaceholders})
-                ORDER BY o.OrderDate DESC
-            ";
-                }
-                else
-                {
-                    sql = $@"
-                SELECT DISTINCT
-                    o.OrderID,
-                    o.Status,
-                    o.OrderDate,
-                    ISNULL(o.ShippingAddress, '') as ShippingAddress,
-                    'Khách hàng' as CustomerName,
-                    '' as CustomerEmail,
-                    '' as CustomerPhone,
-                    COALESCE((
-                        SELECT SUM(od2.UnitPrice * od2.Quantity)
-                        FROM OrderDetails od2
-                        INNER JOIN Products p2 ON od2.ProductID = p2.ProductID
-                        WHERE od2.OrderID = o.OrderID AND p2.SellerID = @sellerId
-                    ), 0) as TotalAmount,
-                    COALESCE((
-                        SELECT SUM(od3.Quantity)
-                        FROM OrderDetails od3
-                        INNER JOIN Products p3 ON od3.ProductID = p3.ProductID
-                        WHERE od3.OrderID = o.OrderID AND p3.SellerID = @sellerId
-                    ), 0) as TotalItems,
-                    CASE WHEN CAST(o.OrderDate AS DATE) = CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END as CreatedToday
-                FROM Orders o
-                INNER JOIN OrderDetails od ON o.OrderID = od.OrderID
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                WHERE p.SellerID = @sellerId 
-                AND o.Status IN ({statusPlaceholders})
-                ORDER BY o.OrderDate DESC
-            ";
-                }
-
-                Console.WriteLine($"Generated SQL: {sql.Substring(0, Math.Min(200, sql.Length))}...");
-
-                var result = new List<OrderByStatusDto>();
-
-                await using var connection = new SqlConnection(connectionString);
-                await connection.OpenAsync();
-                Console.WriteLine("Database connection opened successfully");
-
-                await using var command = new SqlCommand(sql, connection);
-
-                // Add parameters
-                command.Parameters.Add(new SqlParameter("@sellerId", sellerId));
-                Console.WriteLine($"Added parameter @sellerId = {sellerId}");
-
-                for (int i = 0; i < statuses.Count; i++)
-                {
-                    command.Parameters.Add(new SqlParameter($"@status{i}", statuses[i]));
-                    Console.WriteLine($"Added parameter @status{i} = {statuses[i]}");
-                }
-
-                await using var reader = await command.ExecuteReaderAsync();
-                int rowCount = 0;
-
-                while (await reader.ReadAsync())
-                {
-                    rowCount++;
-                    var orderDto = new OrderByStatusDto
-                    {
-                        OrderID = reader.GetInt32("OrderID"),
-                        Status = reader.GetString("Status"),
-                        OrderDate = reader.GetDateTime("OrderDate"),
-                        TotalAmount = reader.GetDecimal("TotalAmount"),
-                        TotalItems = reader.GetInt32("TotalItems"),
-                        ShippingAddress = reader.GetString("ShippingAddress"),
-                        CustomerName = reader.GetString("CustomerName"),
-                        CustomerEmail = reader.GetString("CustomerEmail"),
-                        CustomerPhone = reader.GetString("CustomerPhone"),
-                        CreatedToday = reader.GetInt32("CreatedToday") == 1
-                    };
-
-                    result.Add(orderDto);
-                    Console.WriteLine($"Row {rowCount}: Order {orderDto.OrderID}, Amount: {orderDto.TotalAmount:C}");
-                }
-
-                Console.WriteLine($"Raw SQL returned {result.Count} orders");
-                return result;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"ERROR in GetOrdersByStatusAsync RAW SQL: {ex.Message}");
-                Console.WriteLine($"StackTrace: {ex.StackTrace}");
-                throw;
-            }
+            return Math.Min(Math.Max(baseCOGS, 25), 80); // Clamp between 25-80%
         }
 
+        // ✅ HELPER: Tính toán operating expenses
+        private decimal CalculateOperatingExpenses(decimal revenue, int orderCount, int sellerId)
+        {
+            // ✅ REALISTIC: Operating expense components
+
+            // 1. Platform fees (2-5% of revenue)
+            decimal platformFees = revenue * 0.03m; // 3% platform fee
+
+            // 2. Payment processing (2-3% of revenue)
+            decimal paymentFees = revenue * 0.025m; // 2.5% payment processing
+
+            // 3. Shipping costs (estimated per order)
+            decimal avgShippingCost = 30000m; // 30K VND per order average
+            decimal totalShippingCosts = orderCount * avgShippingCost;
+
+            // 4. Marketing expenses (5-10% of revenue for active sellers)
+            decimal marketingExpenses = revenue * 0.07m; // 7% marketing
+
+            // 5. Packaging & handling (1-2% of revenue)
+            decimal packagingCosts = revenue * 0.015m; // 1.5% packaging
+
+            // 6. Customer service & returns (1-3% of revenue)
+            decimal customerServiceCosts = revenue * 0.02m; // 2% customer service
+
+            var totalOpex = platformFees + paymentFees + totalShippingCosts +
+                           marketingExpenses + packagingCosts + customerServiceCosts;
+
+            Console.WriteLine($"Operating Expenses Breakdown: Platform={platformFees:C}, Payment={paymentFees:C}, Shipping={totalShippingCosts:C}, Marketing={marketingExpenses:C}, Packaging={packagingCosts:C}, Service={customerServiceCosts:C}");
+
+            return totalOpex;
+        }
+
+        // ✅ HELPER: Generate analysis notes
+        private string GenerateProfitAnalysisNotes(decimal grossMargin, decimal netMargin, decimal revenue)
+        {
+            var notes = new List<string>();
+
+            // Revenue assessment
+            if (revenue < 1000000) // < 1M
+                notes.Add("💡 Doanh thu còn thấp - cần tăng cường marketing và mở rộng sản phẩm");
+            else if (revenue > 10000000) // > 10M
+                notes.Add("✅ Doanh thu tốt - duy trì và tối ưu hóa hiệu quả");
+
+            // Gross margin assessment
+            if (grossMargin < 20)
+                notes.Add("⚠️ Biên lợi nhuận gộp thấp - cần xem xét lại giá bán hoặc chi phí nhập hàng");
+            else if (grossMargin > 40)
+                notes.Add("✅ Biên lợi nhuận gộp tốt - có thể cân nhắc giảm giá để tăng volume");
+
+            // Net margin assessment  
+            if (netMargin < 5)
+                notes.Add("🔴 Lợi nhuận ròng thấp - cần tối ưu chi phí vận hành");
+            else if (netMargin > 15)
+                notes.Add("🎯 Lợi nhuận ròng xuất sắc - có thể đầu tư mở rộng");
+
+            // General recommendations
+            notes.Add("📊 Số liệu dựa trên ước tính thị trường - để có phân tích chính xác hơn, hãy cập nhật chi phí thực tế của sản phẩm");
+
+            return string.Join(" | ", notes);
+        }
+
+        
     }
 }

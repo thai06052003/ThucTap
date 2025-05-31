@@ -147,7 +147,7 @@ namespace ShopxEX1 // Namespace gốc
             //ĐĂNG KÝ SERVICES CHO PASSWORD RESET
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IEmailService, SmtpEmailService>();
-                builder.Services.AddHostedService<OrderAutoCompleteService>();
+                // builder.Services.AddHostedService<OrderAutoCompleteService>();
 
             // 9. Swagger/OpenAPI Configuration
             builder.Services.AddEndpointsApiExplorer();

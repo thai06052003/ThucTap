@@ -36,6 +36,13 @@ namespace ShopxEX1.Dtos.Notifications
         public string? ActionUrl { get; set; }
         public string TargetAudience { get; set; } = "both";
         public DateTime? ScheduledAt { get; set; }
+        public List<int>? SpecificUserIds { get; set; }
+         public bool IncludeInactiveUsers { get; set; } = false;
+    public decimal? MinSpentAmount { get; set; }
+    public int? MinOrderCount { get; set; }
+    public DateTime? RegisteredAfter { get; set; }
+    public DateTime? LastActiveAfter { get; set; }
+    
     }
 
     public class UpdateNotificationDto

@@ -13,6 +13,8 @@ namespace ShopxEX1.Services.Implementations
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
+        private static DateTime VietnamNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+
 
         public NotificationService(
             AppDbContext context,
@@ -120,7 +122,7 @@ namespace ShopxEX1.Services.Implementations
         {
             var notification = _mapper.Map<Notification>(dto);
             notification.CreatedBy = createdBy;
-            notification.CreatedAt = DateTime.UtcNow;
+            notification.CreatedAt = VietnamNow; // Use Vietnam timezone for createdAt
             notification.Status = "draft"; // Set default status
 
             _context.Notifications.Add(notification);
@@ -180,7 +182,7 @@ namespace ShopxEX1.Services.Implementations
                     return false;
 
                 // Check if scheduled notification is ready to send
-                if (notification.ScheduledAt.HasValue && notification.ScheduledAt.Value > DateTime.UtcNow)
+                if (notification.ScheduledAt.HasValue && notification.ScheduledAt.Value > VietnamNow)
                 {
                     throw new InvalidOperationException("Scheduled notification is not ready to send yet");
                 }
@@ -203,7 +205,7 @@ namespace ShopxEX1.Services.Implementations
                         NotificationID = notificationId,
                         UserID = userId,
                         UserType = userType,
-                        ReceivedAt = DateTime.UtcNow,
+                        ReceivedAt = VietnamNow,
                         IsRead = false,
                         IsDeleted = false
                     });
@@ -213,7 +215,7 @@ namespace ShopxEX1.Services.Implementations
 
                 // Update notification status
                 notification.Status = "sent";
-                notification.SentAt = DateTime.UtcNow;
+                notification.SentAt = VietnamNow;
                 notification.TotalSent = userIds.Count;
 
                 _context.Notifications.Update(notification);
@@ -378,7 +380,7 @@ namespace ShopxEX1.Services.Implementations
             if (!userNotification.IsRead)
             {
                 userNotification.IsRead = true;
-                userNotification.ReadAt = DateTime.UtcNow;
+                userNotification.ReadAt = VietnamNow;
 
                 // Update total read count in notification
                 var notification = await _context.Notifications.FindAsync(userNotification.NotificationID);
@@ -404,7 +406,7 @@ namespace ShopxEX1.Services.Implementations
 
             // Soft delete
             userNotification.IsDeleted = true;
-            userNotification.DeletedAt = DateTime.UtcNow;
+            userNotification.DeletedAt = VietnamNow;
 
             await _context.SaveChangesAsync();
             return true;
@@ -421,31 +423,191 @@ namespace ShopxEX1.Services.Implementations
         #region Helper Methods
 
         private async Task<List<int>> GetTargetUserIds(string targetAudience)
-        {
-            return targetAudience.ToLower() switch
-            {
-                "customers" => await _context.Users
-                    .Where(u => u.Role == "Customer")
-                    .Select(u => u.UserID)
-                    .ToListAsync(),
-                "sellers" => await _context.Users
-                    .Where(u => u.Role == "Seller")
-                    .Select(u => u.UserID)
-                    .ToListAsync(),
-                "admins" => await _context.Users
-                    .Where(u => u.Role == "Admin")
-                    .Select(u => u.UserID)
-                    .ToListAsync(),
-                "both" => await _context.Users
-                    .Where(u => u.Role == "Customer" || u.Role == "Seller")
-                    .Select(u => u.UserID)
-                    .ToListAsync(),
-                "all" => await _context.Users
-                    .Select(u => u.UserID)
-                    .ToListAsync(),
-                _ => new List<int>()
-            };
-        }
+{
+    Console.WriteLine($"🎯 [ADMIN TARGET] Processing audience: {targetAudience}");
+    
+    // ✅ HANDLE SPECIFIC USER IDS (format: "specific:1,2,3,4")
+    if (targetAudience.StartsWith("specific:", StringComparison.OrdinalIgnoreCase))
+    {
+        var idsString = targetAudience.Substring("specific:".Length);
+        var userIds = idsString
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Where(id => int.TryParse(id.Trim(), out _))
+            .Select(id => int.Parse(id.Trim()))
+            .ToList();
+            
+        Console.WriteLine($"🎯 [ADMIN TARGET] Specific users: [{string.Join(", ", userIds)}]");
+        
+        // Validate users exist and are active
+        var validUsers = await _context.Users
+            .Where(u => userIds.Contains(u.UserID) && u.IsActive)
+            .Select(u => u.UserID)
+            .ToListAsync();
+            
+        Console.WriteLine($"✅ [ADMIN TARGET] Valid specific users: {validUsers.Count}/{userIds.Count}");
+        return validUsers;
+    }
+    
+    // ✅ HANDLE ADVANCED TARGETING
+    return targetAudience.ToLower() switch
+    {
+        // Basic roles
+        "customers" => await _context.Users
+            .Where(u => u.Role == "Customer" && u.IsActive)
+            .Select(u => u.UserID)
+            .ToListAsync(),
+            
+        "sellers" => await _context.Users
+            .Where(u => u.Role == "Seller" && u.IsActive)
+            .Select(u => u.UserID)
+            .ToListAsync(),
+            
+        "admins" => await _context.Users
+            .Where(u => u.Role == "Admin" && u.IsActive)
+            .Select(u => u.UserID)
+            .ToListAsync(),
+            
+        // Combined roles
+        "both" => await _context.Users
+            .Where(u => (u.Role == "Customer" || u.Role == "Seller") && u.IsActive)
+            .Select(u => u.UserID)
+            .ToListAsync(),
+            
+        "all" => await _context.Users
+            .Where(u => u.IsActive)
+            .Select(u => u.UserID)
+            .ToListAsync(),
+            
+        // ✅ ADVANCED CUSTOMER TARGETING
+        "vip_customers" => await GetVipCustomersAsync(),
+        "recent_customers" => await GetRecentCustomersAsync(),
+        "inactive_customers" => await GetInactiveCustomersAsync(),
+        "high_value_customers" => await GetHighValueCustomersAsync(),
+        
+        // ✅ SELLER TARGETING
+        "active_sellers" => await GetActiveSellerssAsync(),
+        "new_sellers" => await GetNewSellersAsync(),
+        "top_sellers" => await GetTopSellersAsync(),
+        
+        _ => new List<int>()
+    };
+}
+        
+        private async Task<List<int>> GetVipCustomersAsync()
+{
+    // Customers with >= 5 orders or >= 5M VND spent
+    var sql = @"
+        SELECT DISTINCT u.UserID 
+        FROM Users u
+        INNER JOIN Orders o ON u.UserID = o.UserID
+        WHERE u.Role = 'Customer' AND u.IsActive = 1
+        GROUP BY u.UserID
+        HAVING COUNT(o.OrderID) >= 5 OR SUM(o.TotalPayment) >= 5000000
+    ";
+    
+    return await _context.Database.SqlQueryRaw<int>(sql).ToListAsync();
+}
+
+private async Task<List<int>> GetRecentCustomersAsync()
+{
+    // Customers with orders in last 30 days
+    var cutoffDate = DateTime.UtcNow.AddDays(-30);
+    
+    return await _context.Orders
+        .Where(o => o.OrderDate >= cutoffDate)
+        .Join(_context.Users,
+              o => o.UserID,
+              u => u.UserID,
+              (o, u) => new { u.UserID, u.Role, u.IsActive })
+        .Where(x => x.Role == "Customer" && x.IsActive)
+        .Select(x => x.UserID)
+        .Distinct()
+        .ToListAsync();
+}
+
+private async Task<List<int>> GetInactiveCustomersAsync()
+{
+    // Customers with no orders in last 90 days but have previous orders
+    var cutoffDate = DateTime.UtcNow.AddDays(-90);
+    
+    var sql = @"
+        SELECT DISTINCT u.UserID 
+        FROM Users u
+        WHERE u.Role = 'Customer' AND u.IsActive = 1
+        AND EXISTS (SELECT 1 FROM Orders o WHERE o.UserID = u.UserID)
+        AND NOT EXISTS (SELECT 1 FROM Orders o WHERE o.UserID = u.UserID AND o.OrderDate >= @cutoffDate)
+    ";
+    
+    return await _context.Database
+        .SqlQueryRaw<int>(sql, new SqlParameter("@cutoffDate", cutoffDate))
+        .ToListAsync();
+}
+
+private async Task<List<int>> GetHighValueCustomersAsync()
+{
+    // Customers with total spending >= 2M VND
+    var sql = @"
+        SELECT u.UserID 
+        FROM Users u
+        INNER JOIN Orders o ON u.UserID = o.UserID
+        WHERE u.Role = 'Customer' AND u.IsActive = 1
+        GROUP BY u.UserID
+        HAVING SUM(o.TotalPayment) >= 2000000
+    ";
+    
+    return await _context.Database.SqlQueryRaw<int>(sql).ToListAsync();
+}
+
+private async Task<List<int>> GetActiveSellerssAsync()
+{
+    // Sellers with orders in last 30 days
+    var cutoffDate = DateTime.UtcNow.AddDays(-30);
+    
+    var sql = @"
+        SELECT DISTINCT u.UserID 
+        FROM Users u
+        INNER JOIN Products p ON u.UserID = p.SellerID
+        INNER JOIN OrderDetails od ON p.ProductID = od.ProductID
+        INNER JOIN Orders o ON od.OrderID = o.OrderID
+        WHERE u.Role = 'Seller' AND u.IsActive = 1 AND o.OrderDate >= @cutoffDate
+    ";
+    
+    return await _context.Database
+        .SqlQueryRaw<int>(sql, new SqlParameter("@cutoffDate", cutoffDate))
+        .ToListAsync();
+}
+
+private async Task<List<int>> GetNewSellersAsync()
+{
+    // Sellers registered in last 30 days
+    var cutoffDate = DateTime.UtcNow.AddDays(-30);
+    
+    return await _context.Users
+        .Where(u => u.Role == "Seller" && u.IsActive && u.CreatedAt >= cutoffDate)
+        .Select(u => u.UserID)
+        .ToListAsync();
+}
+
+private async Task<List<int>> GetTopSellersAsync()
+{
+    // Top 50 sellers by revenue in last 3 months
+    var cutoffDate = DateTime.UtcNow.AddDays(-90);
+    
+    var sql = @"
+        SELECT TOP 50 u.UserID 
+        FROM Users u
+        INNER JOIN Products p ON u.UserID = p.SellerID
+        INNER JOIN OrderDetails od ON p.ProductID = od.ProductID
+        INNER JOIN Orders o ON od.OrderID = o.OrderID
+        WHERE u.Role = 'Seller' AND u.IsActive = 1 AND o.OrderDate >= @cutoffDate
+        GROUP BY u.UserID
+        ORDER BY SUM(od.UnitPrice * od.Quantity) DESC
+    ";
+    
+    return await _context.Database
+        .SqlQueryRaw<int>(sql, new SqlParameter("@cutoffDate", cutoffDate))
+        .ToListAsync();
+}
 
         private async Task<string> GetUserTypeFromUserIdAsync(int userId)
         {
@@ -580,18 +742,23 @@ namespace ShopxEX1.Services.Implementations
                 Status = "draft",
                 ScheduledAt = dto.ScheduledAt,
                 CreatedBy = sellerId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = VietnamNow,
                 TotalSent = 0,
                 TotalRead = 0
             };
 
             // Store specific customer IDs in a separate table or JSON field if needed
             if (dto.SpecificCustomerIds?.Any() == true)
-            {
-                // You might want to create a TargetCustomers table or store as JSON
-                notification.TargetAudience = $"seller_{sellerId}_specific";
-                // Store specific IDs - could extend Notification model or create separate table
-            }
+                {
+                    // ✅ EMBED customer IDs directly in TargetAudience string
+                    notification.TargetAudience = $"seller_{sellerId}_specific_{string.Join(",", dto.SpecificCustomerIds)}";
+                    Console.WriteLine($"✅ [CREATE] Set specific target: {notification.TargetAudience}");
+                }
+                else
+                {
+                    notification.TargetAudience = $"seller_{sellerId}_{dto.TargetCustomers}";
+                    Console.WriteLine($"✅ [CREATE] Set general target: {notification.TargetAudience}");
+                }
 
             _context.Notifications.Add(notification);
             await _context.SaveChangesAsync();
@@ -600,121 +767,111 @@ namespace ShopxEX1.Services.Implementations
         }
 
         public async Task<bool> SendSellerNotificationAsync(int notificationId, int sellerId)
+{
+    using var transaction = await _context.Database.BeginTransactionAsync();
+    try
+    {
+        Console.WriteLine($"📨 [SEND] Starting notification {notificationId} for seller {sellerId}");
+
+        var notification = await _context.Notifications
+            .FirstOrDefaultAsync(n => n.NotificationID == notificationId &&
+                                     n.CreatedBy == sellerId &&
+                                     n.Status == "draft");
+
+        if (notification == null) 
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            Console.WriteLine($"❌ [SEND] Notification not found");
+            return false;
+        }
+
+        Console.WriteLine($"📨 [SEND] Target audience: '{notification.TargetAudience}'");
+
+        var targetCustomerIds = await GetSellerTargetCustomers(sellerId, notification.TargetAudience);
+        
+        // ✅ CHECK IF THIS IS SPECIFIC TARGETING
+        var isSpecificTargeting = notification.TargetAudience.Contains("_specific_");
+        
+        Console.WriteLine($"📊 [SEND] Found {targetCustomerIds.Count} target customers, IsSpecific: {isSpecificTargeting}");
+        
+        if (!targetCustomerIds.Any())
+        {
+            if (isSpecificTargeting)
             {
-                Console.WriteLine($"📨 [DEBUG] Starting SendSellerNotificationAsync for notification {notificationId}, seller {sellerId}");
+                // ✅ SPECIFIC TARGETING: FAIL if no valid customers found
+                Console.WriteLine($"❌ [SEND] SPECIFIC targeting but no valid customers - FAILING");
+                await transaction.RollbackAsync();
+                throw new InvalidOperationException("Không tìm thấy khách hàng được chọn hoặc khách hàng không có quyền nhận thông báo từ shop của bạn.");
+            }
+            else
+            {
+                // ✅ GENERAL TARGETING: Use fallback logic
+                Console.WriteLine($"🔄 [SEND] GENERAL targeting - trying fallback");
+                
+                var fallbackSql = @"
+                    SELECT DISTINCT o.UserID FROM OrderDetails od
+                    INNER JOIN Products p ON od.ProductID = p.ProductID
+                    INNER JOIN Orders o ON od.OrderID = o.OrderID
+                    INNER JOIN Users u ON o.UserID = u.UserID
+                    WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
+                ";
 
-                var notification = await _context.Notifications
-                    .FirstOrDefaultAsync(n => n.NotificationID == notificationId &&
-                                             n.CreatedBy == sellerId &&
-                                             n.Status == "draft");
+                targetCustomerIds = await _context.Database
+                    .SqlQueryRaw<int>(fallbackSql, new SqlParameter("@sellerId", sellerId))
+                    .ToListAsync();
 
-                if (notification == null)
-                {
-                    Console.WriteLine($"❌ [ERROR] Notification {notificationId} not found or not owned by seller {sellerId}");
-                    return false;
-                }
+                Console.WriteLine($"🔄 [SEND] Fallback found {targetCustomerIds.Count} customers");
 
-                Console.WriteLine($"✅ [INFO] Found notification: {notification.Title}, Target: {notification.TargetAudience}");
-
-                // ✅ GET TARGET CUSTOMERS with enhanced debugging
-                var targetCustomerIds = await GetSellerTargetCustomers(sellerId, notification.TargetAudience);
-
-                Console.WriteLine($"📊 [RESULT] Found {targetCustomerIds.Count} target customers for notification {notificationId}");
-
-                // ✅ ENHANCED FALLBACK STRATEGY
                 if (!targetCustomerIds.Any())
                 {
-                    Console.WriteLine($"⚠️ [WARNING] No specific target customers found for seller {sellerId}");
-
-                    // FALLBACK 1: Try getting ALL customers who bought from this seller (any time)
-                    var fallbackSql = @"
-                SELECT DISTINCT o.UserID 
-                FROM OrderDetails od
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                INNER JOIN Orders o ON od.OrderID = o.OrderID
-                INNER JOIN Users u ON o.UserID = u.UserID
-                WHERE p.SellerID = @sellerId 
-                  AND u.Role = 'Customer'
-            ";
-
-                    targetCustomerIds = await _context.Database
-                        .SqlQueryRaw<int>(fallbackSql, new SqlParameter("@sellerId", sellerId))
-                        .ToListAsync();
-
-                    Console.WriteLine($"🔄 [FALLBACK1] Found {targetCustomerIds.Count} customers with relaxed criteria");
-
-                    // FALLBACK 2: If still no customers, use all active customers (for demo/testing)
-                    if (!targetCustomerIds.Any())
-                    {
-                        Console.WriteLine($"🔄 [FALLBACK2] No customers found, using all active customers for demo");
-
-                        targetCustomerIds = await _context.Users
-                            .Where(u => u.Role == "Customer" && u.IsActive == true)
-                            .Select(u => u.UserID)
-                            .Take(50) // Limit for performance
-                            .ToListAsync();
-
-                        Console.WriteLine($"🔄 [FALLBACK2] Using {targetCustomerIds.Count} active customers");
-                    }
-
-                    // FALLBACK 3: If STILL no customers, allow 0 recipients (for new sellers)
-                    if (!targetCustomerIds.Any())
-                    {
-                        Console.WriteLine($"📝 [FALLBACK3] No customers available, sending with 0 recipients (new seller)");
-
-                        // Update notification status anyway
-                        notification.Status = "sent";
-                        notification.SentAt = DateTime.UtcNow;
-                        notification.TotalSent = 0;
-
-                        _context.Notifications.Update(notification);
-                        await _context.SaveChangesAsync();
-                        await transaction.CommitAsync();
-
-                        Console.WriteLine($"✅ [SUCCESS] Notification {notificationId} marked as sent with 0 recipients");
-                        return true; // ✅ Return success even with 0 recipients
-                    }
+                    // Mark as sent with 0 recipients (new seller case)
+                    Console.WriteLine($"ℹ️ [SEND] New seller with no customers - marking as sent with 0 recipients");
+                    
+                    notification.Status = "sent";
+                    notification.SentAt = VietnamNow;
+                    notification.TotalSent = 0;
+                    _context.Notifications.Update(notification);
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
                 }
-
-                // ✅ NORMAL FLOW: Create UserNotifications for found customers
-                Console.WriteLine($"📤 [PROCESS] Creating UserNotifications for {targetCustomerIds.Count} customers");
-
-                var userNotifications = targetCustomerIds.Select(customerId => new UserNotification
-                {
-                    NotificationID = notificationId,
-                    UserID = customerId,
-                    UserType = "Customer",
-                    ReceivedAt = DateTime.UtcNow,
-                    IsRead = false,
-                    IsDeleted = false
-                }).ToList();
-
-                _context.UserNotifications.AddRange(userNotifications);
-
-                // Update notification status
-                notification.Status = "sent";
-                notification.SentAt = DateTime.UtcNow;
-                notification.TotalSent = targetCustomerIds.Count;
-
-                _context.Notifications.Update(notification);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                Console.WriteLine($"✅ [SUCCESS] Notification {notificationId} sent successfully to {targetCustomerIds.Count} customers");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                Console.WriteLine($"❌ [ERROR] Exception in SendSellerNotificationAsync: {ex.Message}");
-                Console.WriteLine($"📍 [STACK] {ex.StackTrace}");
-                throw new Exception($"Failed to send notification: {ex.Message}", ex);
             }
         }
-        // ✅ GIẢI PHÁP THAY THẾ: Raw SQL
+
+        // ✅ CREATE UserNotifications for found customers
+        Console.WriteLine($"📤 [SEND] Creating UserNotifications for {targetCustomerIds.Count} customers");
+
+        var userNotifications = targetCustomerIds.Select(customerId => new UserNotification
+        {
+            NotificationID = notificationId,
+            UserID = customerId,
+            UserType = "Customer",
+            ReceivedAt = VietnamNow,
+            IsRead = false,
+            IsDeleted = false
+        }).ToList();
+
+        _context.UserNotifications.AddRange(userNotifications);
+
+        // ✅ UPDATE notification status
+        notification.Status = "sent";
+        notification.SentAt = VietnamNow;
+        notification.TotalSent = targetCustomerIds.Count;
+
+        _context.Notifications.Update(notification);
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        Console.WriteLine($"✅ [SEND] Successfully sent to {targetCustomerIds.Count} customers");
+        return true;
+    }
+    catch (Exception ex)
+    {
+        await transaction.RollbackAsync();
+        Console.WriteLine($"❌ [SEND ERROR] {ex.Message}");
+        Console.WriteLine($"❌ [SEND STACK] {ex.StackTrace}");
+        throw;
+    }
+}
         public async Task<List<CustomerInfoDto>> GetSellerCustomersAsync(int sellerId)
         {
             try
@@ -813,137 +970,149 @@ namespace ShopxEX1.Services.Implementations
             return await Task.FromResult(templates);
         }
 
-        private async Task<List<int>> GetSellerTargetCustomers(int sellerId, string targetAudience)
+      private async Task<List<int>> GetSellerTargetCustomers(int sellerId, string targetAudience)
+{
+    try
+    {
+        Console.WriteLine($"🎯 [TARGET] Processing: {targetAudience}");
+        
+        var parts = targetAudience.Split('_');
+        if (parts.Length < 3) 
         {
-            try
+            Console.WriteLine($"❌ [TARGET] Invalid format: {targetAudience}");
+            return new List<int>();
+        }
+
+        var targetType = parts[2]; // all, recent, frequent, vip, specific
+
+        // ✅ HANDLE SPECIFIC CUSTOMERS FIRST
+        if (targetType == "specific")
+        {
+            if (parts.Length < 4)
             {
-                Console.WriteLine($"🎯 [DEBUG] Getting target customers for seller {sellerId}, audience: {targetAudience}");
+                Console.WriteLine($"❌ [SPECIFIC] No customer IDs found in: {targetAudience}");
+                return new List<int>();
+            }
 
-                var parts = targetAudience.Split('_');
-                if (parts.Length < 3)
+            var customerIdsString = parts[3];
+            Console.WriteLine($"🎯 [SPECIFIC] Raw customer IDs string: '{customerIdsString}'");
+
+            var customerIds = customerIdsString
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Where(id => int.TryParse(id.Trim(), out _))
+                .Select(id => int.Parse(id.Trim()))
+                .ToList();
+
+            Console.WriteLine($"🎯 [SPECIFIC] Parsed {customerIds.Count} customer IDs: [{string.Join(", ", customerIds)}]");
+
+            if (!customerIds.Any())
+            {
+                Console.WriteLine($"❌ [SPECIFIC] No valid customer IDs parsed");
+                return new List<int>();
+            }
+
+            // ✅ VALIDATE customers belong to seller - SAFE SQL
+            var validCustomers = new List<int>();
+            
+            foreach (var customerId in customerIds)
+            {
+                var isValidSql = @"
+                    SELECT COUNT(*)
+                    FROM Users u
+                    WHERE u.UserID = @customerId
+                      AND u.Role = 'Customer' 
+                      AND u.IsActive = 1
+                      AND EXISTS (
+                          SELECT 1 FROM OrderDetails od
+                          INNER JOIN Products p ON od.ProductID = p.ProductID
+                          INNER JOIN Orders o ON od.OrderID = o.OrderID
+                          WHERE p.SellerID = @sellerId AND o.UserID = u.UserID
+                      )
+                ";
+
+                var count = await _context.Database
+                    .SqlQueryRaw<int>(isValidSql,
+                        new SqlParameter("@customerId", customerId),
+                        new SqlParameter("@sellerId", sellerId))
+                    .FirstOrDefaultAsync();
+
+                if (count > 0)
                 {
-                    Console.WriteLine($"❌ [ERROR] Invalid target audience format: {targetAudience}");
-                    return new List<int>();
-                }
-
-                var targetType = parts[2]; // all, recent, frequent, vip, specific
-                Console.WriteLine($"🎯 [DEBUG] Target type: {targetType}");
-
-                string sql;
-                var parameters = new List<SqlParameter> { new SqlParameter("@sellerId", sellerId) };
-
-                // ✅ ENHANCED RAW SQL cho từng target type
-                sql = targetType switch
-                {
-                    "all" => @"
-                SELECT DISTINCT o.UserID 
-                FROM OrderDetails od
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                INNER JOIN Orders o ON od.OrderID = o.OrderID
-                INNER JOIN Users u ON o.UserID = u.UserID
-                WHERE p.SellerID = @sellerId 
-                  AND u.Role = 'Customer'
-                  AND u.IsActive = 1
-            ",
-
-                    "recent" => @"
-                SELECT DISTINCT o.UserID 
-                FROM OrderDetails od
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                INNER JOIN Orders o ON od.OrderID = o.OrderID
-                INNER JOIN Users u ON o.UserID = u.UserID
-                WHERE p.SellerID = @sellerId 
-                  AND u.Role = 'Customer'
-                  AND u.IsActive = 1
-                  AND o.OrderDate >= DATEADD(day, -30, GETUTCDATE())
-            ",
-
-                    "frequent" => @"
-                SELECT o.UserID
-                FROM OrderDetails od
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                INNER JOIN Orders o ON od.OrderID = o.OrderID
-                INNER JOIN Users u ON o.UserID = u.UserID
-                WHERE p.SellerID = @sellerId 
-                  AND u.Role = 'Customer'
-                  AND u.IsActive = 1
-                GROUP BY o.UserID
-                HAVING COUNT(DISTINCT o.OrderID) >= 3
-            ",
-
-                    "vip" => @"
-                SELECT o.UserID
-                FROM OrderDetails od
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                INNER JOIN Orders o ON od.OrderID = o.OrderID
-                INNER JOIN Users u ON o.UserID = u.UserID
-                WHERE p.SellerID = @sellerId 
-                  AND u.Role = 'Customer'
-                  AND u.IsActive = 1
-                GROUP BY o.UserID
-                HAVING SUM(ISNULL(o.TotalPayment, 0)) >= 1000000
-            ",
-
-                    _ => @"
-                SELECT DISTINCT o.UserID 
-                FROM OrderDetails od
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                INNER JOIN Orders o ON od.OrderID = o.OrderID
-                INNER JOIN Users u ON o.UserID = u.UserID
-                WHERE p.SellerID = @sellerId 
-                  AND u.Role = 'Customer'
-                  AND u.IsActive = 1
-            " // Default to "all"
-                };
-
-                Console.WriteLine($"📋 [SQL] Executing query: {sql}");
-
-                var customerIds = await _context.Database
-                    .SqlQueryRaw<int>(sql, parameters.ToArray())
-                    .ToListAsync();
-
-                Console.WriteLine($"✅ [SUCCESS] Found {customerIds.Count} target customers for seller {sellerId}, type '{targetType}'");
-
-                // ✅ DEBUG: Log first few customer IDs
-                if (customerIds.Any())
-                {
-                    Console.WriteLine($"👥 [SAMPLE] First customers: {string.Join(", ", customerIds.Take(5))}");
+                    validCustomers.Add(customerId);
+                    Console.WriteLine($"✅ [SPECIFIC] Customer {customerId} is valid for seller {sellerId}");
                 }
                 else
                 {
-                    Console.WriteLine($"⚠️ [WARNING] No customers found. Checking seller data...");
-
-                    // ✅ FALLBACK CHECK: Does seller have any products?
-                    var productCount = await _context.Database
-                        .SqlQueryRaw<int>("SELECT COUNT(*) FROM Products WHERE SellerID = @sellerId",
-                            new SqlParameter("@sellerId", sellerId))
-                        .FirstOrDefaultAsync();
-
-                    Console.WriteLine($"📦 [DEBUG] Seller has {productCount} products");
-
-                    // ✅ FALLBACK CHECK: Are there any orders?
-                    var orderCount = await _context.Database
-                        .SqlQueryRaw<int>(@"
-                    SELECT COUNT(DISTINCT o.OrderID) 
-                    FROM OrderDetails od
-                    INNER JOIN Products p ON od.ProductID = p.ProductID
-                    INNER JOIN Orders o ON od.OrderID = o.OrderID
-                    WHERE p.SellerID = @sellerId
-                ", new SqlParameter("@sellerId", sellerId))
-                        .FirstOrDefaultAsync();
-
-                    Console.WriteLine($"📋 [DEBUG] Seller has {orderCount} orders");
+                    Console.WriteLine($"❌ [SPECIFIC] Customer {customerId} is NOT valid for seller {sellerId}");
                 }
+            }
 
-                return customerIds;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ [ERROR] Exception in GetSellerTargetCustomers: {ex.Message}");
-                Console.WriteLine($"📍 [STACK] {ex.StackTrace}");
-                return new List<int>();
-            }
+            Console.WriteLine($"✅ [SPECIFIC] Final result: {validCustomers.Count} valid customers out of {customerIds.Count}");
+            
+            // ✅ RETURN ONLY VALID SPECIFIC CUSTOMERS - NO FALLBACK
+            return validCustomers;
         }
+
+        // ✅ HANDLE OTHER TARGET TYPES (all, recent, frequent, vip)
+        string sql = targetType switch
+        {
+            "all" => @"
+                SELECT DISTINCT o.UserID 
+                FROM OrderDetails od
+                INNER JOIN Products p ON od.ProductID = p.ProductID
+                INNER JOIN Orders o ON od.OrderID = o.OrderID
+                INNER JOIN Users u ON o.UserID = u.UserID
+                WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
+            ",
+            "recent" => @"
+                SELECT DISTINCT o.UserID 
+                FROM OrderDetails od
+                INNER JOIN Products p ON od.ProductID = p.ProductID
+                INNER JOIN Orders o ON od.OrderID = o.OrderID
+                INNER JOIN Users u ON o.UserID = u.UserID
+                WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
+                  AND o.OrderDate >= DATEADD(day, -30, GETUTCDATE())
+            ",
+            "frequent" => @"
+                SELECT o.UserID FROM OrderDetails od
+                INNER JOIN Products p ON od.ProductID = p.ProductID
+                INNER JOIN Orders o ON od.OrderID = o.OrderID
+                INNER JOIN Users u ON o.UserID = u.UserID
+                WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
+                GROUP BY o.UserID HAVING COUNT(DISTINCT o.OrderID) >= 3
+            ",
+            "vip" => @"
+                SELECT o.UserID FROM OrderDetails od
+                INNER JOIN Products p ON od.ProductID = p.ProductID
+                INNER JOIN Orders o ON od.OrderID = o.OrderID
+                INNER JOIN Users u ON o.UserID = u.UserID
+                WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
+                GROUP BY o.UserID HAVING SUM(ISNULL(o.TotalPayment, 0)) >= 1000000
+            ",
+            _ => ""
+        };
+
+        if (string.IsNullOrEmpty(sql))
+        {
+            Console.WriteLine($"❌ [GENERAL] Unknown target type: {targetType}");
+            return new List<int>();
+        }
+
+        var customers = await _context.Database
+            .SqlQueryRaw<int>(sql, new SqlParameter("@sellerId", sellerId))
+            .ToListAsync();
+
+        Console.WriteLine($"✅ [GENERAL] Found {customers.Count} customers for type '{targetType}'");
+        return customers;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [TARGET ERROR] {ex.Message}");
+        Console.WriteLine($"❌ [TARGET STACK] {ex.StackTrace}");
+        return new List<int>();
+    }
+}
+
         public async Task<bool> DeleteSellerNotificationAsync(int notificationId, int sellerId)
         {
             // ⭐ TƯƠNG TỰ DeleteNotificationAsync nhưng có check sellerId
@@ -1155,7 +1324,7 @@ public async Task<ResendNotificationResult> ResendNotificationToUserAsync(int us
             NotificationID = userNotification.NotificationID,
             UserID = userNotification.UserID,
             UserType = userNotification.UserType,
-            ReceivedAt = DateTime.UtcNow,
+            ReceivedAt = VietnamNow,
             IsRead = false,
             IsDeleted = false
         };

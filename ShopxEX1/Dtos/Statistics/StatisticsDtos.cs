@@ -8,64 +8,38 @@ namespace ShopxEX1.Dtos.Statistics
     /// </summary>
     public class SellerDashboardDto
     {
-        // Tổng doanh thu của shop
-        public decimal TotalRevenue { get; set; }
-
-        // Tổng số đơn hàng
-        public int TotalOrderCount { get; set; }
-
-        // Tổng số sản phẩm shop đang bán
-        public int TotalProductCount { get; set; }
-
-        // Số sản phẩm đang có sẵn để bán (còn hàng)
-        public int AvailableProductCount { get; set; }
-
-        // Số đơn hàng mới (chờ xác nhận)
-        public int PendingOrdersCount { get; set; }
-
-        // Số đơn hàng đang xử lý
-        public int ProcessingOrdersCount { get; set; }
-
-        // Số đơn hàng đã hoàn thành
-        public int CompletedOrdersCount { get; set; }
-
-        // Số đơn hàng đã hủy
-        public int CancelledOrdersCount { get; set; }
-
-        // Doanh thu hôm nay
+        // ✅ Revenue metrics - CHỈ từ "Đã giao"
+        public decimal TotalRevenue { get; set; }        
         public decimal RevenueToday { get; set; }
-
-        // Doanh thu tuần này
         public decimal RevenueThisWeek { get; set; }
-
-        // Doanh thu tháng này
         public decimal RevenueThisMonth { get; set; }
-
-        // Doanh thu tháng trước
         public decimal RevenueLastMonth { get; set; }
-
-        // Phần trăm tăng trưởng doanh thu (so với tháng trước)
         public decimal RevenueTrendPercentage { get; set; }
-        // ✅ NEW: Additional realistic metrics
-    public int DeliveredOrdersCount { get; set; } // Đã giao nhưng chưa hoàn thành
-    public decimal PotentialRevenue { get; set; } // Doanh thu tiềm năng từ đơn đã giao
-    public int RefundRequestedCount { get; set; } // Số đơn yêu cầu hoàn tiền
-    public int ShippingOrdersCount { get; set; } // Đơn đang giao
 
-    // ✅ COMPUTED: Business insights
-    public decimal CompletionRate => TotalOrderCount > 0 ? 
-        (decimal)CompletedOrdersCount / TotalOrderCount * 100 : 0;
-        
-    public decimal DeliveryToCompletionRate => DeliveredOrdersCount > 0 ? 
-        (decimal)CompletedOrdersCount / (CompletedOrdersCount + DeliveredOrdersCount) * 100 : 0;
-        
-    public decimal RefundRate => TotalOrderCount > 0 ? 
-        (decimal)(CancelledOrdersCount + RefundRequestedCount) / TotalOrderCount * 100 : 0;
-        
-    public decimal AverageOrderValue => CompletedOrdersCount > 0 ? 
-        TotalRevenue / CompletedOrdersCount : 0;
+        // ✅ Order counts - ĐỒNG BỘ với OrderService ValidOrderStatuses
+        public int TotalOrderCount { get; set; }
+        public int PendingOrdersCount { get; set; }      // "Chờ xác nhận"
+        public int ProcessingOrdersCount { get; set; }   // "Đang xử lý"
+        public int ShippingOrdersCount { get; set; }     // "Đang giao"
+        public int DeliveredOrdersCount { get; set; }    // ✅ "Đã giao" - FINAL SUCCESS STATE
+        public int RefundRequestedCount { get; set; }    // "Yêu cầu trả hàng/ hoàn tiền"
+        public int CancelledOrdersCount { get; set; }    // "Đã hủy" + "Đã hoàn tiền"
+        public int RefundRejectedCount { get; set; }      // "Từ chối hoàn tiền"
+
+        // ✅ Product metrics
+        public int TotalProductCount { get; set; }
+        public int AvailableProductCount { get; set; }
+        public int OutOfStockProductCount => TotalProductCount - AvailableProductCount;
+
+        // ✅ Business metrics - Updated logic
+        public decimal OrderCompletionRate => TotalOrderCount > 0 ? 
+            ((decimal)(DeliveredOrdersCount + RefundRejectedCount) / TotalOrderCount) * 100 : 0; // ✅ Based on "Đã giao"
+
+        public decimal OrderCancellationRate => TotalOrderCount > 0 ? 
+            ((decimal)CancelledOrdersCount / TotalOrderCount) * 100 : 0;
+
+        public int OrdersNeedingAttention => PendingOrdersCount + RefundRequestedCount;
     }
-
     /// <summary>
     /// DTO chứa dữ liệu doanh thu theo khoảng thời gian
     /// </summary>
@@ -125,27 +99,29 @@ namespace ShopxEX1.Dtos.Statistics
         public int Delivered { get; set; }              // "Đã giao"
         public int RefundRequested { get; set; }        // "Yêu cầu trả hàng/ hoàn tiền"
         public int Cancelled { get; set; }              // "Đã hủy"
-        public int Refunded { get; set; }               // "Đã hoàn tiền"
-        public int Completed { get; set; }              // "Hoàn thành" 
+        public int Refunded { get; set; }               // "Đã hoàn tiền
+        public int RefundRejected { get; set; }         // "Từ chối hoàn tiền"
+        
+         // ✅ Computed properties - Updated logic
+        public int Total => Pending + Processing + Shipping + Delivered + 
+                                  RefundRequested + Cancelled + Refunded + RefundRejected;
 
-        // ✅ COMPUTED PROPERTIES
-        public int Total => Pending + Processing + Shipping + Delivered + RefundRequested + Cancelled + Refunded + Completed;
 
-        // ✅ PERCENTAGES
-        public decimal PendingPercentage => Total > 0 ? (decimal)Pending / Total * 100 : 0;
-        public decimal ProcessingPercentage => Total > 0 ? (decimal)Processing / Total * 100 : 0;
-        public decimal ShippingPercentage => Total > 0 ? (decimal)Shipping / Total * 100 : 0;
-        public decimal DeliveredPercentage => Total > 0 ? (decimal)Delivered / Total * 100 : 0;
-        public decimal CompletedPercentage => Total > 0 ? (decimal)Completed / Total * 100 : 0;
+        public int ActiveOrders => Pending + Processing + Shipping + RefundRequested; // Cần action
 
-        // ✅ BUSINESS METRICS
-        public decimal CompletionRate => Total > 0 ? (decimal)(Delivered + Completed) / Total * 100 : 0;
-        public decimal CancellationRate => Total > 0 ? (decimal)(Cancelled + Refunded) / Total * 100 : 0;
-        public decimal RefundRate => Total > 0 ? (decimal)(RefundRequested + Refunded) / Total * 100 : 0;
+        public int SuccessfulOrders => Delivered + RefundRejected; // ✅ CHỈ "Đã giao" là success
 
-        // ✅ ACTIVE ORDERS (cần xử lý)
-        public int ActiveOrders => Pending + Processing + Shipping + RefundRequested;
-        public int FinalizedOrders => Delivered + Completed + Cancelled + Refunded;
+        public int ProblematicOrders => Cancelled + Refunded;
+
+        // ✅ Business metrics
+        public decimal CompletionRate => Total > 0 ? 
+            ((decimal)SuccessfulOrders / Total) * 100 : 0;
+
+        public decimal CancellationRate => Total > 0 ? 
+            ((decimal)ProblematicOrders / Total) * 100 : 0;
+
+        public decimal PendingProcessingRate => Total > 0 ? 
+            ((decimal)ActiveOrders / Total) * 100 : 0;
     }
 
     /// <summary>
@@ -313,39 +289,79 @@ namespace ShopxEX1.Dtos.Statistics
         public bool CreatedToday { get; set; }
 
     }
-// ✅ SỬA: StatisticsDtos.cs
-
-public static class OrderStatuses
-{
-    public const string PENDING = "Chờ xác nhận";
-    public const string PROCESSING = "Đang xử lý";
-    public const string SHIPPING = "Đang giao";
-    public const string DELIVERED = "Đã giao";
-    public const string REFUND_REQUESTED = "Yêu cầu trả hàng/ hoàn tiền";
-    public const string CANCELLED = "Đã hủy";
-    public const string REFUNDED = "Đã hoàn tiền";
-    public const string COMPLETED = "Hoàn thành";
 
 
-    public static readonly string[] REVENUE_COUNTING_STATUSES = { COMPLETED }; // CHỈ "Hoàn thành"
-    public static readonly string[] PENDING_STATUSES = { PENDING, PROCESSING, SHIPPING };
-    public static readonly string[] IN_PROGRESS_STATUSES = { DELIVERED }; // Đã giao nhưng chưa hoàn thành
-    public static readonly string[] CANCELLED_STATUSES = { CANCELLED, REFUNDED, REFUND_REQUESTED };
-    public static readonly string[] ALL_STATUSES = { 
-        PENDING, PROCESSING, SHIPPING, DELIVERED, 
-        REFUND_REQUESTED, CANCELLED, REFUNDED, COMPLETED 
+    public static class OrderStatuses
+    {
+        public const string PENDING = "Chờ xác nhận";
+        public const string PROCESSING = "Đang xử lý";
+        public const string SHIPPING = "Đang giao";
+        public const string DELIVERED = "Đã giao";
+        public const string REFUND_REQUESTED = "Yêu cầu trả hàng/ hoàn tiền";
+        public const string CANCELLED = "Đã hủy";
+        public const string REFUNDED = "Đã hoàn tiền";
+        public const string REFUND_REJECTED = "Từ chối hoàn tiền";
+
+
+
+        public static readonly string[] PENDING_STATUSES = { PENDING, PROCESSING, SHIPPING };
+        public static readonly string[] IN_PROGRESS_STATUSES = { DELIVERED }; // Đã giao nhưng chưa hoàn thành
+        public static readonly string[] CANCELLED_STATUSES = { CANCELLED, REFUNDED, REFUND_REQUESTED };
+        public static readonly string[] ALL_STATUSES = {
+        PENDING, PROCESSING, SHIPPING, DELIVERED,
+        REFUND_REQUESTED, CANCELLED, REFUNDED, REFUND_REJECTED
     };
 
-    // ✅ Business logic helpers
-    public static bool IsRevenueCountable(string status) => 
-        REVENUE_COUNTING_STATUSES.Contains(status, StringComparer.OrdinalIgnoreCase);
-        
-    public static bool IsPending(string status) => 
-        PENDING_STATUSES.Contains(status, StringComparer.OrdinalIgnoreCase);
-        
-    public static bool IsCancelled(string status) => 
-        CANCELLED_STATUSES.Contains(status, StringComparer.OrdinalIgnoreCase);
-}
+        // ✅ Business logic helpers
+        public static bool IsRevenueCountable(string status)
+        {
+            return string.Equals(status, DELIVERED, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(status, REFUND_REJECTED, StringComparison.OrdinalIgnoreCase);
+        }
+        public static bool IsActiveOrder(string status)
+        {
+            return status?.Equals(PENDING, StringComparison.OrdinalIgnoreCase) == true ||
+                   status?.Equals(PROCESSING, StringComparison.OrdinalIgnoreCase) == true ||
+                   status?.Equals(SHIPPING, StringComparison.OrdinalIgnoreCase) == true ||
+                   status?.Equals(REFUND_REQUESTED, StringComparison.OrdinalIgnoreCase) == true;
+        }
+
+        public static bool IsPending(string status) =>
+            PENDING_STATUSES.Contains(status, StringComparer.OrdinalIgnoreCase);
+
+        public static bool IsCancelledOrder(string status)
+        {
+            return status?.Equals(CANCELLED, StringComparison.OrdinalIgnoreCase) == true ||
+                   status?.Equals(REFUNDED, StringComparison.OrdinalIgnoreCase) == true;
+        }
+        public static bool IsCompletedOrder(string status)
+    {
+        return status?.Equals(DELIVERED, StringComparison.OrdinalIgnoreCase) == true ||
+               status?.Equals(REFUND_REJECTED, StringComparison.OrdinalIgnoreCase) == true; // ✅ THÊM MỚI
+    }
+        public static bool ShouldIncludeInRevenue(string status)
+        {
+            return IsRevenueCountable(status); // CHỈ "Đã giao"
+        }
+
+        public static bool ShouldIncludeInStats(string status)
+        {
+            return !IsCancelledOrder(status); // Loại bỏ cancelled/refunded
+        }
+
+
+        /// <summary>
+        /// ✅ Lấy tất cả trạng thái hợp lệ
+        /// </summary>
+        public static List<string> GetAllValidStatuses()
+        {
+            return new List<string>
+            {
+                PENDING, PROCESSING, SHIPPING, DELIVERED,
+                CANCELLED, REFUNDED, REFUND_REQUESTED, REFUND_REJECTED
+            };
+        }
+    }
 
 }
 

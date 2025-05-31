@@ -2,7 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using ShopxEX1.Data; // Thêm này
+using ShopxEX1.Data;
+using ShopxEX1.Dtos;
 using ShopxEX1.Dtos.Statistics;
 using ShopxEX1.Services;
 using ShopxEX1.Helpers;
@@ -38,25 +39,194 @@ namespace ShopxEX1.Controllers
         /// Lấy tổng quan thống kê cho bảng điều khiển người bán
         /// </summary>
         [HttpGet("dashboard")]
+[Authorize(Roles = "Seller")]
+public async Task<IActionResult> GetDashboardStats()
+{
+    try
+    {
+        var sellerId = await GetValidSellerIdAsync();
+        if (!sellerId.HasValue)
+        {
+            return Unauthorized("Không thể xác định thông tin người bán");
+        }
+
+        _logger.LogInformation($"Lấy thống kê dashboard cho seller ID: {sellerId.Value}");
+        var result = await _statisticsService.GetSellerDashboardStatsAsync(sellerId.Value);
+        
+        // ✅ ENHANCED: Response với business insights
+        var response = new
+        {
+            success = true,
+            data = result,
+            insights = new
+            {
+                // ✅ Revenue insights
+                revenueHealthy = result.TotalRevenue > 0,
+                hasRecentRevenue = result.RevenueThisMonth > 0 || result.RevenueThisWeek > 0,
+                revenueStatus = GetRevenueStatus(result.RevenueTrendPercentage),
+                
+                // ✅ Order insights
+                completionRateGood = result.OrderCompletionRate >= 80,
+                needsAttention = result.OrdersNeedingAttention > 0,
+                
+                // ✅ Trend explanation
+                trendExplanation = GetTrendExplanation(result.RevenueThisMonth, result.RevenueLastMonth, result.RevenueTrendPercentage),
+                
+                // ✅ Action items
+                actionItems = GenerateActionItems(result)
+            },
+            metadata = new
+            {
+                sellerId = sellerId.Value,
+                timestamp = DateTime.UtcNow,
+                calculationNote = "Revenue từ đơn hàng 'Đã giao' và 'Từ chối hoàn tiền'"
+            }
+        };
+        
+        return Ok(response);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Lỗi khi lấy thống kê dashboard");
+        return StatusCode(500, new
+        {
+            success = false,
+            message = $"Đã xảy ra lỗi khi lấy thống kê: {ex.Message}",
+            data = new SellerDashboardDto()
+        });
+    }
+}
+
+// ✅ Helper methods
+private string GetRevenueStatus(decimal trendPercentage)
+{
+    return trendPercentage switch
+    {
+        > 20 => "Tăng trưởng mạnh",
+        > 0 => "Tăng trưởng nhẹ", 
+        0 => "Ổn định",
+        > -20 => "Giảm nhẹ",
+        _ => "Giảm mạnh"
+    };
+}
+
+private string GetTrendExplanation(decimal thisMonth, decimal lastMonth, decimal trend)
+{
+    
+    var vndCulture = new System.Globalization.CultureInfo("vi-VN");
+    
+    if (thisMonth == 0 && lastMonth > 0)
+        return $"Tháng này chưa có doanh thu, tháng trước có {lastMonth.ToString("C0", vndCulture)}. Cần tăng cường bán hàng.";
+    
+    if (thisMonth > 0 && lastMonth == 0)
+        return $"Tháng này bắt đầu có doanh thu {thisMonth.ToString("C0", vndCulture)}, đây là tín hiệu tích cực.";
+    
+    if (thisMonth == 0 && lastMonth == 0)
+        return "Chưa có doanh thu trong 2 tháng gần đây. Cần review chiến lược bán hàng.";
+    
+    return trend > 0 
+        ? $"Doanh thu tăng {trend:F1}% so với tháng trước" 
+        : $"Doanh thu giảm {Math.Abs(trend):F1}% so với tháng trước";
+}
+private List<string> GenerateActionItems(SellerDashboardDto data)
+{
+    var items = new List<string>();
+    
+    if (data.RevenueThisMonth == 0 && data.RevenueLastMonth > 0)
+        items.Add("Tháng này chưa có doanh thu - cần tăng cường marketing");
+    
+    if (data.OrdersNeedingAttention > 0)
+        items.Add($"Có {data.OrdersNeedingAttention} đơn hàng cần xử lý");
+    
+    if (data.OutOfStockProductCount > 0)
+        items.Add($"Có {data.OutOfStockProductCount} sản phẩm hết hàng");
+    
+    if (data.OrderCompletionRate < 80)
+        items.Add("Tỷ lệ hoàn thành đơn hàng thấp - cần cải thiện");
+    
+    return items;
+}
+
+
+
+        [HttpGet("order-details/{orderId}")]
         [Authorize(Roles = "Seller")]
-        public async Task<IActionResult> GetDashboardStats()
+        public async Task<IActionResult> GetOrderDetails(int orderId)
         {
             try
             {
                 var sellerId = await GetValidSellerIdAsync();
                 if (!sellerId.HasValue)
+                    return Unauthorized(new { 
+                        success = false,
+                        message = "Không thể xác định thông tin người bán" 
+                    });
+
+                // ✅ Load order with full details
+                var order = await _context.Orders
+                    .Where(o => o.OrderID == orderId && 
+                           _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId.Value))
+                    .Include(o => o.User)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Product)
+                            .ThenInclude(p => p.Category)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync();
+
+                if (order == null)
                 {
-                    return Unauthorized("Không thể xác định thông tin người bán");
+                    return NotFound(new { 
+                        success = false,
+                        message = "Không tìm thấy đơn hàng hoặc bạn không có quyền xem đơn hàng này" 
+                    });
                 }
 
-                _logger.LogInformation($"Lấy thống kê dashboard cho seller ID: {sellerId.Value}");
-                var result = await _statisticsService.GetSellerDashboardStatsAsync(sellerId.Value);
-                return Ok(result);
+                // ✅ Map to detailed DTO
+                var orderDetails = new
+                {
+                    orderID = order.OrderID,
+                    status = order.Status,
+                    orderDate = order.OrderDate,
+                    shippingAddress = order.ShippingAddress,
+                    customerInfo = new
+                    {
+                        fullName = order.User?.FullName,
+                        email = order.User?.Email,
+                        phone = order.User?.Phone
+                    },
+                    orderDetails = order.OrderDetails
+                        .Where(od => od.Product.SellerID == sellerId.Value)
+                        .Select(od => new
+                        {
+                            productID = od.ProductID,
+                            productName = od.Product.ProductName,
+                            categoryName = od.Product.Category?.CategoryName,
+                            quantity = od.Quantity,
+                            unitPrice = od.UnitPrice,
+                            totalPrice = od.UnitPrice * od.Quantity,
+                            imageUrl = od.Product.ImageURL,
+                            formattedPrice = od.UnitPrice.ToString("C0", new System.Globalization.CultureInfo("vi-VN")),
+                            formattedTotalPrice = (od.UnitPrice * od.Quantity).ToString("C0", new System.Globalization.CultureInfo("vi-VN"))
+                        }).ToList()
+                };
+
+                return Ok(new
+                {
+                    success = true,
+                    data = orderDetails,
+                    message = "Lấy chi tiết đơn hàng thành công"
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi khi lấy thống kê dashboard");
-                return StatusCode(500, $"Đã xảy ra lỗi khi lấy thống kê: {ex.Message}");
+                _logger.LogError(ex, "Lỗi khi lấy chi tiết đơn hàng {OrderId}", orderId);
+                
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = ex.Message,
+                    message = "Lỗi khi lấy chi tiết đơn hàng"
+                });
             }
         }
 
@@ -131,58 +301,60 @@ namespace ShopxEX1.Controllers
         [HttpGet("order-status")]
         [Authorize(Roles = "Seller")]
         public async Task<IActionResult> GetOrderStatusStats()
-{
-    try
-    {
-        Console.WriteLine("=== StatisticsController GetOrderStatusStats ENHANCED ===");
-
-        var sellerId = await GetValidSellerIdAsync();
-        if (!sellerId.HasValue)
         {
-            Console.WriteLine("ERROR: Cannot determine sellerId");
-            return Unauthorized(new { 
-                success = false, 
-                message = "Không thể xác định thông tin người bán" 
-            });
-        }
-
-        Console.WriteLine($"Processing order status stats for sellerId: {sellerId.Value}");
-
-        var result = await _statisticsService.GetOrderStatusStatsAsync(sellerId.Value);
-
-        // ✅ ENHANCED: Response với metadata
-        var response = new
-        {
-            success = true,
-            message = "Lấy thống kê trạng thái đơn hàng thành công",
-            data = result,
-            metadata = new
+            try
             {
-                sellerId = sellerId.Value,
-                timestamp = DateTime.UtcNow,
-                // ✅ Validation info
-                hasData = result.Total > 0,
-                totalOrders = result.Total,
-                // ✅ Business insights
-                needsAttention = result.ActiveOrders,
-                completionRate = $"{result.CompletionRate:F1}%",
-                cancellationRate = $"{result.CancellationRate:F1}%"
-            }
-        };
+                Console.WriteLine("=== StatisticsController GetOrderStatusStats ENHANCED ===");
 
-        Console.WriteLine($"✅ Returning {result.Total} total orders");
-        return Ok(response);
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Lỗi khi lấy thống kê trạng thái đơn hàng");
-        return StatusCode(500, new { 
-            success = false,
-            message = $"Lỗi xử lý yêu cầu: {ex.Message}",
-            data = new OrderStatusStatsDto() // ✅ Empty but valid structure
-        });
-    }
-}
+                var sellerId = await GetValidSellerIdAsync();
+                if (!sellerId.HasValue)
+                {
+                    Console.WriteLine("ERROR: Cannot determine sellerId");
+                    return Unauthorized(new
+                    {
+                        success = false,
+                        message = "Không thể xác định thông tin người bán"
+                    });
+                }
+
+                Console.WriteLine($"Processing order status stats for sellerId: {sellerId.Value}");
+
+                var result = await _statisticsService.GetOrderStatusStatsAsync(sellerId.Value);
+
+                // ✅ ENHANCED: Response với metadata
+                var response = new
+                {
+                    success = true,
+                    message = "Lấy thống kê trạng thái đơn hàng thành công",
+                    data = result,
+                    metadata = new
+                    {
+                        sellerId = sellerId.Value,
+                        timestamp = DateTime.UtcNow,
+                        // ✅ Validation info
+                        hasData = result.Total > 0,
+                        totalOrders = result.Total,
+                        // ✅ Business insights
+                        needsAttention = result.ActiveOrders,
+                        completionRate = $"{result.CompletionRate:F1}%",
+                        cancellationRate = $"{result.CancellationRate:F1}%"
+                    }
+                };
+
+                Console.WriteLine($"✅ Returning {result.Total} total orders");
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy thống kê trạng thái đơn hàng");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = $"Lỗi xử lý yêu cầu: {ex.Message}",
+                    data = new OrderStatusStatsDto() // ✅ Empty but valid structure
+                });
+            }
+        }
 
         /// <summary>
         /// API cho biểu đồ doanh thu với số ngày tùy chọn - Phiên bản chuẩn hóa
@@ -526,58 +698,82 @@ namespace ShopxEX1.Controllers
                 return StatusCode(500, $"Lỗi khi lấy phân tích lợi nhuận: {ex.Message}");
             }
         }
-   
-   /// <summary>
-/// Lấy danh sách đơn hàng theo trạng thái - CHUẨN HÓA RESPONSE
-/// </summary>
-[HttpGet("orders-by-status")]
-[Authorize(Roles = "Seller")]
-public async Task<IActionResult> GetOrdersByStatus([FromQuery] string statuses)
-{
-    try
-    {
-        var sellerId = await GetValidSellerIdAsync();
-        if (!sellerId.HasValue)
-            return Unauthorized("Không thể xác định thông tin người bán");
 
-        if (string.IsNullOrEmpty(statuses))
-            return BadRequest("Vui lòng cung cấp danh sách trạng thái");
-
-        _logger.LogInformation($"GetOrdersByStatus: sellerId={sellerId.Value}, statuses={statuses}");
-
-        var statusList = statuses.Split(',').Select(s => s.Trim()).ToList();
-        var result = await _statisticsService.GetOrdersByStatusAsync(sellerId.Value, statusList);
-
-        // ✅ CHUẨN HÓA: Trả về format nhất quán
-        var response = new
+        /// <summary>
+        /// Lấy danh sách đơn hàng theo trạng thái - CHUẨN HÓA RESPONSE
+        /// </summary>
+        [HttpGet("orders-by-status")]
+        [Authorize(Roles = "Seller")]
+        public async Task<IActionResult> GetOrdersByStatus([FromQuery] string statuses)
         {
-            success = true,
-            data = result ?? new List<OrderByStatusDto>(),
-            totalCount = result?.Count ?? 0,
-            message = $"Tìm thấy {result?.Count ?? 0} đơn hàng",
-            metadata = new
+            try
             {
-                sellerId = sellerId.Value,
-                statuses = statusList,
-                timestamp = DateTime.UtcNow
-            }
-        };
+                var sellerId = await GetValidSellerIdAsync();
+                if (!sellerId.HasValue)
+                    return Unauthorized(new { 
+                        success = false,
+                        message = "Không thể xác định thông tin người bán" 
+                    });
 
-        _logger.LogInformation($"Returning {result?.Count ?? 0} orders for seller {sellerId.Value}");
-        return Ok(response);
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Lỗi khi lấy đơn hàng theo trạng thái: {Statuses}", statuses);
-        
-        return StatusCode(500, new
-        {
-            success = false,
-            error = ex.Message,
-            data = new List<object>(),
-            totalCount = 0
-        });
-    }
-}
+                if (string.IsNullOrEmpty(statuses))
+                    return BadRequest(new { 
+                        success = false,
+                        message = "Vui lòng cung cấp danh sách trạng thái",
+                        validStatuses = OrderStatuses.GetAllValidStatuses()
+                    });
+
+                _logger.LogInformation($"GetOrdersByStatus: sellerId={sellerId.Value}, statuses={statuses}");
+
+                var statusList = statuses.Split(',').Select(s => s.Trim()).ToList();
+                
+                // ✅ Validate statuses
+                var validStatuses = OrderStatuses.GetAllValidStatuses();
+                var invalidStatuses = statusList.Where(s => 
+                    !validStatuses.Contains(s, StringComparer.OrdinalIgnoreCase)).ToList();
+                
+                if (invalidStatuses.Any())
+                {
+                    return BadRequest(new { 
+                        success = false,
+                        message = $"Trạng thái không hợp lệ: {string.Join(", ", invalidStatuses)}",
+                        validStatuses = validStatuses
+                    });
+                }
+
+                var result = await _statisticsService.GetOrdersByStatusAsync(sellerId.Value, statusList);
+
+                // ✅ CONSISTENT response format
+                var response = new
+                {
+                    success = true,
+                    data = result ?? new List<OrderByStatusDto>(),
+                    totalCount = result?.Count ?? 0,
+                    message = $"Tìm thấy {result?.Count ?? 0} đơn hàng",
+                    metadata = new
+                    {
+                        sellerId = sellerId.Value,
+                        statuses = statusList,
+                        timestamp = DateTime.UtcNow,
+                        statusesValidated = true
+                    }
+                };
+
+                _logger.LogInformation($"Returning {result?.Count ?? 0} orders for seller {sellerId.Value}");
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy đơn hàng theo trạng thái: {Statuses}", statuses);
+                
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = ex.Message,
+                    data = new List<object>(),
+                    totalCount = 0
+                });
+            }
+        }
+   
     }
 }

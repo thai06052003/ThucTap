@@ -576,6 +576,36 @@ body.modal-open {
     #order-details-modal * {
         margin-left: 0 !important;
     }
+
+    .status-refund-rejected {
+    background-color: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.status-refund-rejected::before {
+    content: "🚫";
+    margin-right: 0.25rem;
+}
+
+/* ✅ CSS cho buttons */
+.action-button-accept {
+    background-color: #10b981;
+    color: white;
+}
+
+.action-button-accept:hover {
+    background-color: #059669;
+}
+
+.action-button-reject {
+    background-color: #ef4444;
+    color: white;
+}
+
+.action-button-reject:hover {
+    background-color: #dc2626;
+}
     </style>
 </head>
 
