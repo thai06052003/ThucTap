@@ -394,10 +394,7 @@ class SellerStatistics {
                         
                         <!-- Modal Footer -->
                         <div class="bg-gray-50 px-6 py-4 flex justify-center md:justify-end space-x-3 border-t">
-                            <button onclick="window.statisticsManager?.exportOrdersByStatus()" 
-                                    class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                                <i class="fas fa-download mr-2"></i>Xuất Excel
-                            </button>
+                            
                             <button onclick="window.statisticsManager?.closeOrderDetailsModal()" 
                                     class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors">
                                 Đóng
@@ -1768,12 +1765,6 @@ async loadProfitAnalysis() {
         throw error;
     }
 }
-    /**
-     * Export statistics - PLACEHOLDER
-     */
-    exportStatistics() {
-        this.showErrorMessage('Tính năng xuất báo cáo đang được phát triển', 'info');
-    }
 
     /**
      * Show error message
@@ -1936,6 +1927,10 @@ async loadProfitAnalysis() {
         }
     }
 
+
+
+
+    
     // ============= NEW RENDER METHODS =============
 
     /**
@@ -2216,7 +2211,6 @@ async loadStatistics() {
 /**
  * Render nội dung chi tiết đơn hàng 
  */
-// ✅ SỬA: renderOrderDetailsContent method
 
 renderOrderDetailsContent(response, statusLabel, statusKey) {
     const content = document.getElementById('order-details-content');
@@ -2623,13 +2617,6 @@ renderOrderDetailsError(errorMessage, statusLabel) {
             </button>
         </div>
     `;
-}
-
-/**
- * Xuất danh sách đơn hàng theo trạng thái - PLACEHOLDER
- */
-exportOrdersByStatus() {
-    this.showErrorMessage('Tính năng xuất Excel đang được phát triển', 'info');
 }
 
 /**
@@ -3099,29 +3086,294 @@ showSingleOrderModal(orderDetails) {
     console.log('✅ Order modal content updated successfully with beautiful modern design');
 }
 
-/**
- * Xác nhận đơn hàng - PLACEHOLDER
- */
-confirmOrder(orderId) {
-    this.showErrorMessage(`Xác nhận đơn hàng #${orderId} - Tính năng đang được phát triển`, 'info');
+
+
+
 }
+// ============= EXCEL EXPORT FUNCTIONS =============
 
 /**
- * Giao hàng - PLACEHOLDER
+ * API Configuration for Statistics Excel
  */
-shipOrder(orderId) {
-    this.showErrorMessage(`Cập nhật giao hàng #${orderId} - Tính năng đang được phát triển`, 'info');
+const STATISTICS_EXCEL_ENDPOINTS = {
+    dashboard: '/api/Statistics/dashboard/excel',
+    revenue: '/api/Statistics/revenue/excel',
+    topProducts: '/api/Statistics/top-products/excel',
+    comprehensive: '/api/Statistics/comprehensive-report/excel'
+};
+
+/**
+ * Trigger Excel download with proper error handling
+ */
+async function triggerStatisticsExcelDownload(endpoint, params = {}) {
+    try {
+        console.log(`📊 [EXCEL] Starting download from: ${endpoint}`);
+        console.log(`📊 [EXCEL] With params:`, params);
+        
+        showExcelLoadingState(true);
+        
+        // ✅ GET TOKEN WITH MULTIPLE FALLBACKS
+        const token = window.statisticsManager?.getToken() || 
+                     sessionStorage.getItem('authToken') || 
+                     sessionStorage.getItem('token') ||
+                     localStorage.getItem('authToken');
+        
+        if (!token) {
+            throw new Error('Không tìm thấy token xác thực. Vui lòng đăng nhập lại.');
+        }
+        
+        // ✅ BUILD URL WITH PARAMS
+        const baseUrl = 'https://localhost:7088';
+        const fullUrl = new URL(endpoint, baseUrl);
+        
+        // Add parameters to URL
+        Object.keys(params).forEach(key => {
+            if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+                fullUrl.searchParams.append(key, params[key]);
+            }
+        });
+        
+        console.log(`📊 [EXCEL] Full URL: ${fullUrl.toString()}`);
+        
+        // ✅ MAKE REQUEST
+        const response = await fetch(fullUrl.toString(), {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            }
+        });
+        
+        console.log(`📊 [EXCEL] Response status: ${response.status}`);
+        
+        if (!response.ok) {
+            let errorMessage = `Lỗi ${response.status}`;
+            
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorMessage;
+            } catch (e) {
+                const errorText = await response.text();
+                errorMessage = errorText || errorMessage;
+            }
+            
+            throw new Error(`${errorMessage}`);
+        }
+        
+        // ✅ HANDLE FILE DOWNLOAD
+        const blob = await response.blob();
+        console.log(`📊 [EXCEL] Blob size: ${blob.size} bytes`);
+        
+        if (blob.size === 0) {
+            throw new Error('File Excel trống. Vui lòng thử lại.');
+        }
+        
+        // ✅ EXTRACT FILENAME FROM HEADERS
+        const disposition = response.headers.get('content-disposition');
+        let filename = 'statistics_report.xlsx';
+        
+        if (disposition) {
+            const filenameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (filenameMatch && filenameMatch[1]) {
+                filename = filenameMatch[1].replace(/['"]/g, '');
+            }
+        }
+        
+        // ✅ TRIGGER DOWNLOAD
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        console.log(`✅ [EXCEL] Download completed: ${filename}`);
+        
+        // ✅ SHOW SUCCESS MESSAGE
+        if (typeof showToast === 'function') {
+            showToast(`Đã tải xuống ${filename} thành công!`, 'success');
+        }
+        
+    } catch (error) {
+        console.error('❌ [EXCEL] Download error:', error);
+        
+        let userMessage = 'Có lỗi xảy ra khi tải file Excel';
+        if (error.message.includes('404')) {
+            userMessage = 'Chức năng xuất Excel đang được phát triển. Vui lòng thử lại sau.';
+        } else if (error.message.includes('401') || error.message.includes('403')) {
+            userMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+        } else if (error.message.includes('token')) {
+            userMessage = 'Lỗi xác thực. Vui lòng đăng nhập lại.';
+        } else if (error.message) {
+            userMessage = error.message;
+        }
+        
+        if (typeof showToast === 'function') {
+            showToast(userMessage, 'error');
+        } else {
+            alert(userMessage);
+        }
+        
+        throw error;
+    } finally {
+        showExcelLoadingState(false);
+    }
 }
 
 /**
- * Hoàn thành đơn hàng - PLACEHOLDER
+ * Show/hide loading state for Excel download
  */
-completeOrder(orderId) {
-    this.showErrorMessage(`Hoàn thành đơn hàng #${orderId} - Tính năng đang được phát triển`, 'info');
+function showExcelLoadingState(isLoading) {
+    const buttons = document.querySelectorAll('[data-excel-export]');
+    buttons.forEach(button => {
+        if (isLoading) {
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang xuất...';
+        } else {
+            button.disabled = false;
+            // Restore original text based on button type
+            const exportType = button.getAttribute('data-excel-export');
+            const buttonTexts = {
+                'dashboard': '<i class="fas fa-file-excel mr-2"></i>Xuất Dashboard',
+                'revenue': '<i class="fas fa-file-excel mr-2"></i>Xuất Doanh Thu',
+                'products': '<i class="fas fa-file-excel mr-2"></i>Xuất Sản Phẩm',
+                'comprehensive': '<i class="fas fa-download mr-2"></i>Xuất Báo Cáo Tổng Hợp'
+            };
+            button.innerHTML = buttonTexts[exportType] || '<i class="fas fa-file-excel mr-2"></i>Xuất Excel';
+        }
+    });
 }
 
+/**
+ * Export dashboard to Excel
+ */
+function exportDashboardExcel() {
+    console.log('📊 Exporting dashboard to Excel...');
+    triggerStatisticsExcelDownload(STATISTICS_EXCEL_ENDPOINTS.dashboard);
 }
 
+/**
+ * Export revenue stats to Excel
+ */
+function exportRevenueExcel() {
+    console.log('💰 Exporting revenue stats to Excel...');
+    
+    // Get current filter values from UI if they exist
+    const startDate = document.getElementById('revenue-start-date')?.value;
+    const endDate = document.getElementById('revenue-end-date')?.value;
+    const groupBy = document.getElementById('revenue-group-by')?.value || 'day';
+
+    const params = { groupBy };
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+
+    triggerStatisticsExcelDownload(STATISTICS_EXCEL_ENDPOINTS.revenue, params);
+}
+
+/**
+ * Export top products to Excel
+ */
+function exportTopProductsExcel() {
+    console.log('🏆 Exporting top products to Excel...');
+    
+    // Get current filter values
+    const startDate = document.getElementById('products-start-date')?.value;
+    const endDate = document.getElementById('products-end-date')?.value;
+    const limit = document.getElementById('products-limit')?.value || 50;
+    const categoryId = document.getElementById('products-category')?.value;
+
+    const params = { limit };
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    if (categoryId && categoryId !== '') params.categoryId = categoryId;
+
+    triggerStatisticsExcelDownload(STATISTICS_EXCEL_ENDPOINTS.topProducts, params);
+}
+
+/**
+ * Export comprehensive report to Excel
+ */
+function exportComprehensiveReport() {
+    console.log('📋 Exporting comprehensive report to Excel...');
+    
+    // Use date range or default to last month
+    const startDate = document.getElementById('report-start-date')?.value;
+    const endDate = document.getElementById('report-end-date')?.value;
+
+    const params = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+
+    triggerStatisticsExcelDownload(STATISTICS_EXCEL_ENDPOINTS.comprehensive, params);
+}
+
+// ============= UPDATE EXISTING EXPORT FUNCTION =============
+
+/**
+ * Update the existing exportStatistics method
+ */
+if (window.SellerStatistics) {
+    window.SellerStatistics.prototype.exportStatistics = function() {
+        // Show export options modal or use comprehensive report as default
+        exportComprehensiveReport();
+    };
+}
+
+// ============= ADD EVENT LISTENERS =============
+
+/**
+ * Initialize export button event listeners
+ */
+function initializeExportButtons() {
+    // Dashboard export
+    const dashboardExportBtn = document.getElementById('export-dashboard-btn');
+    if (dashboardExportBtn) {
+        dashboardExportBtn.setAttribute('data-excel-export', 'dashboard');
+        dashboardExportBtn.addEventListener('click', exportDashboardExcel);
+    }
+
+    // Revenue export
+    const revenueExportBtn = document.getElementById('export-revenue-btn');
+    if (revenueExportBtn) {
+        revenueExportBtn.setAttribute('data-excel-export', 'revenue');
+        revenueExportBtn.addEventListener('click', exportRevenueExcel);
+    }
+
+    // Products export
+    const productsExportBtn = document.getElementById('export-products-btn');
+    if (productsExportBtn) {
+        productsExportBtn.setAttribute('data-excel-export', 'products');
+        productsExportBtn.addEventListener('click', exportTopProductsExcel);
+    }
+
+    // Comprehensive export
+    const comprehensiveExportBtn = document.getElementById('export-comprehensive-btn');
+    if (comprehensiveExportBtn) {
+        comprehensiveExportBtn.setAttribute('data-excel-export', 'comprehensive');
+        comprehensiveExportBtn.addEventListener('click', exportComprehensiveReport);
+    }
+
+    // Update main export button
+    const mainExportBtn = document.getElementById('export-stats-btn');
+    if (mainExportBtn) {
+        mainExportBtn.removeEventListener('click', window.statisticsManager?.exportStatistics);
+        mainExportBtn.addEventListener('click', exportComprehensiveReport);
+    }
+}
+
+// ============= AUTO-INITIALIZE =============
+
+// Initialize export buttons when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeExportButtons);
+} else {
+    initializeExportButtons();
+}
+
+// Also initialize after a delay to catch dynamically added buttons
+setTimeout(initializeExportButtons, 1000);
 // ============= GLOBAL FUNCTIONS =============
 
 /**

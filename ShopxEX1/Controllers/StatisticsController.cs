@@ -8,8 +8,10 @@ using ShopxEX1.Dtos.Statistics;
 using ShopxEX1.Services;
 using ShopxEX1.Helpers;
 using System;
+
 using System.Security.Claims;
 using System.Threading.Tasks;
+
 
 namespace ShopxEX1.Controllers
 {
@@ -39,115 +41,113 @@ namespace ShopxEX1.Controllers
         /// Lấy tổng quan thống kê cho bảng điều khiển người bán
         /// </summary>
         [HttpGet("dashboard")]
-[Authorize(Roles = "Seller")]
-public async Task<IActionResult> GetDashboardStats()
-{
-    try
-    {
-        var sellerId = await GetValidSellerIdAsync();
-        if (!sellerId.HasValue)
+        [Authorize(Roles = "Seller")]
+        public async Task<IActionResult> GetDashboardStats()
         {
-            return Unauthorized("Không thể xác định thông tin người bán");
+            try
+            {
+                var sellerId = await GetValidSellerIdAsync();
+                if (!sellerId.HasValue)
+                {
+                    return Unauthorized("Không thể xác định thông tin người bán");
+                }
+
+                _logger.LogInformation($"Lấy thống kê dashboard cho seller ID: {sellerId.Value}");
+                var result = await _statisticsService.GetSellerDashboardStatsAsync(sellerId.Value);
+
+                // ✅ ENHANCED: Response với business insights
+                var response = new
+                {
+                    success = true,
+                    data = result,
+                    insights = new
+                    {
+                        // ✅ Revenue insights
+                        revenueHealthy = result.TotalRevenue > 0,
+                        hasRecentRevenue = result.RevenueThisMonth > 0 || result.RevenueThisWeek > 0,
+                        revenueStatus = GetRevenueStatus(result.RevenueTrendPercentage),
+
+                        // ✅ Order insights
+                        completionRateGood = result.OrderCompletionRate >= 80,
+                        needsAttention = result.OrdersNeedingAttention > 0,
+
+                        // ✅ Trend explanation
+                        trendExplanation = GetTrendExplanation(result.RevenueThisMonth, result.RevenueLastMonth, result.RevenueTrendPercentage),
+
+                        // ✅ Action items
+                        actionItems = GenerateActionItems(result)
+                    },
+                    metadata = new
+                    {
+                        sellerId = sellerId.Value,
+                        timestamp = DateTime.UtcNow,
+                        calculationNote = "Revenue từ đơn hàng 'Đã giao' và 'Từ chối hoàn tiền'"
+                    }
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy thống kê dashboard");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = $"Đã xảy ra lỗi khi lấy thống kê: {ex.Message}",
+                    data = new SellerDashboardDto()
+                });
+            }
         }
 
-        _logger.LogInformation($"Lấy thống kê dashboard cho seller ID: {sellerId.Value}");
-        var result = await _statisticsService.GetSellerDashboardStatsAsync(sellerId.Value);
-        
-        // ✅ ENHANCED: Response với business insights
-        var response = new
+        // ✅ Helper methods
+        private string GetRevenueStatus(decimal trendPercentage)
         {
-            success = true,
-            data = result,
-            insights = new
+            return trendPercentage switch
             {
-                // ✅ Revenue insights
-                revenueHealthy = result.TotalRevenue > 0,
-                hasRecentRevenue = result.RevenueThisMonth > 0 || result.RevenueThisWeek > 0,
-                revenueStatus = GetRevenueStatus(result.RevenueTrendPercentage),
-                
-                // ✅ Order insights
-                completionRateGood = result.OrderCompletionRate >= 80,
-                needsAttention = result.OrdersNeedingAttention > 0,
-                
-                // ✅ Trend explanation
-                trendExplanation = GetTrendExplanation(result.RevenueThisMonth, result.RevenueLastMonth, result.RevenueTrendPercentage),
-                
-                // ✅ Action items
-                actionItems = GenerateActionItems(result)
-            },
-            metadata = new
-            {
-                sellerId = sellerId.Value,
-                timestamp = DateTime.UtcNow,
-                calculationNote = "Revenue từ đơn hàng 'Đã giao' và 'Từ chối hoàn tiền'"
-            }
-        };
-        
-        return Ok(response);
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Lỗi khi lấy thống kê dashboard");
-        return StatusCode(500, new
+                > 20 => "Tăng trưởng mạnh",
+                > 0 => "Tăng trưởng nhẹ",
+                0 => "Ổn định",
+                > -20 => "Giảm nhẹ",
+                _ => "Giảm mạnh"
+            };
+        }
+
+        private string GetTrendExplanation(decimal thisMonth, decimal lastMonth, decimal trend)
         {
-            success = false,
-            message = $"Đã xảy ra lỗi khi lấy thống kê: {ex.Message}",
-            data = new SellerDashboardDto()
-        });
-    }
-}
 
-// ✅ Helper methods
-private string GetRevenueStatus(decimal trendPercentage)
-{
-    return trendPercentage switch
-    {
-        > 20 => "Tăng trưởng mạnh",
-        > 0 => "Tăng trưởng nhẹ", 
-        0 => "Ổn định",
-        > -20 => "Giảm nhẹ",
-        _ => "Giảm mạnh"
-    };
-}
+            var vndCulture = new System.Globalization.CultureInfo("vi-VN");
 
-private string GetTrendExplanation(decimal thisMonth, decimal lastMonth, decimal trend)
-{
-    
-    var vndCulture = new System.Globalization.CultureInfo("vi-VN");
-    
-    if (thisMonth == 0 && lastMonth > 0)
-        return $"Tháng này chưa có doanh thu, tháng trước có {lastMonth.ToString("C0", vndCulture)}. Cần tăng cường bán hàng.";
-    
-    if (thisMonth > 0 && lastMonth == 0)
-        return $"Tháng này bắt đầu có doanh thu {thisMonth.ToString("C0", vndCulture)}, đây là tín hiệu tích cực.";
-    
-    if (thisMonth == 0 && lastMonth == 0)
-        return "Chưa có doanh thu trong 2 tháng gần đây. Cần review chiến lược bán hàng.";
-    
-    return trend > 0 
-        ? $"Doanh thu tăng {trend:F1}% so với tháng trước" 
-        : $"Doanh thu giảm {Math.Abs(trend):F1}% so với tháng trước";
-}
-private List<string> GenerateActionItems(SellerDashboardDto data)
-{
-    var items = new List<string>();
-    
-    if (data.RevenueThisMonth == 0 && data.RevenueLastMonth > 0)
-        items.Add("Tháng này chưa có doanh thu - cần tăng cường marketing");
-    
-    if (data.OrdersNeedingAttention > 0)
-        items.Add($"Có {data.OrdersNeedingAttention} đơn hàng cần xử lý");
-    
-    if (data.OutOfStockProductCount > 0)
-        items.Add($"Có {data.OutOfStockProductCount} sản phẩm hết hàng");
-    
-    if (data.OrderCompletionRate < 80)
-        items.Add("Tỷ lệ hoàn thành đơn hàng thấp - cần cải thiện");
-    
-    return items;
-}
+            if (thisMonth == 0 && lastMonth > 0)
+                return $"Tháng này chưa có doanh thu, tháng trước có {lastMonth.ToString("C0", vndCulture)}. Cần tăng cường bán hàng.";
 
+            if (thisMonth > 0 && lastMonth == 0)
+                return $"Tháng này bắt đầu có doanh thu {thisMonth.ToString("C0", vndCulture)}, đây là tín hiệu tích cực.";
 
+            if (thisMonth == 0 && lastMonth == 0)
+                return "Chưa có doanh thu trong 2 tháng gần đây. Cần review chiến lược bán hàng.";
+
+            return trend > 0
+                ? $"Doanh thu tăng {trend:F1}% so với tháng trước"
+                : $"Doanh thu giảm {Math.Abs(trend):F1}% so với tháng trước";
+        }
+        private List<string> GenerateActionItems(SellerDashboardDto data)
+        {
+            var items = new List<string>();
+
+            if (data.RevenueThisMonth == 0 && data.RevenueLastMonth > 0)
+                items.Add("Tháng này chưa có doanh thu - cần tăng cường marketing");
+
+            if (data.OrdersNeedingAttention > 0)
+                items.Add($"Có {data.OrdersNeedingAttention} đơn hàng cần xử lý");
+
+            if (data.OutOfStockProductCount > 0)
+                items.Add($"Có {data.OutOfStockProductCount} sản phẩm hết hàng");
+
+            if (data.OrderCompletionRate < 80)
+                items.Add("Tỷ lệ hoàn thành đơn hàng thấp - cần cải thiện");
+
+            return items;
+        }
 
         [HttpGet("order-details/{orderId}")]
         [Authorize(Roles = "Seller")]
@@ -157,14 +157,15 @@ private List<string> GenerateActionItems(SellerDashboardDto data)
             {
                 var sellerId = await GetValidSellerIdAsync();
                 if (!sellerId.HasValue)
-                    return Unauthorized(new { 
+                    return Unauthorized(new
+                    {
                         success = false,
-                        message = "Không thể xác định thông tin người bán" 
+                        message = "Không thể xác định thông tin người bán"
                     });
 
                 // ✅ Load order with full details
                 var order = await _context.Orders
-                    .Where(o => o.OrderID == orderId && 
+                    .Where(o => o.OrderID == orderId &&
                            _context.OrderDetails.Any(od => od.OrderID == o.OrderID && od.Product.SellerID == sellerId.Value))
                     .Include(o => o.User)
                     .Include(o => o.OrderDetails)
@@ -175,9 +176,10 @@ private List<string> GenerateActionItems(SellerDashboardDto data)
 
                 if (order == null)
                 {
-                    return NotFound(new { 
+                    return NotFound(new
+                    {
                         success = false,
-                        message = "Không tìm thấy đơn hàng hoặc bạn không có quyền xem đơn hàng này" 
+                        message = "Không tìm thấy đơn hàng hoặc bạn không có quyền xem đơn hàng này"
                     });
                 }
 
@@ -220,7 +222,7 @@ private List<string> GenerateActionItems(SellerDashboardDto data)
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy chi tiết đơn hàng {OrderId}", orderId);
-                
+
                 return StatusCode(500, new
                 {
                     success = false,
@@ -710,13 +712,15 @@ private List<string> GenerateActionItems(SellerDashboardDto data)
             {
                 var sellerId = await GetValidSellerIdAsync();
                 if (!sellerId.HasValue)
-                    return Unauthorized(new { 
+                    return Unauthorized(new
+                    {
                         success = false,
-                        message = "Không thể xác định thông tin người bán" 
+                        message = "Không thể xác định thông tin người bán"
                     });
 
                 if (string.IsNullOrEmpty(statuses))
-                    return BadRequest(new { 
+                    return BadRequest(new
+                    {
                         success = false,
                         message = "Vui lòng cung cấp danh sách trạng thái",
                         validStatuses = OrderStatuses.GetAllValidStatuses()
@@ -725,15 +729,16 @@ private List<string> GenerateActionItems(SellerDashboardDto data)
                 _logger.LogInformation($"GetOrdersByStatus: sellerId={sellerId.Value}, statuses={statuses}");
 
                 var statusList = statuses.Split(',').Select(s => s.Trim()).ToList();
-                
+
                 // ✅ Validate statuses
                 var validStatuses = OrderStatuses.GetAllValidStatuses();
-                var invalidStatuses = statusList.Where(s => 
+                var invalidStatuses = statusList.Where(s =>
                     !validStatuses.Contains(s, StringComparer.OrdinalIgnoreCase)).ToList();
-                
+
                 if (invalidStatuses.Any())
                 {
-                    return BadRequest(new { 
+                    return BadRequest(new
+                    {
                         success = false,
                         message = $"Trạng thái không hợp lệ: {string.Join(", ", invalidStatuses)}",
                         validStatuses = validStatuses
@@ -764,7 +769,7 @@ private List<string> GenerateActionItems(SellerDashboardDto data)
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Lỗi khi lấy đơn hàng theo trạng thái: {Statuses}", statuses);
-                
+
                 return StatusCode(500, new
                 {
                     success = false,
@@ -774,6 +779,175 @@ private List<string> GenerateActionItems(SellerDashboardDto data)
                 });
             }
         }
-   
+
+
+        [HttpGet("dashboard/excel")]
+        [Authorize(Roles = "Seller")]
+        public async Task<IActionResult> ExportDashboardToExcel()
+        {
+            try
+            {
+                var sellerId = await GetValidSellerIdAsync();
+                if (!sellerId.HasValue)
+                    return Unauthorized("Không thể xác định thông tin người bán");
+
+                _logger.LogInformation($"Exporting dashboard Excel for seller {sellerId.Value}");
+
+                // ✅ GET DASHBOARD DATA
+                var dashboardData = await _statisticsService.GetSellerDashboardStatsAsync(sellerId.Value);
+
+                // ✅ GET SELLER NAME
+                var seller = await _context.Users.FirstOrDefaultAsync(u => u.UserID == sellerId.Value);
+                var sellerName = seller?.FullName ?? $"Seller {sellerId.Value}";
+
+                // ✅ GENERATE EXCEL
+                var fileBytes = StatisticsService.CreateSellerDashboardExcel(dashboardData, sellerName, sellerId.Value);
+                var fileName = $"Dashboard_Seller_{sellerId.Value}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+                return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting dashboard to Excel");
+                return StatusCode(500, new { message = "Lỗi khi xuất file Excel", error = ex.Message });
+            }
+        }
+
+        [HttpGet("revenue/excel")]
+        [Authorize(Roles = "Seller")]
+        public async Task<IActionResult> ExportRevenueStatsToExcel(
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate,
+            [FromQuery] string groupBy = "day")
+        {
+            try
+            {
+                var sellerId = await GetValidSellerIdAsync();
+                if (!sellerId.HasValue)
+                    return Unauthorized("Không thể xác định thông tin người bán");
+
+                var start = startDate ?? DateTime.Today.AddDays(-30);
+                var end = endDate ?? DateTime.Today;
+
+                _logger.LogInformation($"Exporting revenue stats Excel: {start:yyyy-MM-dd} to {end:yyyy-MM-dd}, group by {groupBy}");
+
+                // ✅ GET REVENUE DATA
+                var revenueStats = await _statisticsService.GetRevenueStatsAsync(sellerId.Value, start, end, groupBy);
+
+                // ✅ GET SELLER NAME
+                var seller = await _context.Users.FirstOrDefaultAsync(u => u.UserID == sellerId.Value);
+                var sellerName = seller?.FullName ?? $"Seller {sellerId.Value}";
+
+                var period = $"{start:dd/MM/yyyy} - {end:dd/MM/yyyy} (Nhóm theo {groupBy})";
+
+                // ✅ GENERATE EXCEL
+                var fileBytes = StatisticsService.CreateRevenueStatsExcel(revenueStats, period, sellerName, sellerId.Value);
+                var fileName = $"DoanhThu_Seller_{sellerId.Value}_{start:yyyyMMdd}_{end:yyyyMMdd}.xlsx";
+
+                return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting revenue stats to Excel");
+                return StatusCode(500, new { message = "Lỗi khi xuất báo cáo doanh thu", error = ex.Message });
+            }
+        }
+
+        [HttpGet("top-products/excel")]
+        [Authorize(Roles = "Seller")]
+        public async Task<IActionResult> ExportTopProductsToExcel(
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate,
+            [FromQuery] int limit = 50,
+            [FromQuery] int? categoryId = null)
+        {
+            try
+            {
+                var sellerId = await GetValidSellerIdAsync();
+                if (!sellerId.HasValue)
+                    return Unauthorized("Không thể xác định thông tin người bán");
+
+                var start = startDate ?? DateTime.Today.AddDays(-30);
+                var end = endDate ?? DateTime.Today;
+
+                _logger.LogInformation($"Exporting top products Excel: {start:yyyy-MM-dd} to {end:yyyy-MM-dd}, limit {limit}");
+
+                // ✅ GET TOP PRODUCTS DATA
+                var topProducts = await _statisticsService.GetTopSellingProductsAsync(sellerId.Value, start, end, limit, categoryId);
+
+                // ✅ GET SELLER NAME
+                var seller = await _context.Users.FirstOrDefaultAsync(u => u.UserID == sellerId.Value);
+                var sellerName = seller?.FullName ?? $"Seller {sellerId.Value}";
+
+                var period = $"{start:dd/MM/yyyy} - {end:dd/MM/yyyy} (Top {limit})";
+
+                // ✅ GENERATE EXCEL
+                var fileBytes = StatisticsService.CreateTopProductsExcel(topProducts, period, sellerName, sellerId.Value);
+                var fileName = $"SanPhamBanChay_Seller_{sellerId.Value}_{start:yyyyMMdd}_{end:yyyyMMdd}.xlsx";
+
+                return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting top products to Excel");
+                return StatusCode(500, new { message = "Lỗi khi xuất báo cáo sản phẩm bán chạy", error = ex.Message });
+            }
+        }
+
+        [HttpGet("comprehensive-report/excel")]
+        [Authorize(Roles = "Seller")]
+public async Task<IActionResult> ExportComprehensiveReport(
+    [FromQuery] DateTime? startDate,
+    [FromQuery] DateTime? endDate)
+{
+    try
+    {
+        var sellerId = await GetValidSellerIdAsync();
+        if (!sellerId.HasValue)
+            return Unauthorized("Không thể xác định thông tin người bán");
+
+        var start = startDate ?? DateTime.Today.AddMonths(-1);
+        var end = endDate ?? DateTime.Today;
+
+        _logger.LogInformation($"Exporting comprehensive report Excel for seller {sellerId.Value}");
+
+        // ✅ SEQUENTIAL EXECUTION - Tránh concurrent DbContext operations
+        Console.WriteLine("📊 [COMPREHENSIVE] Starting sequential data collection...");
+        
+        // Get data one by one to avoid DbContext conflicts
+        var dashboardData = await _statisticsService.GetSellerDashboardStatsAsync(sellerId.Value);
+        Console.WriteLine("✅ [COMPREHENSIVE] Dashboard data collected");
+        
+        var revenueStats = await _statisticsService.GetRevenueStatsAsync(sellerId.Value, start, end, "day");
+        Console.WriteLine("✅ [COMPREHENSIVE] Revenue stats collected");
+        
+        var topProducts = await _statisticsService.GetTopSellingProductsAsync(sellerId.Value, start, end, 20);
+        Console.WriteLine("✅ [COMPREHENSIVE] Top products collected");
+        
+        var topCustomers = await _statisticsService.GetTopCustomersAsync(sellerId.Value, start, end, 10);
+        Console.WriteLine("✅ [COMPREHENSIVE] Top customers collected");
+
+        // ✅ GET SELLER NAME
+        var seller = await _context.Users.FirstOrDefaultAsync(u => u.UserID == sellerId.Value);
+        var sellerName = seller?.FullName ?? $"Seller {sellerId.Value}";
+
+        // ✅ GENERATE COMPREHENSIVE EXCEL
+        var fileBytes = StatisticsService.CreateComprehensiveSellerReport(
+            dashboardData, revenueStats, topProducts, topCustomers,
+            sellerName, sellerId.Value, start, end);
+
+        var fileName = $"BaoCaoTongHop_Seller_{sellerId.Value}_{start:yyyyMMdd}_{end:yyyyMMdd}.xlsx";
+
+        Console.WriteLine($"✅ [COMPREHENSIVE] Excel file generated: {fileName}");
+
+        return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error exporting comprehensive report to Excel");
+        return StatusCode(500, new { message = "Lỗi khi xuất báo cáo tổng hợp", error = ex.Message });
+    }
+}
+
     }
 }

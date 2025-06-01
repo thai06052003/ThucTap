@@ -16,5 +16,10 @@
         public decimal UnitPrice { get; set; } // Giá lúc đặt hàng
         public decimal LineTotal => UnitPrice * Quantity;
         public bool IsActive { get; set; }
+        public decimal CurrentPrice { get; set; }
+        public int CurrentStock { get; set; }
+        public bool ProductIsActive { get; set; } = true;
+
     }
+
 }

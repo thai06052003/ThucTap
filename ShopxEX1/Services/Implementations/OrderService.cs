@@ -467,8 +467,8 @@ namespace ShopxEX1.Services.Implementations
                             o.Status == "Đã giao" ? 4 :
                             o.Status == "Yêu cầu trả hàng/ hoàn tiền" ? 5 : // Thứ tự mới
                             o.Status == "Đã hủy" ? 6 :
-                            o.Status == "Đã hoàn tiền" ? 7 : 
-                            o.Status == "Từ chối hoàn tiền" ? 8 : 0 
+                            o.Status == "Đã hoàn tiền" ? 7 :
+                            o.Status == "Từ chối hoàn tiền" ? 8 : 0
                         ).ThenByDescending(o => o.OrderDate); // Sắp xếp phụ theo ngày nếu trạng thái giống nhau
                         break;
                     case "status_desc":
@@ -479,7 +479,7 @@ namespace ShopxEX1.Services.Implementations
                             o.Status == "Đã giao" ? 4 :
                             o.Status == "Yêu cầu trả hàng/ hoàn tiền" ? 5 : // Thứ tự mới
                             o.Status == "Đã hủy" ? 6 :
-                            o.Status == "Đã hoàn tiền" ? 7 : 
+                            o.Status == "Đã hoàn tiền" ? 7 :
                             o.Status == "Từ chối hoàn tiền" ? 8 : 0
                         ).ThenByDescending(o => o.OrderDate); // Sắp xếp phụ theo ngày nếu trạng thái giống nhau
                         break;
@@ -641,8 +641,8 @@ namespace ShopxEX1.Services.Implementations
             else if (userRole == "Seller")
             {
                 // Seller có thể xem nếu đơn hàng chứa sản phẩm của họ
-                 bool sellerProductInOrder = await _context.OrderDetails
-            .AnyAsync(od => od.OrderID == orderId && od.Product.SellerID == userId);
+                bool sellerProductInOrder = await _context.OrderDetails
+           .AnyAsync(od => od.OrderID == orderId && od.Product.SellerID == userId);
                 if (sellerProductInOrder) canAccess = true;
             }
 
@@ -700,8 +700,8 @@ namespace ShopxEX1.Services.Implementations
                         statusUpdateDto.NewStatus.Equals("Đã hoàn tiền", StringComparison.OrdinalIgnoreCase) ||
                         statusUpdateDto.NewStatus.Equals("Từ chối hoàn tiền", StringComparison.OrdinalIgnoreCase) ||  // ✅ THÊM MỚI
                         (statusUpdateDto.NewStatus.Equals("Đã hủy", StringComparison.OrdinalIgnoreCase) && order.Status == "Chờ xác nhận"))
-                        
-                        
+
+
                     {
                         canUpdate = true;
                     }
@@ -770,9 +770,9 @@ namespace ShopxEX1.Services.Implementations
                 return false; // Không có gì được cập nhật (có thể trạng thái đã là NewStatus)
             }
         }
-       private List<string> GetValidSellerTransitions(string currentStatus)
-{
-    var transitions = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+        private List<string> GetValidSellerTransitions(string currentStatus)
+        {
+            var transitions = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
     {
         { "Chờ xác nhận", new List<string> { "Đang xử lý", "Đã hủy" } },
         { "Đang xử lý", new List<string> { "Đang giao", "Đã hủy" } },
@@ -783,9 +783,9 @@ namespace ShopxEX1.Services.Implementations
         { "Đã hủy", new List<string>() },
         { "Từ chối hoàn tiền", new List<string>() }  // ✅ THÊM MỚI - Trạng thái cuối cùng
     };
-    
-    return transitions.GetValueOrDefault(currentStatus, new List<string>());
-}
+
+            return transitions.GetValueOrDefault(currentStatus, new List<string>());
+        }
         public async Task<bool> UpdateOrderStatusForCustomerAsync(int orderId, OrderStatusUpdateDto statusUpdateDto, int userId)
         {
             _logger.LogInformation("Bắt đầu cập nhật trạng thái cho OrderID {OrderId} bởi UserID {userId} thành {NewStatus}",
@@ -843,10 +843,10 @@ namespace ShopxEX1.Services.Implementations
                 }
             }
             if (order.Status == "Từ chối hoàn tiền")
-                {
-                    _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Yêu cầu hoàn tiền đã bị từ chối trước đó.", orderId);
-                    throw new InvalidOperationException("Yêu cầu hoàn tiền của bạn đã bị từ chối. Không thể thay đổi trạng thái đơn hàng này nữa.");
-                }
+            {
+                _logger.LogWarning("Cập nhật trạng thái thất bại cho OrderID {OrderId}: Yêu cầu hoàn tiền đã bị từ chối trước đó.", orderId);
+                throw new InvalidOperationException("Yêu cầu hoàn tiền của bạn đã bị từ chối. Không thể thay đổi trạng thái đơn hàng này nữa.");
+            }
 
             if (order.Status == "Chờ xác nhận")
             {
@@ -873,6 +873,428 @@ namespace ShopxEX1.Services.Implementations
                 return false; // Không có gì được cập nhật (có thể trạng thái đã là NewStatus)
             }
         }
+
+        /// <summary>
+        /// Validate rebuy order - CHO PHÉP TẤT CẢ TRẠNG THÁI
+        /// </summary>
+        public async Task<RebuyValidationResultDto?> ValidateRebuyOrderAsync(int orderId, int userId)
+        {
+            try
+            {
+                _logger.LogInformation($"🔄 [REBUY] Validating rebuy for order {orderId}, user {userId}");
+
+                // ✅ GET ORDER WITH COMPLETE DETAILS
+                var order = await _context.Orders
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Product)
+                            .ThenInclude(p => p.Category)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Product)
+                            .ThenInclude(p => p.Seller)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(o => o.OrderID == orderId && o.UserID == userId);
+
+                if (order == null)
+                {
+                    _logger.LogWarning($"❌ [REBUY] Order {orderId} not found or user {userId} doesn't have access");
+                    throw new KeyNotFoundException($"Không tìm thấy đơn hàng {orderId} hoặc bạn không có quyền truy cập");
+                }
+
+                // ✅ ALLOW ALL ORDER STATUSES - No restrictions
+                _logger.LogInformation($"📋 [REBUY] Order {orderId} has status '{order.Status}' - allowing rebuy for all statuses");
+
+                var result = new RebuyValidationResultDto
+                {
+                    TotalRequestedItems = order.OrderDetails.Count
+                };
+
+                _logger.LogInformation($"📋 [REBUY] Processing {order.OrderDetails.Count} items for order {orderId} with status '{order.Status}'");
+
+                foreach (var orderDetail in order.OrderDetails)
+                {
+                    try
+                    {
+                        var product = orderDetail.Product;
+
+                        // ✅ CHECK PRODUCT EXISTENCE
+                        if (product == null)
+                        {
+                            _logger.LogWarning($"⚠️ [REBUY] Product not found for OrderDetail {orderDetail.OrderDetailID}");
+                            result.UnavailableItems.Add(new RebuyUnavailableItemDto
+                            {
+                                ProductID = orderDetail.ProductID,
+                                ProductName = "Sản phẩm không xác định",
+                                RequestedQuantity = orderDetail.Quantity,
+                                AvailableQuantity = 0,
+                                Reason = "Sản phẩm không tồn tại trong hệ thống",
+                                IsDiscontinued = true
+                            });
+                            continue;
+                        }
+
+                        // ✅ CHECK PRODUCT ACTIVE STATUS
+                        if (!product.IsActive)
+                        {
+                            _logger.LogInformation($"📦 [REBUY] Product {product.ProductID} is inactive");
+                            result.UnavailableItems.Add(new RebuyUnavailableItemDto
+                            {
+                                ProductID = orderDetail.ProductID,
+                                ProductName = product.ProductName,
+                                RequestedQuantity = orderDetail.Quantity,
+                                AvailableQuantity = 0,
+                                Reason = "Sản phẩm đã ngừng kinh doanh",
+                                IsDiscontinued = true
+                            });
+                            continue;
+                        }
+
+                        // ✅ CHECK SELLER ACTIVE STATUS
+                        if (product.Seller != null && !product.Seller.IsActive)
+                        {
+                            _logger.LogInformation($"🏪 [REBUY] Seller {product.Seller.SellerID} is inactive for product {product.ProductID}");
+                            result.UnavailableItems.Add(new RebuyUnavailableItemDto
+                            {
+                                ProductID = orderDetail.ProductID,
+                                ProductName = product.ProductName,
+                                RequestedQuantity = orderDetail.Quantity,
+                                AvailableQuantity = product.StockQuantity,
+                                Reason = "Shop đang tạm ngừng hoạt động hoặc bảo trì",
+                                IsDiscontinued = false
+                            });
+                            continue;
+                        }
+
+                        // ✅ CHECK STOCK AVAILABILITY
+                        if (product.StockQuantity < orderDetail.Quantity)
+                        {
+                            _logger.LogInformation($"📊 [REBUY] Insufficient stock for product {product.ProductID}: requested {orderDetail.Quantity}, available {product.StockQuantity}");
+                            result.UnavailableItems.Add(new RebuyUnavailableItemDto
+                            {
+                                ProductID = orderDetail.ProductID,
+                                ProductName = product.ProductName,
+                                RequestedQuantity = orderDetail.Quantity,
+                                AvailableQuantity = product.StockQuantity,
+                                Reason = product.StockQuantity == 0
+                                    ? "Sản phẩm hiện đã hết hàng"
+                                    : $"Chỉ còn {product.StockQuantity} sản phẩm trong kho (yêu cầu {orderDetail.Quantity})",
+                                IsDiscontinued = false
+                            });
+                            continue;
+                        }
+
+                        // ✅ PRODUCT IS AVAILABLE FOR REBUY
+                        _logger.LogInformation($"✅ [REBUY] Product {product.ProductID} is available for rebuy");
+                        result.AvailableItems.Add(new RebuyAvailableItemDto
+                        {
+                            ProductID = orderDetail.ProductID,
+                            ProductName = product.ProductName,
+                            ImageURL = product.ImageURL ?? "",
+                            OriginalQuantity = orderDetail.Quantity,
+                            CurrentPrice = product.Price,
+                            OriginalPrice = orderDetail.UnitPrice,
+                            AvailableStock = product.StockQuantity,
+                            SellerID = product.SellerID,
+                            SellerName = product.Seller?.ShopName ?? "Shop không xác định",
+                            CategoryName = product.Category?.CategoryName ?? "Danh mục không xác định"
+                        });
+                    }
+                    catch (Exception itemEx)
+                    {
+                        _logger.LogError(itemEx, $"❌ [REBUY] Error processing item {orderDetail.OrderDetailID} in order {orderId}");
+                        result.UnavailableItems.Add(new RebuyUnavailableItemDto
+                        {
+                            ProductID = orderDetail.ProductID,
+                            ProductName = "Sản phẩm không xác định",
+                            RequestedQuantity = orderDetail.Quantity,
+                            AvailableQuantity = 0,
+                            Reason = "Lỗi hệ thống khi xử lý sản phẩm này",
+                            IsDiscontinued = true
+                        });
+                    }
+                }
+
+                _logger.LogInformation($"✅ [REBUY] Validation completed for order {orderId}: {result.AvailableItemsCount} available, {result.UnavailableItemsCount} unavailable");
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"❌ [REBUY] Critical error validating rebuy for order {orderId}");
+                throw;
+            }
+        }
+
+/// <summary>
+/// Thêm các items rebuy vào giỏ hàng - KHÔNG THAY ĐỔI CẤU TRÚC CARTITEM
+/// </summary>
+/// <summary>
+/// Thêm các items rebuy vào giỏ hàng - SỬ DỤNG CẤU TRÚC CARTITEM HIỆN CÓ
+/// </summary>
+public async Task<AddToCartResultDto?> AddRebuyItemsToCartAsync(int orderId, List<RebuyItemRequest> items, int userId)
+{
+    try
+    {
+        _logger.LogInformation($"🛒 [REBUY] Adding {items.Count} rebuy items to cart for user {userId} from order {orderId}");
+
+        var result = new AddToCartResultDto();
+
+        // ✅ VALIDATE ORDER OWNERSHIP FIRST
+        var orderExists = await _context.Orders
+            .AnyAsync(o => o.OrderID == orderId && o.UserID == userId);
+
+        if (!orderExists)
+        {
+            _logger.LogWarning($"❌ [REBUY] Order {orderId} not found for user {userId}");
+            throw new UnauthorizedAccessException($"Không tìm thấy đơn hàng {orderId} hoặc bạn không có quyền truy cập");
+        }
+
+        // ✅ GET ORDER PRODUCT IDS FOR VALIDATION
+        var orderProductIds = await _context.OrderDetails
+            .Where(od => od.OrderID == orderId)
+            .Select(od => od.ProductID)
+            .ToListAsync();
+
+        _logger.LogInformation($"📋 [REBUY] Order {orderId} contains products: {string.Join(", ", orderProductIds)}");
+
+        // ✅ VALIDATE ALL ITEMS BELONG TO THIS ORDER
+        var invalidItems = items.Where(item => !orderProductIds.Contains(item.ProductId)).ToList();
+        if (invalidItems.Any())
+        {
+            var invalidIds = string.Join(", ", invalidItems.Select(i => i.ProductId));
+            _logger.LogWarning($"❌ [REBUY] Invalid product IDs for order {orderId}: {invalidIds}");
+            throw new InvalidOperationException($"Một số sản phẩm không thuộc đơn hàng này: {invalidIds}");
+        }
+
+        // ✅ GET USER'S CART OR CREATE NEW ONE
+        var userCart = await _context.Carts
+            .FirstOrDefaultAsync(c => c.UserID == userId);
+
+        if (userCart == null)
+        {
+            _logger.LogInformation($"🛒 [REBUY] Creating new cart for user {userId}");
+            userCart = new Cart
+            {
+                UserID = userId,
+                CreatedAt = VietnamNow
+            };
+            _context.Carts.Add(userCart);
+            await _context.SaveChangesAsync(); // Save to get CartID
+            _logger.LogInformation($"🛒 [REBUY] Created new cart {userCart.CartID} for user {userId}");
+        }
+        else
+        {
+            _logger.LogInformation($"🛒 [REBUY] Found existing cart {userCart.CartID} for user {userId}");
+        }
+
+        foreach (var item in items)
+        {
+            try
+            {
+                _logger.LogInformation($"🔄 [REBUY] Processing item {item.ProductId} x{item.Quantity}");
+
+                // ✅ VALIDATE PRODUCT EXISTS AND IS ACTIVE
+                var product = await _context.Products
+                    .Include(p => p.Seller)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.ProductID == item.ProductId);
+
+                if (product == null)
+                {
+                    _logger.LogWarning($"❌ [REBUY] Product {item.ProductId} not found");
+                    result.FailedItems.Add(new FailedCartItemDto
+                    {
+                        ProductId = item.ProductId,
+                        ProductName = "Sản phẩm không xác định",
+                        RequestedQuantity = item.Quantity,
+                        Reason = "Sản phẩm không tồn tại",
+                        ErrorCode = "PRODUCT_NOT_FOUND"
+                    });
+                    continue;
+                }
+
+                if (!product.IsActive)
+                {
+                    _logger.LogInformation($"📦 [REBUY] Product {item.ProductId} is inactive");
+                    result.FailedItems.Add(new FailedCartItemDto
+                    {
+                        ProductId = item.ProductId,
+                        ProductName = product.ProductName,
+                        RequestedQuantity = item.Quantity,
+                        Reason = "Sản phẩm đã ngừng bán",
+                        ErrorCode = "PRODUCT_INACTIVE"
+                    });
+                    continue;
+                }
+
+                // ✅ CHECK SELLER STATUS
+                if (product.Seller != null && !product.Seller.IsActive)
+                {
+                    _logger.LogInformation($"🏪 [REBUY] Seller {product.Seller.SellerID} is inactive");
+                    result.FailedItems.Add(new FailedCartItemDto
+                    {
+                        ProductId = item.ProductId,
+                        ProductName = product.ProductName,
+                        RequestedQuantity = item.Quantity,
+                        Reason = "Shop đang tạm ngừng hoạt động",
+                        ErrorCode = "SELLER_INACTIVE"
+                    });
+                    continue;
+                }
+
+                // ✅ CHECK STOCK AVAILABILITY
+                if (product.StockQuantity < item.Quantity)
+                {
+                    _logger.LogInformation($"📊 [REBUY] Insufficient stock for product {item.ProductId}");
+                    result.FailedItems.Add(new FailedCartItemDto
+                    {
+                        ProductId = item.ProductId,
+                        ProductName = product.ProductName,
+                        RequestedQuantity = item.Quantity,
+                        Reason = product.StockQuantity == 0 
+                            ? "Sản phẩm đã hết hàng" 
+                            : $"Chỉ còn {product.StockQuantity} sản phẩm trong kho",
+                        ErrorCode = "INSUFFICIENT_STOCK"
+                    });
+                    continue;
+                }
+
+                // ✅ CHECK IF ITEM ALREADY EXISTS IN CART - CHỈ SỬ DỤNG CartID và ProductID
+                var existingCartItem = await _context.CartItems
+                    .FirstOrDefaultAsync(ci => ci.CartID == userCart.CartID && ci.ProductID == item.ProductId);
+
+                bool wasUpdated = false;
+                int finalQuantityInCart = item.Quantity;
+
+                if (existingCartItem != null)
+                {
+                    _logger.LogInformation($"🔄 [REBUY] Updating existing cart item {existingCartItem.CartItemID} for product {item.ProductId}");
+                    
+                    // ✅ UPDATE EXISTING CART ITEM
+                    var newTotalQuantity = existingCartItem.Quantity + item.Quantity;
+                    
+                    if (newTotalQuantity > product.StockQuantity)
+                    {
+                        // ✅ ADJUST TO MAXIMUM AVAILABLE
+                        var maxCanAdd = product.StockQuantity - existingCartItem.Quantity;
+                        if (maxCanAdd > 0)
+                        {
+                            existingCartItem.Quantity = product.StockQuantity;
+                            existingCartItem.AddedAt = VietnamNow;
+                            finalQuantityInCart = product.StockQuantity;
+                            wasUpdated = true;
+
+                            result.AddedItems.Add(new AddedCartItemDto
+                            {
+                                ProductId = item.ProductId,
+                                ProductName = product.ProductName,
+                                QuantityAdded = maxCanAdd,
+                                TotalQuantityInCart = finalQuantityInCart,
+                                UnitPrice = product.Price,
+                                WasUpdated = wasUpdated
+                            });
+
+                            result.FailedItems.Add(new FailedCartItemDto
+                            {
+                                ProductId = item.ProductId,
+                                ProductName = product.ProductName,
+                                RequestedQuantity = item.Quantity,
+                                Reason = $"Chỉ có thể thêm {maxCanAdd} sản phẩm (đã có {existingCartItem.Quantity - maxCanAdd} trong giỏ)",
+                                ErrorCode = "QUANTITY_ADJUSTED"
+                            });
+                        }
+                        else
+                        {
+                            result.FailedItems.Add(new FailedCartItemDto
+                            {
+                                ProductId = item.ProductId,
+                                ProductName = product.ProductName,
+                                RequestedQuantity = item.Quantity,
+                                Reason = $"Giỏ hàng đã có {existingCartItem.Quantity} sản phẩm (tối đa)",
+                                ErrorCode = "CART_FULL"
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // ✅ CAN ADD NORMALLY
+                        existingCartItem.Quantity = newTotalQuantity;
+                        existingCartItem.AddedAt = VietnamNow;
+                        finalQuantityInCart = newTotalQuantity;
+                        wasUpdated = true;
+
+                        result.AddedItems.Add(new AddedCartItemDto
+                        {
+                            ProductId = item.ProductId,
+                            ProductName = product.ProductName,
+                            QuantityAdded = item.Quantity,
+                            TotalQuantityInCart = finalQuantityInCart,
+                            UnitPrice = product.Price,
+                            WasUpdated = wasUpdated
+                        });
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation($"➕ [REBUY] Creating new cart item for product {item.ProductId}");
+                    
+                    // ✅ CREATE NEW CART ITEM - CHỈ SỬ DỤNG CÁC PROPERTIES CÓ SẴN
+                    var cartItem = new CartItem
+                    {
+                        CartID = userCart.CartID,
+                        ProductID = item.ProductId,
+                        Quantity = item.Quantity,
+                        AddedAt = VietnamNow
+                    };
+                    
+                    _context.CartItems.Add(cartItem);
+
+                    result.AddedItems.Add(new AddedCartItemDto
+                    {
+                        ProductId = item.ProductId,
+                        ProductName = product.ProductName,
+                        QuantityAdded = item.Quantity,
+                        TotalQuantityInCart = item.Quantity,
+                        UnitPrice = product.Price,
+                        WasUpdated = false // New item
+                    });
+                    
+                    _logger.LogInformation($"✅ [REBUY] Successfully created new cart item for product {item.ProductId} x{item.Quantity}");
+                }
+            }
+            catch (Exception itemEx)
+            {
+                _logger.LogError(itemEx, $"❌ [REBUY] Error processing rebuy item {item.ProductId} for user {userId}");
+                result.FailedItems.Add(new FailedCartItemDto
+                {
+                    ProductId = item.ProductId,
+                    ProductName = "Không xác định",
+                    RequestedQuantity = item.Quantity,
+                    Reason = "Lỗi hệ thống khi xử lý sản phẩm",
+                    ErrorCode = "SYSTEM_ERROR"
+                });
+            }
+        }
+
+        // ✅ SAVE ALL CHANGES WITH ERROR HANDLING
+        try
+        {
+            await _context.SaveChangesAsync();
+            _logger.LogInformation($"✅ [REBUY] Cart update completed for order {orderId}, user {userId}. Added: {result.SuccessCount}, Failed: {result.FailureCount}");
+        }
+        catch (Exception saveEx)
+        {
+            _logger.LogError(saveEx, $"❌ [REBUY] Error saving cart changes for order {orderId}, user {userId}");
+            throw new InvalidOperationException("Lỗi khi lưu thay đổi giỏ hàng. Vui lòng thử lại.", saveEx);
+        }
+
+        return result;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, $"❌ [REBUY] Critical error adding rebuy items to cart for order {orderId}");
+        throw;
+    }
+}
     }
 
 }
