@@ -8,8 +8,9 @@ const API_ENDPOINTS = {
         create: '/notifications/admin',
         update: '/notifications/admin',
         delete: '/notifications/admin',
-        send: '/notifications/admin',
-        recipientCount: '/notifications/admin/recipient-count'
+        send: '/notifications/admin/send',
+        recipientCount: '/notifications/admin/recipient-count',
+        getUsers: '/notifications/admin/users'
     },
     user: {
         getNotifications: '/notifications/user',
@@ -22,6 +23,9 @@ const API_ENDPOINTS = {
 // Global variables
 let notifications = [];
 let userNotifications = []; // Thêm biến cho user notifications
+let selectedUsers = []; // Track selected users
+let allUsers = []; // Cache for user list
+let userSelectionModal = null;
 let currentPage = 1;
 let userCurrentPage = 1; // Thêm cho user pagination
 let itemsPerPage = 10;
@@ -116,7 +120,18 @@ function parsePagedResponse(response, requestedPage) {
             return result;
         }
 
-        // Case 1: Standard PagedResult from C# backend
+        // ✅ Case for UserNotifications API (different format)
+        if (response.notifications && Array.isArray(response.notifications)) {
+            result.items = response.notifications;
+            result.currentPage = Math.max(1, parseInt(response.currentPage) || requestedPage);
+            result.totalPages = Math.max(1, parseInt(response.totalPages) || 1);
+            result.totalCount = Math.max(0, parseInt(response.totalCount) || 0);
+            
+            console.log('✅ Parsed as User Notifications:', result);
+            return result;
+        }
+
+        // ✅ Case for Admin Notifications (PagedResult)
         if (response.items && Array.isArray(response.items)) {
             result.items = response.items;
             result.currentPage = Math.max(1, parseInt(response.pageNumber) || requestedPage);
@@ -127,7 +142,7 @@ function parsePagedResponse(response, requestedPage) {
             return result;
         }
 
-        // Case 2: Direct array
+        // ✅ Direct array fallback
         if (Array.isArray(response)) {
             result.items = response;
             result.totalCount = response.length;
@@ -135,17 +150,6 @@ function parsePagedResponse(response, requestedPage) {
             result.currentPage = Math.min(requestedPage, result.totalPages);
             
             console.log('✅ Parsed as Array:', result);
-            return result;
-        }
-
-        // Case 3: Single object
-        if (typeof response === 'object') {
-            result.items = [response];
-            result.totalCount = 1;
-            result.totalPages = 1;
-            result.currentPage = 1;
-            
-            console.log('✅ Parsed as Single Object:', result);
             return result;
         }
 
@@ -451,62 +455,601 @@ function goToAdminPage() {
         console.log('⏭️ [ADMIN] Same page, no action needed');
     }
 }
+function createUserSelectionModal() {
+    const modal = document.createElement('div');
+    modal.id = 'user-selection-modal';
+    // ✅ TĂNG Z-INDEX từ z-50 lên z-[9999]
+    modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[9999]';
+    modal.style.display = 'none';
+    
+    modal.innerHTML = `
+        <div class="relative top-4 mx-auto p-5 border w-11/12 md:w-4/5 lg:w-3/4 xl:w-2/3 shadow-lg rounded-md bg-white max-h-screen overflow-hidden">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b">
+                <h3 class="text-lg font-bold text-gray-900">
+                    <i class="fas fa-users text-blue-600 mr-2"></i>
+                    Chọn người dùng cụ thể
+                </h3>
+                <button onclick="closeUserSelectionModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- ✅ GIỮ NGUYÊN NỘI DUNG, CHỈ SỬA Z-INDEX -->
+            <!-- Search and Filter Section -->
+            <div class="mb-4 space-y-3">
+                <div class="flex flex-wrap gap-3">
+                    <div class="flex-1 min-w-64">
+                        <input 
+                            type="text" 
+                            id="user-search" 
+                            placeholder="Tìm kiếm theo tên, email, số điện thoại..." 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                    </div>
+                    <select id="user-role-filter" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">Tất cả vai trò</option>
+                        <option value="customers">Khách hàng</option>
+                        <option value="sellers">Người bán</option>
+                        <option value="admins">Quản trị viên</option>
+                    </select>
+                    <button onclick="searchUsers()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-search mr-1"></i> Tìm kiếm
+                    </button>
+                </div>
+                
+                <!-- Selection Summary -->
+                <div class="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                    <span id="selection-summary" class="text-sm text-gray-600">
+                        Chưa chọn người dùng nào
+                    </span>
+                    <div class="space-x-2">
+                        <button onclick="selectAllUsers()" class="text-blue-600 hover:text-blue-800 text-sm">
+                            <i class="fas fa-check-square mr-1"></i> Chọn tất cả
+                        </button>
+                        <button onclick="clearAllUsers()" class="text-red-600 hover:text-red-800 text-sm">
+                            <i class="fas fa-times-circle mr-1"></i> Bỏ chọn tất cả
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- User List -->
+            <div class="max-h-96 overflow-y-auto mb-4 border rounded-md">
+                <div id="user-list-loading" class="p-8 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin mr-2"></i> Đang tải danh sách người dùng...
+                </div>
+                <div id="user-list-content" class="hidden">
+                    <!-- User list will be populated here -->
+                </div>
+            </div>
+            
+            <!-- Pagination -->
+            <div id="user-pagination" class="flex justify-between items-center mb-4 hidden">
+                <div class="text-sm text-gray-600">
+                    <span id="user-pagination-info">Hiển thị 0 người dùng</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="user-prev-page" onclick="loadUsersPage(currentUserPage - 1)" 
+                            class="px-3 py-1 border rounded-md hover:bg-gray-50" disabled>
+                        <i class="fas fa-chevron-left"></i> Trước
+                    </button>
+                    <span id="user-current-page" class="px-3 py-1">1</span>
+                    <button id="user-next-page" onclick="loadUsersPage(currentUserPage + 1)" 
+                            class="px-3 py-1 border rounded-md hover:bg-gray-50" disabled>
+                        Sau <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeUserSelectionModal()" 
+                        class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors">
+                    <i class="fas fa-times mr-1"></i> Hủy
+                </button>
+                <button onclick="confirmUserSelection()" 
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
+                    <i class="fas fa-check mr-1"></i> Xác nhận (<span id="selected-count">0</span>)
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    return modal;
+}
+function openUserSelectionModal() {
+    if (!userSelectionModal) {
+        userSelectionModal = createUserSelectionModal();
+    }
+    
+    // ✅ FORCE Z-INDEX VÀ DISPLAY
+    userSelectionModal.style.display = 'block';
+    userSelectionModal.style.zIndex = '9999';
+    userSelectionModal.style.position = 'fixed';
+    userSelectionModal.style.top = '0';
+    userSelectionModal.style.left = '0';
+    userSelectionModal.style.right = '0';
+    userSelectionModal.style.bottom = '0';
+    
+    // ✅ ĐẢM BẢO NOTIFICATION MODAL Ở DƯỚI
+    const notificationModal = document.getElementById('modal');
+    if (notificationModal) {
+        notificationModal.style.zIndex = '50';
+    }
+    
+    loadUsersPage(1);
+    
+    // Add event listeners
+    setTimeout(() => {
+        const searchInput = document.getElementById('user-search');
+        const roleFilter = document.getElementById('user-role-filter');
+        
+        if (searchInput) {
+            searchInput.removeEventListener('input', debouncedSearchUsers);
+            searchInput.addEventListener('input', debouncedSearchUsers);
+        }
+        
+        if (roleFilter) {
+            roleFilter.removeEventListener('change', searchUsers);
+            roleFilter.addEventListener('change', searchUsers);
+        }
+    }, 100);
+}
 
+function closeUserSelectionModal() {
+    if (userSelectionModal) {
+        userSelectionModal.style.display = 'none';
+    }
+}
+async function loadUsersPage(page = 1) {
+    try {
+        currentUserPage = page;
+        
+        const role = document.getElementById('user-role-filter')?.value || 'all';
+        const search = document.getElementById('user-search')?.value?.trim() || '';
+        
+        document.getElementById('user-list-loading').classList.remove('hidden');
+        document.getElementById('user-list-content').classList.add('hidden');
+        
+        const params = new URLSearchParams({
+            pageNumber: page,
+            pageSize: 20,
+            role: role,
+            search: search
+        });
+        
+        // ✅ USE CORRECT ENDPOINT
+        const response = await apiRequest(`${API_ENDPOINTS.admin.getUsers}?${params.toString()}`);
+        
+        allUsers = response.users || [];
+        totalUserPages = response.totalPages || 1;
+        
+        renderUserList(allUsers);
+        updateUserPaginationInModal(); // ✅ USE CORRECT FUNCTION NAME
+        
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showError('Không thể tải danh sách người dùng: ' + error.message);
+    }
+}
+function renderUserList(users) {
+    const listContent = document.getElementById('user-list-content');
+    const loading = document.getElementById('user-list-loading');
+    
+    if (users.length === 0) {
+        listContent.innerHTML = `
+            <div class="p-8 text-center text-gray-500">
+                <i class="fas fa-users text-4xl mb-2"></i>
+                <p>Không tìm thấy người dùng nào</p>
+            </div>
+        `;
+    } else {
+        listContent.innerHTML = users.map(user => `
+            <div class="flex items-center p-3 border-b hover:bg-gray-50 transition-colors">
+                <input 
+                    type="checkbox" 
+                    id="user-${user.userID}" 
+                    value="${user.userID}"
+                    ${selectedUsers.includes(user.userID) ? 'checked' : ''}
+                    onchange="toggleUserSelection(${user.userID})"
+                    class="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                >
+                <div class="flex-1">
+                    <div class="flex items-center space-x-3">
+                        ${user.avatar ? 
+                            `<img src="${user.avatar}" alt="${user.fullName}" class="w-8 h-8 rounded-full">` :
+                            `<div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-sm font-medium">
+                                ${user.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                            </div>`
+                        }
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-medium text-gray-900">${user.fullName || 'Không có tên'}</span>
+                                <span class="px-2 py-1 text-xs rounded-full ${getRoleBadgeClass(user.role)}">
+                                    ${getRoleText(user.role)}
+                                </span>
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                <span class="mr-4">📧 ${user.email}</span>
+                                ${user.phone ? `<span class="mr-4">📞 ${user.phone}</span>` : ''}
+                                ${user.role === 'Customer' && user.totalOrders > 0 ? 
+                                    `<span class="mr-4">🛒 ${user.totalOrders} đơn hàng</span>` : ''}
+                                ${user.role === 'Seller' && user.totalProducts > 0 ? 
+                                    `<span class="mr-4">📦 ${user.totalProducts} sản phẩm</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    loading.classList.add('hidden');
+    listContent.classList.remove('hidden');
+    
+    updateSelectionSummary();
+}
+function getRoleBadgeClass(role) {
+    switch (role) {
+        case 'Admin': return 'bg-red-100 text-red-800';
+        case 'Seller': return 'bg-blue-100 text-blue-800';
+        case 'Customer': return 'bg-green-100 text-green-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
+
+function getRoleText(role) {
+    switch (role) {
+        case 'Admin': return '👑 Admin';
+        case 'Seller': return '🏪 Seller';
+        case 'Customer': return '👥 Customer';
+        default: return role;
+    }
+}
+
+function toggleUserSelection(userId) {
+    const index = selectedUsers.indexOf(userId);
+    if (index > -1) {
+        selectedUsers.splice(index, 1);
+    } else {
+        selectedUsers.push(userId);
+    }
+    updateSelectionSummary();
+}
+
+function selectAllUsers() {
+    allUsers.forEach(user => {
+        if (!selectedUsers.includes(user.userID)) {
+            selectedUsers.push(user.userID);
+        }
+    });
+    
+    // Update checkboxes
+    allUsers.forEach(user => {
+        const checkbox = document.getElementById(`user-${user.userID}`);
+        if (checkbox) checkbox.checked = true;
+    });
+    
+    updateSelectionSummary();
+}
+
+function clearAllUsers() {
+    // Clear current page selections
+    allUsers.forEach(user => {
+        const index = selectedUsers.indexOf(user.userID);
+        if (index > -1) {
+            selectedUsers.splice(index, 1);
+        }
+        
+        const checkbox = document.getElementById(`user-${user.userID}`);
+        if (checkbox) checkbox.checked = false;
+    });
+    
+    updateSelectionSummary();
+}
+
+function updateSelectionSummary() {
+    const summaryElement = document.getElementById('selection-summary');
+    const countElement = document.getElementById('selected-count');
+    
+    if (selectedUsers.length === 0) {
+        summaryElement.textContent = 'Chưa chọn người dùng nào';
+    } else {
+        summaryElement.textContent = `Đã chọn ${selectedUsers.length} người dùng`;
+    }
+    
+    if (countElement) {
+        countElement.textContent = selectedUsers.length;
+    }
+}
+
+function updateUserPaginationInModal() {
+    const pagination = document.getElementById('user-pagination');
+    const info = document.getElementById('user-pagination-info');
+    const currentPageElement = document.getElementById('user-current-page');
+    const prevButton = document.getElementById('user-prev-page');
+    const nextButton = document.getElementById('user-next-page');
+    
+    if (allUsers.length > 0) {
+        pagination.classList.remove('hidden');
+        info.textContent = `Hiển thị ${allUsers.length} người dùng`;
+        currentPageElement.textContent = currentUserPage;
+        
+        prevButton.disabled = currentUserPage <= 1;
+        nextButton.disabled = currentUserPage >= totalUserPages;
+        
+        // ✅ ADD PROPER EVENT HANDLERS
+        prevButton.onclick = () => {
+            if (currentUserPage > 1) {
+                loadUsersPage(currentUserPage - 1);
+            }
+        };
+        
+        nextButton.onclick = () => {
+            if (currentUserPage < totalUserPages) {
+                loadUsersPage(currentUserPage + 1);
+            }
+        };
+    } else {
+        pagination.classList.add('hidden');
+    }
+}
+
+async function searchUsers() {
+    await loadUsersPage(1);
+}
+
+function confirmUserSelection() {
+    console.log('🎯 [SELECTION] Starting user selection confirmation...');
+    console.log('🎯 [SELECTION] Current selectedUsers:', selectedUsers);
+    
+    if (!selectedUsers || !Array.isArray(selectedUsers) || selectedUsers.length === 0) {
+        showError('Vui lòng chọn ít nhất một người dùng!');
+        return;
+    }
+    
+    const validUserIds = selectedUsers.filter(id => {
+        const numId = parseInt(id);
+        return Number.isInteger(numId) && numId > 0;
+    });
+    
+    if (validUserIds.length === 0) {
+        showError('Không có user ID hợp lệ được chọn!');
+        return;
+    }
+    
+    // ✅ FIND TARGET AUDIENCE SELECT WITH MULTIPLE STRATEGIES
+    let targetSelect = null;
+    
+    // Strategy 1: Direct form search
+    const form = document.getElementById('notification-form');
+    if (form) {
+        const selectors = [
+            'select[name="target_audience"]',
+            'select[name="targetAudience"]', 
+            'select[name="target-audience"]',
+            '#target_audience',
+            '#targetAudience',
+            '#target-audience',
+            'select:has(option[value="specific"])', // CSS4 selector
+            'select option[value="specific"]' // Find by option value
+        ];
+        
+        for (const selector of selectors) {
+            try {
+                if (selector.includes('option[value="specific"]')) {
+                    const option = form.querySelector(selector);
+                    targetSelect = option?.closest('select');
+                } else {
+                    targetSelect = form.querySelector(selector);
+                }
+                
+                if (targetSelect) {
+                    console.log('✅ [SELECTION] Found target select with:', selector);
+                    break;
+                }
+            } catch (e) {
+                console.log('⚠️ [SELECTION] Selector failed:', selector, e.message);
+            }
+        }
+    }
+    
+    // Strategy 2: Find by content scanning
+    if (!targetSelect) {
+        const allSelects = document.querySelectorAll('select');
+        for (const select of allSelects) {
+            const hasSpecificOption = Array.from(select.options).some(option => 
+                option.value === 'specific' || 
+                option.textContent.toLowerCase().includes('cụ thể') ||
+                option.textContent.toLowerCase().includes('specific')
+            );
+            
+            if (hasSpecificOption) {
+                targetSelect = select;
+                console.log('✅ [SELECTION] Found by option scanning:', select.id || select.name);
+                break;
+            }
+        }
+    }
+    
+    // Strategy 3: Create hidden input as fallback
+    if (!targetSelect) {
+        console.warn('⚠️ [SELECTION] Target select not found, creating hidden input...');
+        
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'target_audience';
+        hiddenInput.id = 'target_audience_hidden';
+        
+        // Insert into form
+        if (form) {
+            form.appendChild(hiddenInput);
+            targetSelect = hiddenInput;
+            console.log('✅ [SELECTION] Created hidden input for target audience');
+        } else {
+            showError('Không thể lưu lựa chọn người dùng. Vui lòng thử lại.');
+            return;
+        }
+    }
+    
+    // ✅ SET VALUE WITH PROPER FORMAT
+    const targetAudienceValue = `specific:${validUserIds.join(',')}`;
+    targetSelect.value = targetAudienceValue;
+    
+    console.log('✅ [SELECTION] Set targetAudience:', targetAudienceValue);
+    console.log('✅ [SELECTION] Element info:', {
+        type: targetSelect.type,
+        id: targetSelect.id,
+        name: targetSelect.name,
+        value: targetSelect.value
+    });
+    
+    // ✅ TRIGGER CHANGE EVENT
+    const changeEvent = new Event('change', { bubbles: true });
+    targetSelect.dispatchEvent(changeEvent);
+    
+    // ✅ UPDATE GLOBAL STATE
+    selectedUsers = validUserIds;
+    
+    // ✅ FORCE UI UPDATE
+    updateTargetAudienceDisplay();
+    updateRecipientCount();
+    
+    // ✅ CLOSE MODAL
+    closeUserSelectionModal();
+    
+    const successMessage = `✅ Đã chọn ${selectedUsers.length} người dùng để gửi thông báo`;
+    console.log('✅ [SELECTION] Success:', successMessage);
+    showSuccess(successMessage);
+}
+function updateSelectionDisplay() {
+    console.log('🔄 [DISPLAY] Updating selection display for', selectedUsers.length, 'users');
+    
+    // ✅ UPDATE BUTTON TEXT nếu có nút chọn người dùng
+    const selectUsersBtn = document.getElementById('select-users-btn');
+    if (selectUsersBtn) {
+        const btnText = selectUsersBtn.querySelector('.btn-text') || selectUsersBtn;
+        
+        if (selectedUsers.length > 0) {
+            btnText.textContent = `Đã chọn ${selectedUsers.length} người dùng (Click để sửa)`;
+            selectUsersBtn.classList.add('selected');
+            selectUsersBtn.classList.remove('btn-outline');
+            selectUsersBtn.classList.add('btn-primary');
+        } else {
+            btnText.textContent = 'Chọn người dùng cụ thể';
+            selectUsersBtn.classList.remove('selected');
+            selectUsersBtn.classList.add('btn-outline');
+            selectUsersBtn.classList.remove('btn-primary');
+        }
+        
+        // ✅ ENSURE BUTTON IS VISIBLE
+        selectUsersBtn.style.display = 'block';
+        selectUsersBtn.classList.remove('hidden');
+    }
+    
+    // ✅ UPDATE TARGET AUDIENCE DISPLAY TEXT
+    const targetSelect = findTargetAudienceElement();
+    if (targetSelect && selectedUsers.length > 0) {
+        // Create or update display text next to select
+        let displayText = document.getElementById('target-audience-display');
+        if (!displayText) {
+            displayText = document.createElement('div');
+            displayText.id = 'target-audience-display';
+            displayText.style.display = 'block';
+            
+            // Insert after target select
+            if (targetSelect.parentNode) {
+                targetSelect.parentNode.insertBefore(displayText, targetSelect.nextSibling);
+            }
+        }
+        
+    
+    }
+    
+    // ✅ UPDATE RECIPIENT COUNT DISPLAY
+    const recipientCount = document.getElementById('recipient-count');
+    if (recipientCount && selectedUsers.length > 0) {
+        recipientCount.innerHTML = `
+            <i class="fas fa-check-circle text-green-500 mr-1"></i>
+            <span class="text-green-600 font-medium">
+                Sẽ gửi đến ${selectedUsers.length} người dùng đã chọn
+            </span>
+        `;
+        recipientCount.className = 'mt-1 text-sm';
+    }
+    
+    console.log('✅ [DISPLAY] Selection display updated successfully');
+}
 // ============================================
 // USER NOTIFICATION FUNCTIONS (MỚI THÊM)
 // ============================================
 
+// ✅ UPDATE fetchUserNotifications function
 async function fetchUserNotifications(page = 1, unreadOnly = false) {
-    console.log('Fetching user notifications, page:', page, 'unreadOnly:', unreadOnly);
+    console.log(`🚀 Fetching user notifications - Page: ${page}, UnreadOnly: ${unreadOnly}`);
+    
+    page = Math.max(1, parseInt(page) || 1);
     
     const loading = document.getElementById('loading');
     const error = document.getElementById('error');
     const table = document.getElementById('user-notification-table') || document.getElementById('notification-table');
 
-    if (loading) loading.style.display = 'flex';
-    if (error) error.style.display = 'none';
-    if (table) table.style.display = 'none';
-
     try {
+        if (loading) loading.style.display = 'flex';
+        if (error) error.style.display = 'none';
+        if (table) table.style.display = 'none';
+
         const params = new URLSearchParams({
             pageNumber: page.toString(),
             pageSize: itemsPerPage.toString(),
             unreadOnly: unreadOnly.toString()
         });
 
-        const response = await apiRequest(`${API_ENDPOINTS.user.getNotifications}?${params.toString()}`);
+        const apiUrl = `${API_ENDPOINTS.user.getNotifications}?${params.toString()}`;
+        const response = await apiRequest(apiUrl);
         
-        console.log('User notifications response:', response);
+        console.log('📥 User notifications response:', response);
 
-        // Handle different response formats
-        if (response.items) {
-            userNotifications = response.items || [];
-            userCurrentPage = response.pageNumber || page;
-            userTotalPages = response.totalPages || 1;
-            userTotalCount = response.totalCount || 0;
-        } else if (Array.isArray(response)) {
-            userNotifications = response;
-            userCurrentPage = page;
-            userTotalPages = Math.ceil(response.length / itemsPerPage);
-            userTotalCount = response.length;
-        } else {
-            userNotifications = [response];
-            userCurrentPage = 1;
-            userTotalPages = 1;
-            userTotalCount = 1;
-        }
+        // ✅ Parse response using updated parser
+        const parsed = parsePagedResponse(response, page);
+        
+        // Update global state
+        userNotifications = parsed.items;
+        userCurrentPage = parsed.currentPage;
+        userTotalPages = parsed.totalPages;
+        userTotalCount = parsed.totalCount;
 
+        console.log('🎯 User State Update:', {
+            userNotificationsCount: userNotifications.length,
+            userCurrentPage,
+            userTotalPages,
+            userTotalCount
+        });
+
+        // Update UI
         renderUserNotificationTable();
         updateUserPagination();
 
         if (loading) loading.style.display = 'none';
         if (table) table.style.display = 'block';
         
-        console.log('User notifications loaded successfully');
+        console.log('✅ User notifications loaded successfully');
+        
     } catch (err) {
-        showError('Không thể tải thông báo người dùng: ' + err.message);
+        console.error('❌ Error fetching user notifications:', err);
+        
+        // Reset to safe state
+        userNotifications = [];
+        userCurrentPage = 1;
+        userTotalPages = 1;
+        userTotalCount = 0;
+        
+        renderUserNotificationTable();
+        updateUserPagination();
+        
         if (loading) loading.style.display = 'none';
-        console.error('Lỗi tải thông báo người dùng:', err);
+        showError(`Không thể tải thông báo người dùng: ${err.message}`);
     }
 }
 async function loadUnreadCount() {
@@ -956,76 +1499,51 @@ function updateUnreadCountDisplay(count) {
     }
 }
 function updateUserPagination() {
-    console.log('Updating user pagination:', { userCurrentPage, userTotalPages, userTotalCount });
+    console.log('🔄 Updating USER pagination:', { currentUserPage, userTotalPages, userTotalCount, currentView });
+    
     if (currentView !== 'user') {
         console.log('⏭️ Skipping user pagination update - not in user view');
         return;
     }
-    // Update pagination info
-    const paginationInfo = document.getElementById('user-pagination-info') || document.getElementById('pagination-info');
-    if (paginationInfo) {
-        paginationInfo.textContent = `Hiển thị trang ${userCurrentPage} / ${userTotalPages} (Tổng số ${userTotalCount} thông báo)`;
-        console.log('📊 Updated user pagination info:', paginationInfo.textContent);
+    
+    // ✅ UPDATE USER PAGINATION INFO
+    const userPaginationInfo = document.getElementById('user-pagination-info') || document.getElementById('pagination-info');
+    if (userPaginationInfo) {
+        userPaginationInfo.textContent = `Hiển thị trang ${userCurrentPage} / ${userTotalPages} (Tổng số ${userTotalCount} thông báo)`;
     }
 
-    // Update Previous button
-    const prevButton = document.getElementById('user-prev-page') || document.getElementById('prev-page');
-    if (prevButton) {
-        prevButton.disabled = userCurrentPage <= 1;
-        prevButton.onclick = () => {
-            if (userCurrentPage > 1) {
-                fetchUserNotifications(userCurrentPage - 1);
-            }
-        };
-        
-        // Visual feedback
-        if (userCurrentPage <= 1) {
-            prevButton.classList.add('opacity-50', 'cursor-not-allowed');
-        } else {
-            prevButton.classList.remove('opacity-50', 'cursor-not-allowed');
-        }
-    }
+    // ✅ UPDATE USER NAVIGATION BUTTONS
+    updateUserNavButton('prev', userCurrentPage <= 1, () => fetchUserNotifications(userCurrentPage - 1));
+    updateUserNavButton('next', userCurrentPage >= userTotalPages, () => fetchUserNotifications(userCurrentPage + 1));
     
-    // Update Next button
-    const nextButton = document.getElementById('user-next-page') || document.getElementById('next-page');
-    if (nextButton) {
-        nextButton.disabled = userCurrentPage >= userTotalPages;
-        nextButton.onclick = () => {
-            if (userCurrentPage < userTotalPages) {
-                fetchUserNotifications(userCurrentPage + 1);
-            }
-        };
-        
-        // Visual feedback
-        if (userCurrentPage >= userTotalPages) {
-            nextButton.classList.add('opacity-50', 'cursor-not-allowed');
-        } else {
-            nextButton.classList.remove('opacity-50', 'cursor-not-allowed');
-        }
-    }
-    
-    // Update page input
-    const pageInput = document.getElementById('user-page-input') || document.getElementById('page-input');
-    if (pageInput) {
-        pageInput.value = userCurrentPage;
-        pageInput.max = userTotalPages;
-        pageInput.min = 1;
-        
-        // Add event listener for Enter key
-        pageInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                goToUserPage();
-            }
-        });
-    }
-
-    // Update Go button
-    const goButton = document.getElementById('user-go-page') || document.getElementById('go-page');
-    if (goButton) {
-        goButton.onclick = goToUserPage;
+    // ✅ UPDATE USER PAGE INPUT
+    const userPageInput = document.getElementById('user-page-input') || document.getElementById('page-input');
+    if (userPageInput) {
+        userPageInput.value = userCurrentPage;
+        userPageInput.max = userTotalPages;
+        userPageInput.min = 1;
     }
 }
-
+function updateUserNavButton(direction, disabled, action) {
+    const buttonId = direction === 'prev' ? 
+        (document.getElementById('user-prev-page') ? 'user-prev-page' : 'prev-page') :
+        (document.getElementById('user-next-page') ? 'user-next-page' : 'next-page');
+    
+    const button = document.getElementById(buttonId);
+    if (!button) return;
+    
+    button.disabled = disabled;
+    button.onclick = (e) => {
+        e.preventDefault();
+        if (!disabled) action();
+    };
+    
+    if (disabled) {
+        button.classList.add('opacity-50', 'cursor-not-allowed');
+    } else {
+        button.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
 // Helper functions for pagination
 function goToPage() {
     const pageInput = document.getElementById('page-input');
@@ -1294,64 +1812,91 @@ async function openModal(id = null) {
     try {
         const modal = document.getElementById('modal');
         if (!modal) {
-            console.error('Modal element not found');
+            console.error('Modal not found');
             return;
         }
 
+        // ✅ RESET STATE
+        selectedUsers = [];
+
         if (id) {
-            const notification = await apiRequest(`${API_ENDPOINTS.admin.getById}/${id}`);
-            currentNotification = notification;
+            // Edit mode
+            console.log('📝 [MODAL] Opening in edit mode for notification:', id);
+            const response = await apiRequest(`${API_ENDPOINTS.admin.getById}/${id}`);
+            currentNotification = response;
+            
+            // ✅ HANDLE EXISTING SPECIFIC TARGETING
+            if (currentNotification.targetAudience?.startsWith('specific:')) {
+                const idsString = currentNotification.targetAudience.substring('specific:'.length);
+                selectedUsers = idsString.split(',')
+                    .map(id => parseInt(id.trim()))
+                    .filter(id => !isNaN(id));
+                
+                console.log('🎯 [MODAL] Loaded existing specific users:', selectedUsers);
+            }
         } else {
-            currentNotification = {
-                notificationID: null,
-                title: '',
-                content: '',
-                type: 'general',
-                icon: 'fa-bell',
-                actionText: '',
-                actionUrl: '',
-                targetAudience: 'both',
-                scheduledAt: null
-            };
+            // Create mode
+            console.log('➕ [MODAL] Opening in create mode');
+            currentNotification = null;
         }
 
-        // Fill form
+        // ✅ FILL FORM
         const form = document.getElementById('notification-form');
         if (form) {
-            const titleInput = form.querySelector('#title');
-            const messageInput = form.querySelector('#message');
-            const typeSelect = form.querySelector('#type');
-            const iconInput = form.querySelector('#icon');
-            const actionTextInput = form.querySelector('#action_text');
-            const actionUrlInput = form.querySelector('#action_url');
-            const targetSelect = form.querySelector('#target_audience');
-            const scheduledInput = form.querySelector('#scheduled_at');
-
-            if (titleInput) titleInput.value = currentNotification.title || '';
-            if (messageInput) messageInput.value = currentNotification.content || '';
-            if (typeSelect) typeSelect.value = currentNotification.type || 'general';
-            if (iconInput) iconInput.value = currentNotification.icon || 'fa-bell';
-            if (actionTextInput) actionTextInput.value = currentNotification.actionText || '';
-            if (actionUrlInput) actionUrlInput.value = currentNotification.actionUrl || '';
-            if (targetSelect) targetSelect.value = currentNotification.targetAudience || 'both';
-            
-            if (scheduledInput && currentNotification.scheduledAt) {
-                scheduledInput.value = new Date(currentNotification.scheduledAt).toISOString().slice(0, 16);
-            } else if (scheduledInput) {
-                scheduledInput.value = '';
+            if (currentNotification) {
+                // Fill with existing data
+                form.querySelector('#title').value = currentNotification.title || '';
+                form.querySelector('#message').value = currentNotification.content || '';
+                form.querySelector('#type').value = currentNotification.type || 'info';
+                form.querySelector('#icon').value = currentNotification.icon || 'fa-bell';
+                form.querySelector('#action_text').value = currentNotification.actionText || '';
+                form.querySelector('#action_url').value = currentNotification.actionUrl || '';
+                
+                // ✅ HANDLE TARGET AUDIENCE
+                if (currentNotification.targetAudience?.startsWith('specific:')) {
+                    // Add specific option if not exists
+                    const targetSelect = form.querySelector('#target_audience');
+                    let specificOption = targetSelect.querySelector('option[value="specific"]');
+                    if (!specificOption) {
+                        specificOption = document.createElement('option');
+                        specificOption.value = 'specific';
+                        specificOption.textContent = '🎯 Người dùng cụ thể';
+                        targetSelect.appendChild(specificOption);
+                    }
+                    targetSelect.value = 'specific';
+                } else {
+                    form.querySelector('#target_audience').value = currentNotification.targetAudience || '';
+                }
+                
+                if (currentNotification.scheduledAt) {
+                    const scheduledDate = new Date(currentNotification.scheduledAt);
+                    form.querySelector('#scheduled_at').value = scheduledDate.toISOString().slice(0, 16);
+                }
+            } else {
+                // Reset form for new notification
+                form.reset();
+                form.querySelector('#type').value = 'info';
+                form.querySelector('#icon').value = 'fa-bell';
             }
         }
 
+        // ✅ UPDATE MODAL TITLE
         const modalTitle = document.getElementById('modal-title');
         if (modalTitle) {
-            modalTitle.textContent = id ? 'Sửa thông báo' : 'Tạo thông báo mới';
+            modalTitle.textContent = currentNotification ? 'Chỉnh sửa thông báo' : 'Tạo thông báo mới';
         }
         
         modal.classList.add('active');
+        
+        // ✅ UPDATE UI BASED ON SELECTION
+        updateTargetAudienceUI();
+        updateRecipientCount();
+        
     } catch (error) {
-        showError('Không thể tải thông tin thông báo: ' + error.message);
+        showError('Không thể tải thông báo: ' + error.message);
         console.error('Error opening modal:', error);
     }
+    
     // Setup preview after form is filled
     setTimeout(() => {
         setupNotificationPreview();
@@ -1369,147 +1914,327 @@ function closeModal() {
 
 async function saveNotification(event) {
     event.preventDefault();
-    console.log('Saving notification...');
+    console.log('💾 [SAVE] Starting notification save...');
     
     const loading = document.getElementById('loading');
     if (loading) loading.style.display = 'flex';
 
     try {
+        // ✅ VALIDATE FORM
+        if (!validateForm()) {
+            return;
+        }
+
         const form = document.getElementById('notification-form');
-        if (!form) {
-            throw new Error('Form không tìm thấy');
-        }
-
-        // Get form values
-        const titleInput = form.querySelector('#title');
-        const messageInput = form.querySelector('#message');
-        const typeSelect = form.querySelector('#type');
-        const iconInput = form.querySelector('#icon');
-        const actionTextInput = form.querySelector('#action_text');
-        const actionUrlInput = form.querySelector('#action_url');
-        const targetSelect = form.querySelector('#target_audience');
-        const scheduledInput = form.querySelector('#scheduled_at');
-
-        // VALIDATION - THÊM PHẦN NÀY
-        const title = titleInput?.value?.trim();
-        const content = messageInput?.value?.trim();
-        const targetAudience = targetSelect?.value;
-
-        if (!title) {
-            showError('Vui lòng nhập tiêu đề thông báo');
-            titleInput?.focus();
-            return;
-        }
-
-        if (title.length < 5) {
-            showError('Tiêu đề phải có ít nhất 5 ký tự');
-            titleInput?.focus();
-            return;
-        }
-
-        if (!content) {
-            showError('Vui lòng nhập nội dung thông báo');
-            messageInput?.focus();
-            return;
-        }
-
-        if (content.length < 10) {
-            showError('Nội dung phải có ít nhất 10 ký tự');
-            messageInput?.focus();
-            return;
-        }
-
-        if (!targetAudience) {
-            showError('Vui lòng chọn đối tượng nhận thông báo');
-            targetSelect?.focus();
-            return;
-        }
-
-        // Validate action URL if action text is provided
-        const actionText = actionTextInput?.value?.trim();
-        const actionUrl = actionUrlInput?.value?.trim();
+        const formData = new FormData(form);
         
-        if (actionText && !actionUrl) {
-            showError('Vui lòng nhập URL hành động khi có text nút hành động');
-            actionUrlInput?.focus();
+        // ✅ GET TARGET AUDIENCE FROM FORM
+        let targetAudience = formData.get('target_audience');
+        console.log('📋 [SAVE] Initial targetAudience from form:', targetAudience);
+        
+        // ✅ SPECIAL HANDLING FOR SPECIFIC USER SELECTION
+        if (targetAudience === 'specific' && selectedUsers.length > 0) {
+            // ✅ BUILD PROPER FORMAT: "specific:1,2,3,4"
+            targetAudience = `specific:${selectedUsers.join(',')}`;
+            console.log('✅ [SAVE] Updated targetAudience for specific users:', targetAudience);
+        } else if (targetAudience === 'specific' && selectedUsers.length === 0) {
+            showError('Vui lòng chọn người dùng cụ thể trước khi lưu!');
             return;
         }
-
-        if (actionUrl && !isValidUrl(actionUrl)) {
-            showError('URL hành động không hợp lệ');
-            actionUrlInput?.focus();
-            return;
-        }
-
-        // Validate scheduled date
-        const scheduledDate = scheduledInput?.value;
-        if (scheduledDate) {
-            const selectedDate = new Date(scheduledDate);
-            const now = new Date();
-            
-            if (selectedDate <= now) {
-                showError('Thời gian lên lịch phải lớn hơn thời gian hiện tại');
-                scheduledInput?.focus();
-                return;
-            }
-        }
-
-        // Prepare notification data
+        
+        // ✅ BUILD NOTIFICATION DATA
         const notificationData = {
-            title: title,
-            content: content,
-            type: typeSelect?.value || 'general',
-            icon: iconInput?.value || 'fa-bell',
-            actionText: actionText,
-            actionUrl: actionUrl,
-            targetAudience: targetAudience,
-            scheduledAt: scheduledDate ? new Date(scheduledDate).toISOString() : null
+            title: formData.get('title'),
+            content: formData.get('message'),
+            type: formData.get('type'),
+            icon: formData.get('icon'),
+            actionText: formData.get('action_text'),
+            actionUrl: formData.get('action_url'),
+            targetAudience: targetAudience, // ✅ CORRECT FORMAT
+            scheduledAt: formData.get('scheduled_at') || null
         };
-
-        console.log('Notification data to send:', notificationData);
-
-        // Confirm before saving
-        const recipientCount = await getRecipientCount(targetAudience);
-        const confirmMessage = `Bạn có chắc chắn muốn ${currentNotification?.notificationID ? 'cập nhật' : 'tạo'} thông báo này?\n\nSẽ gửi đến ${recipientCount} người dùng trong nhóm "${getTargetAudienceText(targetAudience)}".`;
         
-        if (!confirm(confirmMessage)) {
+        console.log('📤 [SAVE] Final notification data:', notificationData);
+        
+        // ✅ VALIDATE REQUIRED FIELDS
+        if (!notificationData.title?.trim()) {
+            showError('Vui lòng nhập tiêu đề thông báo!');
             return;
         }
-
-        // Send API request
-        let response;
-        if (currentNotification?.notificationID) {
-            console.log('Updating notification:', currentNotification.notificationID);
-            response = await apiRequest(`${API_ENDPOINTS.admin.update}/${currentNotification.notificationID}`, {
-                method: 'PUT',
-                body: JSON.stringify(notificationData)
-            });
-        } else {
-            console.log('Creating new notification');
-            response = await apiRequest(API_ENDPOINTS.admin.create, {
-                method: 'POST',
-                body: JSON.stringify(notificationData)
-            });
-        }
-
-        console.log('Save response:', response);
-
-        showSuccess(currentNotification?.notificationID ? 'Cập nhật thông báo thành công!' : 'Tạo thông báo thành công!');
-        closeModal();
-        await fetchAdminNotifications(currentPage);
         
-        // Reload unread count if notification was sent immediately
-        if (!scheduledDate) {
-            await loadUnreadCount();
+        if (!notificationData.content?.trim()) {
+            showError('Vui lòng nhập nội dung thông báo!');
+            return;
         }
+        
+        if (!notificationData.targetAudience) {
+            showError('Vui lòng chọn đối tượng nhận thông báo!');
+            return;
+        }
+        
+        // ✅ API CALL
+        const method = currentNotification ? 'PUT' : 'POST';
+        const apiUrl = currentNotification ? 
+            `${API_ENDPOINTS.admin.update}/${currentNotification.notificationID}` : 
+            API_ENDPOINTS.admin.create;
+        
+        console.log('🌐 [SAVE] API Request:', { method, apiUrl, data: notificationData });
+        
+        const response = await apiRequest(apiUrl, {
+            method: method,
+            body: JSON.stringify(notificationData)
+        });
+
+        console.log('✅ [SAVE] Success response:', response);
+
+        showSuccess(currentNotification ? 
+            'Cập nhật thông báo thành công!' : 
+            'Tạo thông báo thành công!'
+        );
+        
+        closeModal();
+        selectedUsers = []; // Clear selected users
+        await fetchAdminNotifications(currentPage);
 
     } catch (error) {
-        console.error('Error saving notification:', error);
-        showError('Lưu thông báo thất bại: ' + error.message);
+        console.error('❌ [SAVE] Error saving notification:', error);
+        
+        let userMessage = 'Lỗi khi lưu thông báo: ';
+        if (error.message.includes('specific')) {
+            userMessage += 'Có lỗi với người dùng được chọn. Vui lòng thử chọn lại.';
+        } else if (error.message.includes('400')) {
+            userMessage += 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
+        } else {
+            userMessage += error.message;
+        }
+        
+        showError(userMessage);
+        
     } finally {
         const loading = document.getElementById('loading');
         if (loading) loading.style.display = 'none';
     }
+}
+function updateTargetAudienceDisplay() {
+    console.log('🔄 [DISPLAY] Updating target audience display...');
+    console.log('🔄 [DISPLAY] Selected users:', selectedUsers);
+    
+    // ✅ FIND TARGET AUDIENCE CONTAINER
+    const form = document.getElementById('notification-form');
+    if (!form) {
+        console.error('❌ [DISPLAY] Notification form not found');
+        return;
+    }
+    
+    // ✅ FIND OR CREATE DISPLAY CONTAINER
+    let displayContainer = form.querySelector('.target-audience-display');
+    if (!displayContainer) {
+        // Find target audience form group
+        const targetSelect = form.querySelector('select[name="target_audience"], #target_audience, select:has(option[value="specific"])');
+        const targetFormGroup = targetSelect?.closest('.form-group') || 
+                               targetSelect?.closest('.mb-4') ||
+                               targetSelect?.closest('div') ||
+                               targetSelect?.parentElement;
+        
+        if (targetFormGroup) {
+            displayContainer = document.createElement('div');
+            displayContainer.className = 'target-audience-display mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md';
+            targetFormGroup.appendChild(displayContainer);
+            console.log('✅ [DISPLAY] Created display container');
+        } else {
+            console.error('❌ [DISPLAY] Cannot find target form group');
+            return;
+        }
+    }
+    
+    // ✅ UPDATE DISPLAY CONTENT
+    if (selectedUsers.length > 0) {
+        displayContainer.innerHTML = `
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-users text-blue-600"></i>
+                    <span class="text-blue-800 font-medium">
+                        Đã chọn ${selectedUsers.length} người dùng cụ thể
+                    </span>
+                </div>
+                <button 
+                    type="button" 
+                    onclick="openUserSelectionModal()" 
+                    class="text-blue-600 hover:text-blue-800 text-sm underline"
+                >
+                    Chỉnh sửa lựa chọn
+                </button>
+            </div>
+            <div class="mt-1 text-sm text-blue-600">
+                User IDs: ${selectedUsers.join(', ')}
+            </div>
+        `;
+        displayContainer.style.display = 'block';
+        
+        // ✅ HIDE ORIGINAL SELECT (nếu cần)
+        const targetSelect = form.querySelector('select[name="target_audience"], #target_audience');
+        if (targetSelect && targetSelect.type === 'select-one') {
+            // Option 1: Hide completely
+            // targetSelect.style.display = 'none';
+            
+            // Option 2: Make read-only with custom display
+            targetSelect.style.opacity = '0.5';
+            targetSelect.disabled = true;
+            
+            // Add custom option for display
+            const existingOption = Array.from(targetSelect.options).find(opt => opt.value.startsWith('specific:'));
+            if (!existingOption) {
+                const customOption = document.createElement('option');
+                customOption.value = `specific:${selectedUsers.join(',')}`;
+                customOption.textContent = `Đã chọn ${selectedUsers.length} người dùng cụ thể`;
+                customOption.selected = true;
+                targetSelect.appendChild(customOption);
+            } else {
+                existingOption.textContent = `Đã chọn ${selectedUsers.length} người dùng cụ thể`;
+                existingOption.selected = true;
+            }
+        }
+        
+    } else {
+        displayContainer.style.display = 'none';
+        
+        // ✅ RESTORE ORIGINAL SELECT
+        const targetSelect = form.querySelector('select[name="target_audience"], #target_audience');
+        if (targetSelect) {
+            targetSelect.style.opacity = '1';
+            targetSelect.disabled = false;
+            
+            // Remove custom options
+            Array.from(targetSelect.options).forEach(option => {
+                if (option.value.startsWith('specific:')) {
+                    option.remove();
+                }
+            });
+            
+            // Reset to default
+            targetSelect.value = '';
+        }
+    }
+    
+    console.log('✅ [DISPLAY] Target audience display updated');
+}
+function updateTargetAudienceUI() {
+    console.log('🔄 [UI] Updating target audience UI...');
+    
+    // ✅ FIND TARGET ELEMENT WITH ROBUST METHOD
+    const targetSelect = findTargetAudienceElement();
+    
+    if (!targetSelect) {
+        console.warn('❌ [UI] Target audience element not found, but continuing...');
+        // ✅ DON'T RETURN - CONTINUE TO UPDATE OTHER UI ELEMENTS
+    }
+    
+    const currentValue = targetSelect?.value || '';
+    const selectUsersBtn = document.getElementById('select-users-btn');
+    
+    console.log('🔄 [UI] Current target audience value:', currentValue);
+    console.log('🔄 [UI] Current selectedUsers:', selectedUsers);
+    
+    // ✅ HANDLE SPECIFIC USER TARGETING
+    const isSpecificTargeting = currentValue === 'specific' || 
+                               currentValue.startsWith('specific:') || 
+                               selectedUsers.length > 0;
+    
+    if (isSpecificTargeting) {
+        console.log('🎯 [UI] Showing specific user selection controls');
+        
+        // ✅ SHOW SELECT USERS BUTTON
+        if (selectUsersBtn) {
+            selectUsersBtn.style.display = 'block';
+            selectUsersBtn.classList.remove('hidden');
+        }
+        
+        // ✅ UPDATE DISPLAY
+        updateSelectionDisplay();
+        
+    } else {
+        console.log('📊 [UI] Showing general targeting controls');
+        
+        // ✅ HIDE SELECT USERS BUTTON
+        if (selectUsersBtn) {
+            selectUsersBtn.style.display = 'none';
+            selectUsersBtn.classList.add('hidden');
+        }
+        
+        // ✅ HIDE SELECTION DISPLAY
+        const displayText = document.getElementById('target-audience-display');
+        if (displayText) {
+            displayText.style.display = 'none';
+        }
+        
+        // ✅ CLEAR SELECTED USERS if switching away from specific
+        if (selectedUsers.length > 0 && !currentValue.startsWith('specific:')) {
+            console.log('🔄 [UI] Clearing selected users due to target change');
+            selectedUsers = [];
+        }
+    }
+    
+    // ✅ UPDATE RECIPIENT COUNT
+    updateRecipientCount();
+    
+    console.log('✅ [UI] Target audience UI updated successfully');
+}
+function findTargetAudienceElement() {
+    // ✅ METHOD 1: Try common IDs in form context
+    const form = document.getElementById('notification-form');
+    if (form) {
+        const possibleSelectors = [
+            '#target_audience',
+            '#target-audience', 
+            '#targetAudience',
+            '#audience-select',
+            '#target_audience_select',
+            '[name="target_audience"]',
+            '[name="target-audience"]',
+            '[name="targetAudience"]'
+        ];
+        
+        for (const selector of possibleSelectors) {
+            const element = form.querySelector(selector);
+            if (element) {
+                console.log('✅ Found target element in form:', selector);
+                return element;
+            }
+        }
+    }
+    
+    // ✅ METHOD 2: Try document-wide
+    const documentSelectors = [
+        'target_audience',
+        'target-audience', 
+        'targetAudience',
+        'audience-select',
+        'hidden-target-audience'
+    ];
+    
+    for (const id of documentSelectors) {
+        const element = document.getElementById(id);
+        if (element) {
+            console.log('✅ Found target element in document:', id);
+            return element;
+        }
+    }
+    
+    // ✅ METHOD 3: Search by pattern
+    const allElements = document.querySelectorAll('select, input[type="hidden"]');
+    for (const element of allElements) {
+        const id = element.id?.toLowerCase() || '';
+        const name = element.name?.toLowerCase() || '';
+        
+        if ((id.includes('target') && id.includes('audience')) ||
+            (name.includes('target') && name.includes('audience'))) {
+            console.log('✅ Found target element by pattern:', element.id || element.name);
+            return element;
+        }
+    }
+    
+    console.warn('❌ Target audience element not found with any method');
+    return null;
 }
 
 // THÊM HELPER FUNCTIONS
@@ -1524,17 +2249,45 @@ function isValidUrl(string) {
 
 async function getRecipientCount(targetAudience) {
     try {
-        const response = await apiRequest(`${API_ENDPOINTS.admin.recipientCount}?audience=${targetAudience}`);
-        return response.count || 0;
+        console.log('🔢 [COUNT] Getting count for audience:', targetAudience);
+        
+        // ✅ HANDLE LEGACY "specific" (selectedUsers in memory)
+        if (targetAudience === 'specific' && selectedUsers.length > 0) {
+            console.log('🎯 [COUNT] Legacy specific format with selectedUsers:', selectedUsers.length);
+            return selectedUsers.length;
+        }
+        
+        // ✅ HANDLE PROPER "specific:1,2,3" format
+        if (targetAudience && targetAudience.startsWith('specific:')) {
+            const idsString = targetAudience.substring('specific:'.length);
+            const userIds = idsString.split(',').filter(id => id.trim()).length;
+            console.log('🎯 [COUNT] Specific format count:', userIds);
+            return userIds;
+        }
+        
+        // ✅ CALL BACKEND API FOR OTHER TARGETING
+        const response = await apiRequest(`${API_ENDPOINTS.admin.recipientCount}?audience=${encodeURIComponent(targetAudience)}`);
+        const count = response.count || 0;
+        console.log('📊 [COUNT] API count:', count);
+        return count;
+        
     } catch (error) {
-        console.error('Error getting recipient count:', error);
-        return 0; // Return 0 if error
+        console.error('❌ [COUNT] Error getting recipient count:', error);
+        
+        // ✅ FALLBACK FOR SPECIFIC TARGETING
+        if (targetAudience === 'specific') {
+            return selectedUsers.length;
+        }
+        
+        return 0;
     }
 }
 // Thêm function để hiển thị số người nhận
 async function updateRecipientCount() {
     const targetSelect = document.getElementById('target_audience');
     const targetAudience = targetSelect?.value;
+    
+    console.log('🔄 [COUNT] Updating recipient count for:', { targetAudience, selectedUsers });
     
     let countElement = document.getElementById('recipient-count');
     if (!countElement) {
@@ -1551,20 +2304,40 @@ async function updateRecipientCount() {
     }
 
     try {
+        // ✅ LOADING STATE
         countElement.textContent = '⏳ Đang tính toán...';
         countElement.className = 'mt-1 text-sm text-gray-500';
         
-        const count = await getRecipientCount(targetAudience);
+        let count = 0;
         
-        if (count > 0) {
-            countElement.textContent = `📊 Sẽ gửi đến ${count} người dùng`;
-            countElement.className = 'mt-1 text-sm text-blue-600 font-medium';
+        // ✅ HANDLE SPECIFIC USER SELECTION
+        if (targetAudience === 'specific') {
+            count = selectedUsers.length;
+            console.log('🎯 [COUNT] Specific targeting count:', count);
+            
+            if (count > 0) {
+                countElement.textContent = `🎯 Sẽ gửi đến ${count} người dùng được chọn`;
+                countElement.className = 'mt-1 text-sm text-blue-600 font-medium';
+            } else {
+                countElement.textContent = '🎯 Vui lòng chọn người dùng cụ thể';
+                countElement.className = 'mt-1 text-sm text-yellow-600 font-medium';
+            }
         } else {
-            countElement.textContent = '⚠️ Không có người dùng nào trong nhóm này';
-            countElement.className = 'mt-1 text-sm text-yellow-600 font-medium';
+            // ✅ CALL API FOR OTHER AUDIENCES
+            count = await getRecipientCount(targetAudience);
+            console.log('📊 [COUNT] API count result:', count);
+            
+            if (count > 0) {
+                countElement.textContent = `📊 Sẽ gửi đến ${count} người dùng`;
+                countElement.className = 'mt-1 text-sm text-blue-600 font-medium';
+            } else {
+                countElement.textContent = '⚠️ Không có người dùng nào trong nhóm này';
+                countElement.className = 'mt-1 text-sm text-red-600 font-medium';
+            }
         }
+        
     } catch (error) {
-        console.error('Error updating recipient count:', error);
+        console.error('❌ [COUNT] Error updating recipient count:', error);
         countElement.textContent = '❌ Không thể tính số người nhận';
         countElement.className = 'mt-1 text-sm text-red-600';
     }
@@ -1651,24 +2424,138 @@ async function deleteNotification(id) {
 }
 
 async function sendNotification(id) {
+    if (!id || isNaN(id)) {
+        showError('ID thông báo không hợp lệ');
+        return;
+    }
+    
     if (!confirm('Bạn có chắc chắn muốn gửi thông báo này không?')) return;
 
+    console.log('🚀 [SEND] Starting send for notification:', id);
+    
     const loading = document.getElementById('loading');
     if (loading) loading.style.display = 'flex';
 
     try {
-        await apiRequest(`${API_ENDPOINTS.admin.send}/${id}/send`, {
-            method: 'POST'
-        });
-
-        showSuccess('Gửi thông báo thành công!');
-        fetchAdminNotifications(currentPage);
+        // ✅ VALIDATE NOTIFICATION EXISTS AND IS SENDABLE
+        console.log('🔍 [SEND] Checking notification status...');
+        const notification = await apiRequest(`${API_ENDPOINTS.admin.getById}/${id}`);
         
-        // Reload unread count sau khi gửi thông báo mới
+        if (!notification) {
+            throw new Error('Thông báo không tồn tại');
+        }
+        
+        if (notification.status === 'sent') {
+            throw new Error('Thông báo đã được gửi trước đó');
+        }
+        
+        console.log('✅ [SEND] Notification validated:', {
+            id: notification.notificationID,
+            title: notification.title,
+            status: notification.status,
+            targetAudience: notification.targetAudience
+        });
+        
+        // ✅ PRE-CHECK RECIPIENT COUNT
+        console.log('🔍 [SEND] Checking recipient count...');
+        let recipientCount = 0;
+        
+        try {
+            if (notification.targetAudience?.startsWith('specific:')) {
+                const idsString = notification.targetAudience.substring('specific:'.length);
+                recipientCount = idsString.split(',').filter(id => id.trim()).length;
+                console.log('🎯 [SEND] Specific targeting: estimated recipients =', recipientCount);
+            } else {
+                const countResponse = await apiRequest(`${API_ENDPOINTS.admin.recipientCount}?audience=${encodeURIComponent(notification.targetAudience)}`);
+                recipientCount = countResponse.count || 0;
+                console.log('📊 [SEND] API recipient count =', recipientCount);
+            }
+        } catch (countError) {
+            console.warn('⚠️ [SEND] Could not get recipient count:', countError.message);
+            recipientCount = 0;
+        }
+        
+        if (recipientCount === 0) {
+            const confirmSend = confirm(
+                `Cảnh báo: Không tìm thấy người nhận nào cho đối tượng "${notification.targetAudience}".\n\n` +
+                `Có thể do:\n` +
+                `- Không có người dùng hoạt động trong nhóm này\n` +
+                `- User ID không hợp lệ (đối với chọn cụ thể)\n` +
+                `- Lỗi kết nối database\n\n` +
+                `Bạn có muốn tiếp tục gửi không?`
+            );
+            
+            if (!confirmSend) {
+                console.log('❌ [SEND] User cancelled send due to no recipients');
+                return;
+            }
+        }
+        
+        // ✅ CORRECTED API CALL - REMOVE DOUBLE /send
+        const sendUrl = `${API_ENDPOINTS.admin.send}/${id}`; // ✅ CORRECT: /notifications/admin/send/36
+        console.log('📤 [SEND] Calling send API:', sendUrl);
+        console.log('🌐 [SEND] Full URL:', `${API_BASE}${sendUrl}`);
+        
+        const sendResponse = await apiRequest(sendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        console.log('✅ [SEND] Send successful:', sendResponse);
+
+        // ✅ ENHANCED SUCCESS MESSAGE
+        const successMsg = sendResponse.totalRecipients > 0 
+            ? `Gửi thông báo thành công đến ${sendResponse.totalRecipients} người dùng!`
+            : 'Thông báo đã được lưu nhưng không có người nhận nào.';
+            
+        showSuccess(successMsg);
+        
+        // Refresh notifications list
+        await fetchAdminNotifications(currentPage);
+        
+        // Reload unread count
         await loadUnreadCount();
+        
     } catch (error) {
-        showError('Gửi thông báo thất bại: ' + error.message);
-        console.error('Error sending notification:', error);
+        console.error('❌ [SEND] Error details:', {
+            message: error.message,
+            stack: error.stack,
+            notificationId: id,
+            timestamp: new Date().toISOString(),
+            apiBase: API_BASE,
+            endpoint: API_ENDPOINTS.admin.send,
+            fullUrl: `${API_BASE}${API_ENDPOINTS.admin.send}/${id}`
+        });
+        
+        // ✅ ENHANCED ERROR MESSAGES WITH DEBUGGING INFO
+        let userMessage = 'Gửi thông báo thất bại: ';
+        
+        if (error.message.includes('Cannot send notification')) {
+            userMessage += 'Không thể gửi thông báo.\n\n';
+            userMessage += 'Nguyên nhân có thể:\n';
+            userMessage += '• Không có người dùng nào trong nhóm đích\n';
+            userMessage += '• User ID không hợp lệ (đối với chọn cụ thể)\n';
+            userMessage += '• Thông báo đã được gửi trước đó\n';
+            userMessage += '• Lỗi database hoặc kết nối\n\n';
+            userMessage += 'Vui lòng:\n';
+            userMessage += '1. Kiểm tra đối tượng nhận\n';
+            userMessage += '2. Thử chọn lại người dùng\n';
+            userMessage += '3. Liên hệ admin nếu vấn đề tiếp tục';
+        } else if (error.message.includes('404')) {
+            userMessage += 'Không tìm thấy endpoint API. Kiểm tra cấu hình URL.';
+        } else if (error.message.includes('500')) {
+            userMessage += 'Lỗi server nội bộ. Vui lòng thử lại sau hoặc liên hệ admin.';
+        } else if (error.message.includes('no target users')) {
+            userMessage += 'Không tìm thấy người dùng nào để gửi thông báo.\n';
+            userMessage += 'Vui lòng kiểm tra lại đối tượng nhận.';
+        } else {
+            userMessage += error.message;
+        }
+        
+        showError(userMessage);
+        
     } finally {
         const loading = document.getElementById('loading');
         if (loading) loading.style.display = 'none';
@@ -1859,12 +2746,29 @@ function getStatusText(notification) {
 
 function getTargetAudienceText(audience) {
     const audiences = {
-        'customers': '👥 Khách hàng',
-        'sellers': '🏪 Người bán', 
-        'admins': '👑 Quản trị viên',
+        'customers': '👥 Tất cả khách hàng',
+        'sellers': '🏪 Tất cả người bán', 
+        'admins': '👑 Tất cả quản trị viên',
         'both': '👥🏪 Khách hàng & Người bán',
-        'all': '🌐 Tất cả người dùng'
+        'all': '🌐 Tất cả người dùng',
+        
+        // ✅ ADD SPECIFIC TARGETING
+        'specific': '🎯 Người dùng được chọn',
+        'vip_customers': '💎 Khách hàng VIP',
+        'recent_customers': '🕒 Khách hàng gần đây',
+        'inactive_customers': '😴 Khách hàng không hoạt động',
+        'high_value_customers': '💰 Khách hàng có giá trị cao',
+        'active_sellers': '🔥 Người bán hoạt động',
+        'new_sellers': '🆕 Người bán mới',
+        'top_sellers': '⭐ Người bán hàng đầu'
     };
+    
+    // ✅ HANDLE SPECIFIC USER IDs FORMAT
+    if (audience && audience.startsWith('specific:')) {
+        const ids = audience.substring('specific:'.length).split(',');
+        return `🎯 ${ids.length} người dùng được chọn`;
+    }
+    
     return audiences[audience] || audience;
 }
 
@@ -2109,8 +3013,9 @@ function debounce(func, wait) {
 // GLOBAL EXPORTS
 // ============================================
 
-window.openModal = openModal;
-window.closeModal = closeModal;
+
+window.openUserSelectionModal = openUserSelectionModal;
+window.closeUserSelectionModal = closeUserSelectionModal;
 window.saveNotification = saveNotification;
 window.deleteNotification = deleteNotification;
 window.sendNotification = sendNotification;
@@ -2127,3 +3032,10 @@ window.switchToUserView = switchToUserView;
 window.toggleUnreadOnly = toggleUnreadOnly;
 window.viewNotificationStats = viewNotificationStats;
 window.closeStatsModal = closeStatsModal;
+
+window.loadUsersPage = loadUsersPage;
+window.searchUsers = searchUsers;
+window.selectAllUsers = selectAllUsers;
+window.clearAllUsers = clearAllUsers;
+window.toggleUserSelection = toggleUserSelection;
+window.confirmUserSelection = confirmUserSelection;

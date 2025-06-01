@@ -173,64 +173,71 @@ namespace ShopxEX1.Services.Implementations
         }
 
         public async Task<bool> SendNotificationAsync(int notificationId)
+{
+    try
+    {
+        Console.WriteLine($"🚀 [SEND] Starting send process for notification {notificationId}");
+
+        var notification = await _context.Notifications
+            .FirstOrDefaultAsync(n => n.NotificationID == notificationId);
+
+        if (notification == null)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                var notification = await _context.Notifications.FindAsync(notificationId);
-                if (notification == null || notification.Status != "draft")
-                    return false;
-
-                // Check if scheduled notification is ready to send
-                if (notification.ScheduledAt.HasValue && notification.ScheduledAt.Value > VietnamNow)
-                {
-                    throw new InvalidOperationException("Scheduled notification is not ready to send yet");
-                }
-
-                // Get target users based on audience
-                List<int> userIds = await GetTargetUserIds(notification.TargetAudience);
-
-                if (!userIds.Any())
-                {
-                    throw new InvalidOperationException("No target users found for this notification");
-                }
-
-                // Create UserNotifications for each target user
-                var userNotifications = new List<UserNotification>();
-                foreach (var userId in userIds)
-                {
-                    var userType = await GetUserTypeFromUserIdAsync(userId);
-                    userNotifications.Add(new UserNotification
-                    {
-                        NotificationID = notificationId,
-                        UserID = userId,
-                        UserType = userType,
-                        ReceivedAt = VietnamNow,
-                        IsRead = false,
-                        IsDeleted = false
-                    });
-                }
-
-                _context.UserNotifications.AddRange(userNotifications);
-
-                // Update notification status
-                notification.Status = "sent";
-                notification.SentAt = VietnamNow;
-                notification.TotalSent = userIds.Count;
-
-                _context.Notifications.Update(notification);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+            Console.WriteLine($"❌ [SEND] Notification {notificationId} not found");
+            return false;
         }
 
+        if (notification.Status == "sent")
+        {
+            Console.WriteLine($"⚠️ [SEND] Notification {notificationId} already sent");
+            return false;
+        }
+
+        // ✅ GET TARGET USER IDS WITH FIXED LINQ APPROACH
+        var targetUserIds = await GetTargetUserIds(notification.TargetAudience);
+
+        if (!targetUserIds.Any())
+        {
+            Console.WriteLine($"⚠️ [SEND] No target users found for audience: {notification.TargetAudience}");
+            return false;
+        }
+
+        Console.WriteLine($"📋 [SEND] Found {targetUserIds.Count} target users");
+
+        // ✅ CREATE USER NOTIFICATIONS USING LINQ
+        var userNotifications = targetUserIds.Select(userId => new UserNotification
+        {
+            NotificationID = notificationId,
+            UserID = userId,
+            UserType = GetUserTypeForUserId(userId), // Helper method
+            ReceivedAt = VietnamNow,
+            IsRead = false,
+            IsDeleted = false
+        }).ToList();
+
+        // ✅ BATCH INSERT USER NOTIFICATIONS
+        await _context.UserNotifications.AddRangeAsync(userNotifications);
+
+        // ✅ UPDATE NOTIFICATION STATUS
+        notification.Status = "sent";
+        notification.SentAt = VietnamNow;
+        notification.TotalSent = targetUserIds.Count;
+
+        _context.Notifications.Update(notification);
+        await _context.SaveChangesAsync();
+
+        Console.WriteLine($"✅ [SEND] Successfully sent notification {notificationId} to {targetUserIds.Count} users");
+        return true;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [SEND ERROR] {ex.Message}");
+        Console.WriteLine($"❌ [SEND STACK] {ex.StackTrace}");
+        throw;
+    }
+}
+       
+       
         public async Task<object> GetNotificationStatsAsync(int notificationId)
         {
             var notification = await _context.Notifications.FindAsync(notificationId);
@@ -422,91 +429,270 @@ namespace ShopxEX1.Services.Implementations
 
         #region Helper Methods
 
-        private async Task<List<int>> GetTargetUserIds(string targetAudience)
+       public async Task<List<int>> GetTargetUserIds(string targetAudience)
 {
-    Console.WriteLine($"🎯 [ADMIN TARGET] Processing audience: {targetAudience}");
-    
-    // ✅ HANDLE SPECIFIC USER IDS (format: "specific:1,2,3,4")
-    if (targetAudience.StartsWith("specific:", StringComparison.OrdinalIgnoreCase))
+    try
     {
-        var idsString = targetAudience.Substring("specific:".Length);
-        var userIds = idsString
-            .Split(',', StringSplitOptions.RemoveEmptyEntries)
-            .Where(id => int.TryParse(id.Trim(), out _))
-            .Select(id => int.Parse(id.Trim()))
-            .ToList();
-            
-        Console.WriteLine($"🎯 [ADMIN TARGET] Specific users: [{string.Join(", ", userIds)}]");
+        Console.WriteLine($"🎯 [TARGET] === PROCESSING TARGET AUDIENCE ===");
+        Console.WriteLine($"🎯 [TARGET] Input: '{targetAudience}'");
+        Console.WriteLine($"🎯 [TARGET] Type: {targetAudience?.GetType()?.Name}");
+        Console.WriteLine($"🎯 [TARGET] Length: {targetAudience?.Length}");
         
-        // Validate users exist and are active
-        var validUsers = await _context.Users
-            .Where(u => userIds.Contains(u.UserID) && u.IsActive)
-            .Select(u => u.UserID)
-            .ToListAsync();
+        if (string.IsNullOrWhiteSpace(targetAudience))
+        {
+            Console.WriteLine($"❌ [TARGET] Empty or null target audience");
+            return new List<int>();
+        }
+
+        // ✅ ENHANCED SPECIFIC USER HANDLING - SUPPORT BOTH FORMATS
+        if (targetAudience.StartsWith("specific:", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"🎯 [TARGET] Processing 'specific:IDs' format");
+            return await ProcessSpecificTargeting(targetAudience);
+        }
+        
+        // ✅ NEW: HANDLE PLAIN "specific" (legacy support)
+        if (targetAudience.Equals("specific", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"❌ [TARGET] Plain 'specific' format detected - this is invalid!");
+            Console.WriteLine($"❌ [TARGET] Expected format: 'specific:1,2,3,4'");
+            Console.WriteLine($"❌ [TARGET] This indicates a frontend bug!");
             
-        Console.WriteLine($"✅ [ADMIN TARGET] Valid specific users: {validUsers.Count}/{userIds.Count}");
-        return validUsers;
+            // ✅ RETURN EMPTY BUT LOG THE ISSUE
+            return new List<int>();
+        }
+
+        // ✅ HANDLE ROLE-SPECIFIC TARGETING
+        if (targetAudience.Contains(":"))
+        {
+            return await ProcessSpecificTargeting(targetAudience);
+        }
+
+        // ✅ GENERAL TARGETING WITH ENHANCED LOGGING
+        Console.WriteLine($"🎯 [TARGET] Processing general targeting: '{targetAudience.ToLower()}'");
+        
+        var result = targetAudience.ToLower() switch
+        {
+            "customers" => await GetCustomersAsync(),
+            "sellers" => await GetSellersAsync(),
+            "admins" => await GetAdminsAsync(),
+            "both" => await GetBothCustomersAndSellersAsync(),
+            "all" => await GetAllUsersAsync(),
+            "vip_customers" => await GetVipCustomersAsync(),
+            "recent_customers" => await GetRecentCustomersAsync(),
+            "inactive_customers" => await GetInactiveCustomersAsync(),
+            "high_value_customers" => await GetHighValueCustomersAsync(),
+            "active_sellers" => await GetActiveSellerssAsync(),
+            "new_sellers" => await GetNewSellersAsync(),
+            "top_sellers" => await GetTopSellersAsync(),
+        };
+
+        Console.WriteLine($"✅ [TARGET] Final result: {result.Count} users for '{targetAudience}'");
+        return result;
     }
-    
-    // ✅ HANDLE ADVANCED TARGETING
-    return targetAudience.ToLower() switch
+    catch (Exception ex)
     {
-        // Basic roles
-        "customers" => await _context.Users
-            .Where(u => u.Role == "Customer" && u.IsActive)
-            .Select(u => u.UserID)
-            .ToListAsync(),
-            
-        "sellers" => await _context.Users
+        Console.WriteLine($"❌ [TARGET ERROR] {ex.Message}");
+        Console.WriteLine($"❌ [TARGET STACK] {ex.StackTrace}");
+        return new List<int>();
+    }
+}
+
+public async Task<List<int>> ProcessSpecificTargeting(string targetAudience)
+{
+    Console.WriteLine($"🎯 [SPECIFIC] Processing specific user targeting");
+    
+    var idsString = targetAudience.Substring("specific:".Length);
+    Console.WriteLine($"🎯 [SPECIFIC] Extracted IDs string: '{idsString}'");
+    
+    if (string.IsNullOrWhiteSpace(idsString))
+    {
+        Console.WriteLine($"❌ [SPECIFIC] Empty IDs string after 'specific:'");
+        return new List<int>();
+    }
+
+    // ✅ PARSE USER IDs WITH DETAILED LOGGING
+    var idParts = idsString.Split(',', StringSplitOptions.RemoveEmptyEntries);
+    Console.WriteLine($"🎯 [SPECIFIC] Split into {idParts.Length} parts: [{string.Join(", ", idParts)}]");
+
+    var userIds = new List<int>();
+    foreach (var idPart in idParts)
+    {
+        var trimmed = idPart.Trim();
+        if (int.TryParse(trimmed, out int userId) && userId > 0)
+        {
+            userIds.Add(userId);
+            Console.WriteLine($"✅ [SPECIFIC] Valid ID: {userId}");
+        }
+        else
+        {
+            Console.WriteLine($"❌ [SPECIFIC] Invalid ID: '{trimmed}'");
+        }
+    }
+
+    Console.WriteLine($"🎯 [SPECIFIC] Parsed {userIds.Count} valid IDs: [{string.Join(", ", userIds)}]");
+
+    if (!userIds.Any())
+    {
+        Console.WriteLine($"❌ [SPECIFIC] No valid user IDs found");
+        return new List<int>();
+    }
+
+    // ✅ VALIDATE USERS EXIST AND ARE ACTIVE
+    Console.WriteLine($"🔍 [SPECIFIC] Validating users in database...");
+    
+    var validUsers = new List<int>();
+    foreach (var userId in userIds)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserID == userId);
+        if (user == null)
+        {
+            Console.WriteLine($"❌ [SPECIFIC] User {userId}: Not found in database");
+        }
+        else if (!user.IsActive)
+        {
+            Console.WriteLine($"⚠️ [SPECIFIC] User {userId}: Found but IsActive=false (Name: {user.FullName})");
+        }
+        else
+        {
+            Console.WriteLine($"✅ [SPECIFIC] User {userId}: Valid (Name: {user.FullName}, Role: {user.Role})");
+            validUsers.Add(userId);
+        }
+    }
+
+    Console.WriteLine($"✅ [SPECIFIC] Final result: {validUsers.Count}/{userIds.Count} valid users");
+    return validUsers;
+}
+private async Task<List<int>> GetCustomersAsync()
+        {
+            try
+            {
+                var customers = await _context.Users
+                    .Where(u => u.Role == "Customer" && u.IsActive)
+                    .Select(u => u.UserID)
+                    .ToListAsync();
+
+                Console.WriteLine($"📊 [CUSTOMERS] Found {customers.Count} active customers");
+                return customers;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [CUSTOMERS ERROR] {ex.Message}");
+                return new List<int>();
+            }
+        }
+
+private async Task<List<int>> GetSellersAsync()
+{
+    try
+    {
+        var sellers = await _context.Users
             .Where(u => u.Role == "Seller" && u.IsActive)
             .Select(u => u.UserID)
-            .ToListAsync(),
-            
-        "admins" => await _context.Users
+            .ToListAsync();
+        
+        Console.WriteLine($"📊 [SELLERS] Found {sellers.Count} active sellers");
+        return sellers;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [SELLERS ERROR] {ex.Message}");
+        return new List<int>();
+    }
+}
+
+private async Task<List<int>> GetAdminsAsync()
+{
+    try
+    {
+        var admins = await _context.Users
             .Where(u => u.Role == "Admin" && u.IsActive)
             .Select(u => u.UserID)
-            .ToListAsync(),
-            
-        // Combined roles
-        "both" => await _context.Users
+            .ToListAsync();
+        
+        Console.WriteLine($"📊 [ADMINS] Found {admins.Count} active admins");
+        return admins;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [ADMINS ERROR] {ex.Message}");
+        return new List<int>();
+    }
+}
+
+private async Task<List<int>> GetBothCustomersAndSellersAsync()
+{
+    try
+    {
+        var both = await _context.Users
             .Where(u => (u.Role == "Customer" || u.Role == "Seller") && u.IsActive)
             .Select(u => u.UserID)
-            .ToListAsync(),
-            
-        "all" => await _context.Users
+            .ToListAsync();
+        
+        Console.WriteLine($"📊 [BOTH] Found {both.Count} active customers + sellers");
+        return both;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [BOTH ERROR] {ex.Message}");
+        return new List<int>();
+    }
+}
+
+private async Task<List<int>> GetAllUsersAsync()
+{
+    try
+    {
+        var allUsers = await _context.Users
             .Where(u => u.IsActive)
             .Select(u => u.UserID)
-            .ToListAsync(),
-            
-        // ✅ ADVANCED CUSTOMER TARGETING
-        "vip_customers" => await GetVipCustomersAsync(),
-        "recent_customers" => await GetRecentCustomersAsync(),
-        "inactive_customers" => await GetInactiveCustomersAsync(),
-        "high_value_customers" => await GetHighValueCustomersAsync(),
+            .ToListAsync();
         
-        // ✅ SELLER TARGETING
-        "active_sellers" => await GetActiveSellerssAsync(),
-        "new_sellers" => await GetNewSellersAsync(),
-        "top_sellers" => await GetTopSellersAsync(),
-        
-        _ => new List<int>()
-    };
+        Console.WriteLine($"📊 [ALL] Found {allUsers.Count} active users");
+        return allUsers;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [ALL ERROR] {ex.Message}");
+        return new List<int>();
+    }
 }
-        
-        private async Task<List<int>> GetVipCustomersAsync()
+        private string GetUserTypeForUserId(int userId)
 {
-    // Customers with >= 5 orders or >= 5M VND spent
-    var sql = @"
-        SELECT DISTINCT u.UserID 
-        FROM Users u
-        INNER JOIN Orders o ON u.UserID = o.UserID
-        WHERE u.Role = 'Customer' AND u.IsActive = 1
-        GROUP BY u.UserID
-        HAVING COUNT(o.OrderID) >= 5 OR SUM(o.TotalPayment) >= 5000000
-    ";
-    
-    return await _context.Database.SqlQueryRaw<int>(sql).ToListAsync();
+    try
+    {
+        var user = _context.Users.FirstOrDefault(u => u.UserID == userId);
+        return user?.Role ?? "Customer"; // Default to Customer if not found
+    }
+    catch
+    {
+        return "Customer"; // Safe fallback
+    }
 }
+
+public async Task<List<int>> GetVipCustomersAsync()
+{
+    try
+    {
+        // ✅ Use LINQ instead of raw SQL to avoid EF Core 9.0 issues
+        var vipCustomers = await _context.Orders
+            .Join(_context.Users, o => o.UserID, u => u.UserID, (o, u) => new { o, u })
+            .Where(x => x.u.Role == "Customer" && x.u.IsActive)
+            .GroupBy(x => new { x.u.UserID })
+            .Where(g => g.Select(x => x.o.OrderID).Distinct().Count() >= 5 ||
+                               g.Sum(x => x.o.TotalPayment) >= 5000000)
+                    .Select(g => g.Key.UserID)
+                    .ToListAsync();
+
+                Console.WriteLine($"✅ [VIP CUSTOMERS] Found {vipCustomers.Count} VIP customers");
+                return vipCustomers;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [VIP CUSTOMERS ERROR] {ex.Message}");
+                return new List<int>();
+            }
+        }
 
 private async Task<List<int>> GetRecentCustomersAsync()
 {
@@ -527,54 +713,73 @@ private async Task<List<int>> GetRecentCustomersAsync()
 
 private async Task<List<int>> GetInactiveCustomersAsync()
 {
-    // Customers with no orders in last 90 days but have previous orders
-    var cutoffDate = DateTime.UtcNow.AddDays(-90);
-    
-    var sql = @"
-        SELECT DISTINCT u.UserID 
-        FROM Users u
-        WHERE u.Role = 'Customer' AND u.IsActive = 1
-        AND EXISTS (SELECT 1 FROM Orders o WHERE o.UserID = u.UserID)
-        AND NOT EXISTS (SELECT 1 FROM Orders o WHERE o.UserID = u.UserID AND o.OrderDate >= @cutoffDate)
-    ";
-    
-    return await _context.Database
-        .SqlQueryRaw<int>(sql, new SqlParameter("@cutoffDate", cutoffDate))
-        .ToListAsync();
-}
+    try
+    {
+        var cutoffDate = VietnamNow.AddDays(-90);
+        
+        // ✅ Use LINQ instead of raw SQL
+        var inactiveCustomers = await _context.Users
+            .Where(u => u.Role == "Customer" && u.IsActive)
+            .Where(u => _context.Orders.Any(o => o.UserID == u.UserID)) // Has previous orders
+            .Where(u => !_context.Orders.Any(o => o.UserID == u.UserID && o.OrderDate >= cutoffDate)) // No recent orders
+            .Select(u => u.UserID)
+            .ToListAsync();
 
+        Console.WriteLine($"✅ [INACTIVE CUSTOMERS] Found {inactiveCustomers.Count} inactive customers");
+        return inactiveCustomers;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [INACTIVE CUSTOMERS ERROR] {ex.Message}");
+        return new List<int>();
+    }
+}
 private async Task<List<int>> GetHighValueCustomersAsync()
 {
-    // Customers with total spending >= 2M VND
-    var sql = @"
-        SELECT u.UserID 
-        FROM Users u
-        INNER JOIN Orders o ON u.UserID = o.UserID
-        WHERE u.Role = 'Customer' AND u.IsActive = 1
-        GROUP BY u.UserID
-        HAVING SUM(o.TotalPayment) >= 2000000
-    ";
-    
-    return await _context.Database.SqlQueryRaw<int>(sql).ToListAsync();
-}
+    try
+    {
+        // ✅ Use LINQ instead of raw SQL
+        var highValueCustomers = await _context.Orders
+            .Join(_context.Users, o => o.UserID, u => u.UserID, (o, u) => new { o, u })
+            .Where(x => x.u.Role == "Customer" && x.u.IsActive)
+            .GroupBy(x => x.u.UserID)
+            .Where(g => g.Sum(x => x.o.TotalPayment) >= 2000000)
+            .Select(g => g.Key)
+            .ToListAsync();
 
-private async Task<List<int>> GetActiveSellerssAsync()
+        Console.WriteLine($"✅ [HIGH VALUE CUSTOMERS] Found {highValueCustomers.Count} high value customers");
+        return highValueCustomers;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [HIGH VALUE CUSTOMERS ERROR] {ex.Message}");
+        return new List<int>();
+    }
+}
+public async Task<List<int>> GetActiveSellerssAsync()
 {
-    // Sellers with orders in last 30 days
-    var cutoffDate = DateTime.UtcNow.AddDays(-30);
-    
-    var sql = @"
-        SELECT DISTINCT u.UserID 
-        FROM Users u
-        INNER JOIN Products p ON u.UserID = p.SellerID
-        INNER JOIN OrderDetails od ON p.ProductID = od.ProductID
-        INNER JOIN Orders o ON od.OrderID = o.OrderID
-        WHERE u.Role = 'Seller' AND u.IsActive = 1 AND o.OrderDate >= @cutoffDate
-    ";
-    
-    return await _context.Database
-        .SqlQueryRaw<int>(sql, new SqlParameter("@cutoffDate", cutoffDate))
-        .ToListAsync();
+    try
+    {
+        var cutoffDate = VietnamNow.AddDays(-30);
+        
+        // ✅ Use LINQ instead of SqlQueryRaw
+        var activeSellers = await _context.OrderDetails
+            .Include(od => od.Product)
+            .Include(od => od.Order)
+            .Join(_context.Users, od => od.Product.SellerID, u => u.UserID, (od, u) => new { od, u })
+            .Where(x => x.u.Role == "Seller" && x.u.IsActive && x.od.Order.OrderDate >= cutoffDate)
+            .Select(x => x.u.UserID)
+            .Distinct()
+            .ToListAsync();
+
+        Console.WriteLine($"✅ [ACTIVE SELLERS] Found {activeSellers.Count} active sellers");
+        return activeSellers;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [ACTIVE SELLERS ERROR] {ex.Message}");
+        return new List<int>();
+    }
 }
 
 private async Task<List<int>> GetNewSellersAsync()
@@ -590,23 +795,34 @@ private async Task<List<int>> GetNewSellersAsync()
 
 private async Task<List<int>> GetTopSellersAsync()
 {
-    // Top 50 sellers by revenue in last 3 months
-    var cutoffDate = DateTime.UtcNow.AddDays(-90);
-    
-    var sql = @"
-        SELECT TOP 50 u.UserID 
-        FROM Users u
-        INNER JOIN Products p ON u.UserID = p.SellerID
-        INNER JOIN OrderDetails od ON p.ProductID = od.ProductID
-        INNER JOIN Orders o ON od.OrderID = o.OrderID
-        WHERE u.Role = 'Seller' AND u.IsActive = 1 AND o.OrderDate >= @cutoffDate
-        GROUP BY u.UserID
-        ORDER BY SUM(od.UnitPrice * od.Quantity) DESC
-    ";
-    
-    return await _context.Database
-        .SqlQueryRaw<int>(sql, new SqlParameter("@cutoffDate", cutoffDate))
-        .ToListAsync();
+    try
+    {
+        var cutoffDate = VietnamNow.AddDays(-90);
+        
+        // ✅ Use LINQ instead of SqlQueryRaw
+        var topSellers = await _context.OrderDetails
+            .Include(od => od.Product)
+            .Include(od => od.Order)
+            .Join(_context.Users, od => od.Product.SellerID, u => u.UserID, (od, u) => new { od, u })
+            .Where(x => x.u.Role == "Seller" && x.u.IsActive && x.od.Order.OrderDate >= cutoffDate)
+            .GroupBy(x => x.u.UserID)
+            .Select(g => new { 
+                UserID = g.Key, 
+                TotalRevenue = g.Sum(x => x.od.UnitPrice * x.od.Quantity) 
+            })
+            .OrderByDescending(x => x.TotalRevenue)
+            .Take(50)
+            .Select(x => x.UserID)
+            .ToListAsync();
+
+        Console.WriteLine($"✅ [TOP SELLERS] Found {topSellers.Count} top sellers");
+        return topSellers;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [TOP SELLERS ERROR] {ex.Message}");
+        return new List<int>();
+    }
 }
 
         private async Task<string> GetUserTypeFromUserIdAsync(int userId)
@@ -657,19 +873,41 @@ private async Task<List<int>> GetTopSellersAsync()
         // Method to get notification statistics
         public async Task<int> GetRecipientCountAsync(string targetAudience)
         {
-            return targetAudience.ToLower() switch
-            {
-                "customers" => await _context.Users
-                    .CountAsync(u => u.Role == "Customer"),
-                "sellers" => await _context.Users
-                    .CountAsync(u => u.Role == "Seller"),
-                "admins" => await _context.Users
-                    .CountAsync(u => u.Role == "Admin"),
-                "both" => await _context.Users
-                    .CountAsync(u => u.Role == "Customer" || u.Role == "Seller"),
-                "all" => await _context.Users.CountAsync(),
-                _ => 0
-            };
+            try
+    {
+        Console.WriteLine($"🔢 [COUNT] Getting count for audience: '{targetAudience}'");
+        
+        // ✅ HANDLE SPECIFIC USER FORMAT
+        if (targetAudience.StartsWith("specific:", StringComparison.OrdinalIgnoreCase))
+        {
+            var idsString = targetAudience.Substring("specific:".Length);
+            var userIds = idsString
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Where(id => int.TryParse(id.Trim(), out _))
+                .Select(id => int.Parse(id.Trim()))
+                .Distinct()
+                .ToList();
+
+            // ✅ VALIDATE ACTIVE USERS
+            var validCount = await _context.Users
+                .CountAsync(u => userIds.Contains(u.UserID) && u.IsActive);
+
+            Console.WriteLine($"✅ [COUNT] Specific users: {validCount}/{userIds.Count} valid");
+            return validCount;
+        }
+
+        // ✅ DELEGATE TO GetTargetUserIds FOR CONSISTENCY
+        var targetUserIds = await GetTargetUserIds(targetAudience);
+        var count = targetUserIds.Count;
+        
+        Console.WriteLine($"✅ [COUNT] Found {count} users for '{targetAudience}'");
+        return count;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [COUNT ERROR] {ex.Message}");
+        return 0;
+    }
         }
 
         #endregion
@@ -729,42 +967,44 @@ private async Task<List<int>> GetTopSellersAsync()
         }
 
         public async Task<NotificationDto> CreateSellerNotificationAsync(CreateSellerNotificationDto dto, int sellerId)
-        {
-            var notification = new Notification
-            {
-                Title = dto.Title,
-                Content = dto.Content,
-                Type = dto.Type,
-                Icon = dto.Icon ?? "fa-store",
-                ActionText = dto.ActionText,
-                ActionUrl = dto.ActionUrl,
-                TargetAudience = $"seller_{sellerId}_{dto.TargetCustomers}", // Custom format for seller notifications
-                Status = "draft",
-                ScheduledAt = dto.ScheduledAt,
-                CreatedBy = sellerId,
-                CreatedAt = VietnamNow,
-                TotalSent = 0,
-                TotalRead = 0
-            };
+{
+    // ✅ FIX: Xây dựng TargetAudience đúng format
+    string targetAudience;
+    
+    if (dto.SpecificCustomerIds?.Any() == true)
+    {
+        // ✅ SPECIFIC: seller_123_specific_1,2,3,4
+        targetAudience = $"seller_{sellerId}_specific_{string.Join(",", dto.SpecificCustomerIds)}";
+    }
+    else
+    {
+        // ✅ GENERAL: seller_123_all, seller_123_recent, etc.
+        targetAudience = $"seller_{sellerId}_{dto.TargetCustomers}";
+    }
 
-            // Store specific customer IDs in a separate table or JSON field if needed
-            if (dto.SpecificCustomerIds?.Any() == true)
-                {
-                    // ✅ EMBED customer IDs directly in TargetAudience string
-                    notification.TargetAudience = $"seller_{sellerId}_specific_{string.Join(",", dto.SpecificCustomerIds)}";
-                    Console.WriteLine($"✅ [CREATE] Set specific target: {notification.TargetAudience}");
-                }
-                else
-                {
-                    notification.TargetAudience = $"seller_{sellerId}_{dto.TargetCustomers}";
-                    Console.WriteLine($"✅ [CREATE] Set general target: {notification.TargetAudience}");
-                }
+    var notification = new Notification
+    {
+        Title = dto.Title,
+        Content = dto.Content,
+        Type = dto.Type,
+        Icon = dto.Icon ?? "fa-store",
+        ActionText = dto.ActionText,
+        ActionUrl = dto.ActionUrl,
+        TargetAudience = targetAudience, 
+        Status = "draft",
+        ScheduledAt = dto.ScheduledAt,
+        CreatedBy = sellerId,
+        CreatedAt = VietnamNow,
+        TotalSent = 0,
+        TotalRead = 0
+    };
 
-            _context.Notifications.Add(notification);
-            await _context.SaveChangesAsync();
+    _context.Notifications.Add(notification);
+    await _context.SaveChangesAsync();
 
-            return _mapper.Map<NotificationDto>(notification);
-        }
+    Console.WriteLine($"✅ [CREATE] Created notification with target: {targetAudience}");
+    return _mapper.Map<NotificationDto>(notification);
+}
 
         public async Task<bool> SendSellerNotificationAsync(int notificationId, int sellerId)
 {
@@ -872,47 +1112,49 @@ private async Task<List<int>> GetTopSellersAsync()
         throw;
     }
 }
+        
         public async Task<List<CustomerInfoDto>> GetSellerCustomersAsync(int sellerId)
         {
             try
+    {
+        Console.WriteLine($"🔍 [CUSTOMERS] Getting customers for sellerId: {sellerId}");
+
+        // ✅ Use LINQ instead of raw SQL
+        var customers = await _context.OrderDetails
+            .Include(od => od.Product)
+            .Include(od => od.Order)
+                .ThenInclude(o => o.User)
+            .Where(od => od.Product.SellerID == sellerId && 
+                        od.Order.User.Role == "Customer" && 
+                        od.Order.User.IsActive)
+            .GroupBy(od => new
             {
-                Console.WriteLine($"🔍 [SQL] Getting customers for sellerId: {sellerId}");
-
-                var sql = @"
-            SELECT 
-                u.UserID,
-                ISNULL(u.FullName, N'Không xác định') as UserName,
-                ISNULL(u.Email, N'Không xác định') as Email,
-                COUNT(DISTINCT o.OrderID) as TotalOrders,
-                ISNULL(SUM(o.TotalPayment), 0) as TotalSpent,
-                MAX(o.OrderDate) as LastOrderDate,
-                CASE 
-                    WHEN COUNT(DISTINCT o.OrderID) >= 5 THEN N'VIP'
-                    WHEN COUNT(DISTINCT o.OrderID) >= 3 THEN N'Frequent'
-                    ELSE N'Regular'
-                END as CustomerType
-            FROM OrderDetails od
-            INNER JOIN Products p ON od.ProductID = p.ProductID
-            INNER JOIN Orders o ON od.OrderID = o.OrderID  
-            INNER JOIN Users u ON o.UserID = u.UserID
-            WHERE p.SellerID = @sellerId 
-              AND u.Role = N'Customer'
-            GROUP BY u.UserID, u.FullName, u.Email
-            ORDER BY TotalSpent DESC
-        ";
-
-                var customers = await _context.Database
-                    .SqlQueryRaw<CustomerInfoDto>(sql, new Microsoft.Data.SqlClient.SqlParameter("@sellerId", sellerId))
-                    .ToListAsync();
-
-                Console.WriteLine($"✅ [SQL] Found {customers.Count} customers for seller {sellerId}");
-                return customers;
-            }
-            catch (Exception ex)
+                od.Order.User.UserID,
+                od.Order.User.FullName,
+                od.Order.User.Email
+            })
+            .Select(g => new CustomerInfoDto
             {
-                Console.WriteLine($"❌ [SQL ERROR] {ex.Message}");
-                return new List<CustomerInfoDto>();
-            }
+                UserID = g.Key.UserID,
+                UserName = g.Key.FullName ?? "Không xác định",
+                Email = g.Key.Email ?? "Không xác định",
+                TotalOrders = g.Select(od => od.Order.OrderID).Distinct().Count(),
+                TotalSpent = g.Sum(od => od.Order.TotalPayment),
+                LastOrderDate = g.Max(od => od.Order.OrderDate),
+                CustomerType = g.Select(od => od.Order.OrderID).Distinct().Count() >= 5 ? "VIP" :
+                             g.Select(od => od.Order.OrderID).Distinct().Count() >= 3 ? "Frequent" : "Regular"
+            })
+            .OrderByDescending(c => c.TotalSpent)
+            .ToListAsync();
+
+        Console.WriteLine($"✅ [CUSTOMERS] Found {customers.Count} customers for seller {sellerId}");
+        return customers;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [CUSTOMERS ERROR] {ex.Message}");
+        return new List<CustomerInfoDto>();
+    }
         }
 
         public async Task<List<NotificationTemplateDto>> GetSellerNotificationTemplatesAsync()
@@ -977,142 +1219,136 @@ private async Task<List<int>> GetTopSellersAsync()
         Console.WriteLine($"🎯 [TARGET] Processing: {targetAudience}");
         
         var parts = targetAudience.Split('_');
-        if (parts.Length < 3) 
+        
+        // ✅ VALIDATE FORMAT: seller_123_type hoặc seller_123_specific_ids
+        if (parts.Length < 3 || parts[0] != "seller") 
         {
             Console.WriteLine($"❌ [TARGET] Invalid format: {targetAudience}");
             return new List<int>();
         }
 
-        var targetType = parts[2]; // all, recent, frequent, vip, specific
+        // ✅ VALIDATE SELLER ID
+        if (!int.TryParse(parts[1], out int targetSellerId) || targetSellerId != sellerId)
+        {
+            Console.WriteLine($"❌ [TARGET] Seller ID mismatch: expected {sellerId}, got {parts[1]}");
+            return new List<int>();
+        }
 
-        // ✅ HANDLE SPECIFIC CUSTOMERS FIRST
+        var targetType = parts[2];
+
+        // ✅ HANDLE SPECIFIC CUSTOMERS
         if (targetType == "specific")
         {
             if (parts.Length < 4)
             {
-                Console.WriteLine($"❌ [SPECIFIC] No customer IDs found in: {targetAudience}");
+                Console.WriteLine($"❌ [SPECIFIC] No customer IDs in: {targetAudience}");
                 return new List<int>();
             }
 
-            var customerIdsString = parts[3];
-            Console.WriteLine($"🎯 [SPECIFIC] Raw customer IDs string: '{customerIdsString}'");
-
-            var customerIds = customerIdsString
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Where(id => int.TryParse(id.Trim(), out _))
-                .Select(id => int.Parse(id.Trim()))
-                .ToList();
-
-            Console.WriteLine($"🎯 [SPECIFIC] Parsed {customerIds.Count} customer IDs: [{string.Join(", ", customerIds)}]");
-
-            if (!customerIds.Any())
-            {
-                Console.WriteLine($"❌ [SPECIFIC] No valid customer IDs parsed");
-                return new List<int>();
-            }
-
-            // ✅ VALIDATE customers belong to seller - SAFE SQL
-            var validCustomers = new List<int>();
-            
-            foreach (var customerId in customerIds)
-            {
-                var isValidSql = @"
-                    SELECT COUNT(*)
-                    FROM Users u
-                    WHERE u.UserID = @customerId
-                      AND u.Role = 'Customer' 
-                      AND u.IsActive = 1
-                      AND EXISTS (
-                          SELECT 1 FROM OrderDetails od
-                          INNER JOIN Products p ON od.ProductID = p.ProductID
-                          INNER JOIN Orders o ON od.OrderID = o.OrderID
-                          WHERE p.SellerID = @sellerId AND o.UserID = u.UserID
-                      )
-                ";
-
-                var count = await _context.Database
-                    .SqlQueryRaw<int>(isValidSql,
-                        new SqlParameter("@customerId", customerId),
-                        new SqlParameter("@sellerId", sellerId))
-                    .FirstOrDefaultAsync();
-
-                if (count > 0)
-                {
-                    validCustomers.Add(customerId);
-                    Console.WriteLine($"✅ [SPECIFIC] Customer {customerId} is valid for seller {sellerId}");
-                }
-                else
-                {
-                    Console.WriteLine($"❌ [SPECIFIC] Customer {customerId} is NOT valid for seller {sellerId}");
-                }
-            }
-
-            Console.WriteLine($"✅ [SPECIFIC] Final result: {validCustomers.Count} valid customers out of {customerIds.Count}");
-            
-            // ✅ RETURN ONLY VALID SPECIFIC CUSTOMERS - NO FALLBACK
-            return validCustomers;
+            return await ProcessSpecificCustomers(sellerId, parts[3]);
         }
 
-        // ✅ HANDLE OTHER TARGET TYPES (all, recent, frequent, vip)
-        string sql = targetType switch
-        {
-            "all" => @"
-                SELECT DISTINCT o.UserID 
-                FROM OrderDetails od
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                INNER JOIN Orders o ON od.OrderID = o.OrderID
-                INNER JOIN Users u ON o.UserID = u.UserID
-                WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
-            ",
-            "recent" => @"
-                SELECT DISTINCT o.UserID 
-                FROM OrderDetails od
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                INNER JOIN Orders o ON od.OrderID = o.OrderID
-                INNER JOIN Users u ON o.UserID = u.UserID
-                WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
-                  AND o.OrderDate >= DATEADD(day, -30, GETUTCDATE())
-            ",
-            "frequent" => @"
-                SELECT o.UserID FROM OrderDetails od
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                INNER JOIN Orders o ON od.OrderID = o.OrderID
-                INNER JOIN Users u ON o.UserID = u.UserID
-                WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
-                GROUP BY o.UserID HAVING COUNT(DISTINCT o.OrderID) >= 3
-            ",
-            "vip" => @"
-                SELECT o.UserID FROM OrderDetails od
-                INNER JOIN Products p ON od.ProductID = p.ProductID
-                INNER JOIN Orders o ON od.OrderID = o.OrderID
-                INNER JOIN Users u ON o.UserID = u.UserID
-                WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
-                GROUP BY o.UserID HAVING SUM(ISNULL(o.TotalPayment, 0)) >= 1000000
-            ",
-            _ => ""
-        };
-
-        if (string.IsNullOrEmpty(sql))
-        {
-            Console.WriteLine($"❌ [GENERAL] Unknown target type: {targetType}");
-            return new List<int>();
-        }
-
-        var customers = await _context.Database
-            .SqlQueryRaw<int>(sql, new SqlParameter("@sellerId", sellerId))
-            .ToListAsync();
-
-        Console.WriteLine($"✅ [GENERAL] Found {customers.Count} customers for type '{targetType}'");
-        return customers;
+        // ✅ HANDLE GENERAL TARGETING
+        return await ProcessGeneralTargeting(sellerId, targetType);
     }
     catch (Exception ex)
     {
         Console.WriteLine($"❌ [TARGET ERROR] {ex.Message}");
-        Console.WriteLine($"❌ [TARGET STACK] {ex.StackTrace}");
         return new List<int>();
     }
 }
 
+private async Task<List<int>> ProcessSpecificCustomers(int sellerId, string customerIdsString)
+{
+    var customerIds = customerIdsString
+        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+        .Where(id => int.TryParse(id.Trim(), out _))
+        .Select(id => int.Parse(id.Trim()))
+        .ToList();
+
+    Console.WriteLine($"🎯 [SPECIFIC] Parsed {customerIds.Count} customer IDs");
+
+    // ✅ VALIDATE OWNERSHIP
+    var validCustomers = new List<int>();
+    
+    var validationSql = @"
+        SELECT DISTINCT o.UserID
+        FROM OrderDetails od
+        INNER JOIN Products p ON od.ProductID = p.ProductID
+        INNER JOIN Orders o ON od.OrderID = o.OrderID
+        INNER JOIN Users u ON o.UserID = u.UserID
+        WHERE p.SellerID = @sellerId 
+          AND u.Role = 'Customer' 
+          AND u.IsActive = 1
+          AND o.UserID IN ({0})
+    ";
+
+    var inClause = string.Join(",", customerIds);
+    var sql = string.Format(validationSql, inClause);
+
+    validCustomers = await _context.Database
+        .SqlQueryRaw<int>(sql, new SqlParameter("@sellerId", sellerId))
+        .ToListAsync();
+
+    Console.WriteLine($"✅ [SPECIFIC] Validated {validCustomers.Count}/{customerIds.Count} customers");
+    return validCustomers;
+}
+
+private async Task<List<int>> ProcessGeneralTargeting(int sellerId, string targetType)
+{
+    string sql = targetType switch
+    {
+        "all" => @"
+            SELECT DISTINCT o.UserID 
+            FROM OrderDetails od
+            INNER JOIN Products p ON od.ProductID = p.ProductID
+            INNER JOIN Orders o ON od.OrderID = o.OrderID
+            INNER JOIN Users u ON o.UserID = u.UserID
+            WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
+        ",
+        "recent" => @"
+            SELECT DISTINCT o.UserID 
+            FROM OrderDetails od
+            INNER JOIN Products p ON od.ProductID = p.ProductID
+            INNER JOIN Orders o ON od.OrderID = o.OrderID
+            INNER JOIN Users u ON o.UserID = u.UserID
+            WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
+              AND o.OrderDate >= DATEADD(day, -30, GETUTCDATE())
+        ",
+        "frequent" => @"
+            SELECT o.UserID FROM OrderDetails od
+            INNER JOIN Products p ON od.ProductID = p.ProductID
+            INNER JOIN Orders o ON od.OrderID = o.OrderID
+            INNER JOIN Users u ON o.UserID = u.UserID
+            WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
+            GROUP BY o.UserID HAVING COUNT(DISTINCT o.OrderID) >= 3
+        ",
+        "vip" => @"
+            SELECT o.UserID FROM OrderDetails od
+            INNER JOIN Products p ON od.ProductID = p.ProductID
+            INNER JOIN Orders o ON od.OrderID = o.OrderID
+            INNER JOIN Users u ON o.UserID = u.UserID
+            WHERE p.SellerID = @sellerId AND u.Role = 'Customer' AND u.IsActive = 1
+            GROUP BY o.UserID HAVING SUM(ISNULL(o.TotalPayment, 0)) >= 1000000
+        ",
+        _ => ""
+    };
+
+    if (string.IsNullOrEmpty(sql))
+    {
+        Console.WriteLine($"❌ [GENERAL] Unknown target type: {targetType}");
+        return new List<int>();
+    }
+
+    var customers = await _context.Database
+        .SqlQueryRaw<int>(sql, new SqlParameter("@sellerId", sellerId))
+        .ToListAsync();
+
+    Console.WriteLine($"✅ [GENERAL] Found {customers.Count} customers for type '{targetType}'");
+    return customers;
+}
+       
+       
         public async Task<bool> DeleteSellerNotificationAsync(int notificationId, int sellerId)
         {
             // ⭐ TƯƠNG TỰ DeleteNotificationAsync nhưng có check sellerId
@@ -1258,6 +1494,7 @@ private async Task<(int TotalOrders, decimal TotalSpent, string CustomerType, Da
 {
     try
     {
+        // ✅ SAFE SQL Query with proper parameter handling
         var sql = @"
             SELECT 
                 COUNT(DISTINCT o.OrderID) as TotalOrders,
@@ -1270,84 +1507,104 @@ private async Task<(int TotalOrders, decimal TotalSpent, string CustomerType, Da
               AND o.UserID = @customerId
         ";
 
-        var result = await _context.Database
-            .SqlQueryRaw<CustomerStatsResult>(sql, 
-                new SqlParameter("@sellerId", sellerId),
-                new SqlParameter("@customerId", customerId))
-            .FirstOrDefaultAsync();
-
-        if (result == null)
+        // ✅ Use raw SQL with proper parameters
+        using var command = _context.Database.GetDbConnection().CreateCommand();
+        command.CommandText = sql;
+        
+        var sellerParam = command.CreateParameter();
+        sellerParam.ParameterName = "@sellerId";
+        sellerParam.Value = sellerId;
+        command.Parameters.Add(sellerParam);
+        
+        var customerParam = command.CreateParameter();
+        customerParam.ParameterName = "@customerId";
+        customerParam.Value = customerId;
+        command.Parameters.Add(customerParam);
+        
+        await _context.Database.OpenConnectionAsync();
+        
+        using var reader = await command.ExecuteReaderAsync();
+        
+        if (await reader.ReadAsync())
         {
-            return (0, 0, "Regular", null);
+            var totalOrders = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+            var totalSpent = reader.IsDBNull(1) ? 0m : reader.GetDecimal(1);
+            var lastOrderDate = reader.IsDBNull(2) ? (DateTime?)null : reader.GetDateTime(2);
+            
+            // Determine customer type
+            string customerType = totalOrders switch
+            {
+                >= 5 when totalSpent >= 1000000 => "VIP",
+                >= 3 => "Frequent",
+                _ => "Regular"
+            };
+
+            return (totalOrders, totalSpent, customerType, lastOrderDate);
         }
-
-        // Determine customer type
-        string customerType = result.TotalOrders switch
-        {
-            >= 5 when result.TotalSpent >= 1000000 => "VIP",
-            >= 3 => "Frequent",
-            _ => "Regular"
-        };
-
-        return (result.TotalOrders, result.TotalSpent, customerType, result.LastOrderDate);
+        
+        return (0, 0, "Regular", null);
     }
     catch (Exception ex)
     {
         Console.WriteLine($"❌ [CUSTOMER STATS ERROR] {ex.Message}");
         return (0, 0, "Regular", null);
     }
-}
-public async Task<ResendNotificationResult> ResendNotificationToUserAsync(int userNotificationId, int sellerId)
-{
-    try
+    finally
     {
-        Console.WriteLine($"🔄 [SERVICE] Resending notification {userNotificationId} by seller {sellerId}");
-        
-        // ✅ CHECK OWNERSHIP
-        var userNotification = await _context.UserNotifications
-            .Include(un => un.Notification)
-            .FirstOrDefaultAsync(un => un.UserNotificationID == userNotificationId && 
-                                      un.Notification.CreatedBy == sellerId);
-        
-        if (userNotification == null)
+        await _context.Database.CloseConnectionAsync();
+    }
+}
+        public async Task<ResendNotificationResult> ResendNotificationToUserAsync(int userNotificationId, int sellerId)
         {
-            return new ResendNotificationResult
+            try
             {
-                Success = false,
-                Message = "User notification not found or not owned by you"
-            };
+                Console.WriteLine($"🔄 [SERVICE] Resending notification {userNotificationId} by seller {sellerId}");
+
+                // ✅ CHECK OWNERSHIP
+                var userNotification = await _context.UserNotifications
+                    .Include(un => un.Notification)
+                    .FirstOrDefaultAsync(un => un.UserNotificationID == userNotificationId &&
+                                              un.Notification.CreatedBy == sellerId);
+
+                if (userNotification == null)
+                {
+                    return new ResendNotificationResult
+                    {
+                        Success = false,
+                        Message = "User notification not found or not owned by you"
+                    };
+                }
+
+                // ✅ CREATE NEW NOTIFICATION RECORD
+                var newUserNotification = new UserNotification
+                {
+                    NotificationID = userNotification.NotificationID,
+                    UserID = userNotification.UserID,
+                    UserType = userNotification.UserType,
+                    ReceivedAt = VietnamNow,
+                    IsRead = false,
+                    IsDeleted = false
+                };
+
+                _context.UserNotifications.Add(newUserNotification);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"✅ [SERVICE] Successfully resent notification to user {userNotification.UserID}");
+
+                return new ResendNotificationResult
+                {
+                    Success = true,
+                    Message = "Đã gửi lại thông báo thành công",
+                    NewUserNotificationId = newUserNotification.UserNotificationID,
+                    SentAt = newUserNotification.ReceivedAt
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [SERVICE ERROR] {ex.Message}");
+                throw new Exception($"Failed to resend notification: {ex.Message}", ex);
+            }
         }
-        
-        // ✅ CREATE NEW NOTIFICATION RECORD
-        var newUserNotification = new UserNotification
-        {
-            NotificationID = userNotification.NotificationID,
-            UserID = userNotification.UserID,
-            UserType = userNotification.UserType,
-            ReceivedAt = VietnamNow,
-            IsRead = false,
-            IsDeleted = false
-        };
-        
-        _context.UserNotifications.Add(newUserNotification);
-        await _context.SaveChangesAsync();
-        
-        Console.WriteLine($"✅ [SERVICE] Successfully resent notification to user {userNotification.UserID}");
-        
-        return new ResendNotificationResult
-        {
-            Success = true,
-            Message = "Đã gửi lại thông báo thành công",
-            NewUserNotificationId = newUserNotification.UserNotificationID,
-            SentAt = newUserNotification.ReceivedAt
-        };
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"❌ [SERVICE ERROR] {ex.Message}");
-        throw new Exception($"Failed to resend notification: {ex.Message}", ex);
-    }
-}
         #endregion
     }
 }

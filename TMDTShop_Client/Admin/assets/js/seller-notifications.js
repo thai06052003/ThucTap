@@ -1172,12 +1172,27 @@ async goToPage(page) {
     }
 
     handleTargetChange(target) {
+        console.log(`🎯 [TARGET] Target changed to: ${target}`);
+        
         const specificSection = document.getElementById('specific-customers-section');
         
         if (target === 'specific') {
             specificSection?.classList.remove('hidden');
+            console.log('✅ [TARGET] Specific customers section shown');
+            
+            // ✅ ENSURE CUSTOMER LIST IS LOADED
+            if (this.customers.length === 0) {
+                console.log('🔄 [TARGET] Loading customers for specific selection...');
+                this.loadCustomers();
+            }
         } else {
             specificSection?.classList.add('hidden');
+            console.log('✅ [TARGET] Specific customers section hidden');
+            
+            // ✅ CLEAR SPECIFIC SELECTIONS when changing to non-specific
+            const checkboxes = document.querySelectorAll('.customer-checkbox:checked');
+            checkboxes.forEach(cb => cb.checked = false);
+            console.log(`🧹 [TARGET] Cleared ${checkboxes.length} specific customer selections`);
         }
     
         // ✅ UPDATE: Seller target count calculation
@@ -1219,7 +1234,6 @@ async goToPage(page) {
     }
 
     async saveNotification(action) {
-        // ✅ PREVENT DUPLICATE CALLS
         if (this.isSaving) {
             console.log('⚠️ Save already in progress, ignoring duplicate call');
             return;
@@ -1238,23 +1252,40 @@ async goToPage(page) {
             
             // ✅ VALIDATE FORM
             const formData = this.getFormData();
+            console.log('📋 [SAVE] Form data:', formData);
+            
             if (!this.validateForm(formData)) {
                 return; // Validation error already shown
             }
             
-            // ✅ PREPARE REQUEST DATA
+            // ✅ ENHANCED VALIDATION for specific customers
+            if (formData.targetCustomers === 'specific') {
+                if (!formData.specificCustomerIds || formData.specificCustomerIds.length === 0) {
+                    showToast('Vui lòng chọn ít nhất một khách hàng để gửi thông báo', 'error');
+                    return;
+                }
+                console.log(`🎯 [SAVE] Specific targeting: ${formData.specificCustomerIds.length} customers selected`);
+                console.log(`🎯 [SAVE] Customer IDs: [${formData.specificCustomerIds.join(', ')}]`);
+            }
+            
+            // ✅ PREPARE REQUEST DATA with PROPER LOGIC
             const requestData = {
                 title: formData.title,
                 content: formData.content,
                 type: formData.type,
                 actionText: formData.actionText,
                 actionUrl: formData.actionUrl,
-                targetAudience: formData.targetCustomers,
-                specificCustomerIds: formData.specificCustomerIds,
+                // ✅ FIX: Send the correct field name based on backend expectation
+                targetCustomers: formData.targetCustomers, // Backend expects this field name
+                specificCustomerIds: formData.specificCustomerIds, // Backend will use this when targetCustomers === 'specific'
                 scheduledAt: formData.scheduledAt
             };
             
-            console.log('📤 [SAVE] Request data:', requestData);
+            console.log('📤 [SAVE] Request data being sent:', {
+                ...requestData,
+                specificCustomerIds: requestData.specificCustomerIds?.length || 0,
+                targetCustomers: requestData.targetCustomers
+            });
             
             let response;
             
@@ -1579,53 +1610,88 @@ populateViewModal(notification) {
     
     actionsContainer.innerHTML = actionButtons;
 }
-    getFormData() {
-        const target = document.getElementById('target-customers').value;
-        const specificCustomers = target === 'specific' ? 
-            Array.from(document.querySelectorAll('.customer-checkbox:checked')).map(cb => parseInt(cb.value)) : 
-            null;
+getFormData() {
+    const target = document.getElementById('target-customers').value;
+    const specificCustomers = target === 'specific' ? 
+        Array.from(document.querySelectorAll('.customer-checkbox:checked')).map(cb => parseInt(cb.value)) : 
+        null;
 
-        return {
-            title: document.getElementById('notification-title').value,
-            content: document.getElementById('notification-content').value,
-            type: document.getElementById('notification-type').value,
-            actionText: document.getElementById('action-text').value || null,
-            actionUrl: document.getElementById('action-url').value || null,
-            targetCustomers: target,
-            specificCustomerIds: specificCustomers,
-            scheduledAt: document.getElementById('schedule-notification').checked ? 
-                document.getElementById('scheduled-time').value || null : null
-        };
+    // ✅ FIX: Validate specific customers selection
+    if (target === 'specific' && (!specificCustomers || specificCustomers.length === 0)) {
+        console.warn('⚠️ [FORM] Specific target selected but no customers chosen');
     }
 
-    validateForm(data) {
-        if (!data.title) {
-            showToast('Vui lòng nhập tiêu đề thông báo', 'error');
-            return false;
+    return {
+        title: document.getElementById('notification-title').value,
+        content: document.getElementById('notification-content').value,
+        type: document.getElementById('notification-type').value,
+        actionText: document.getElementById('action-text').value || null,
+        actionUrl: document.getElementById('action-url').value || null,
+        targetCustomers: target,
+        specificCustomerIds: specificCustomers,
+        scheduledAt: document.getElementById('schedule-notification').checked ? 
+            document.getElementById('scheduled-time').value || null : null,
+        // ✅ ADD: Debug info
+        _debug: {
+            targetType: target,
+            hasSpecificCustomers: specificCustomers?.length > 0,
+            customerCount: specificCustomers?.length || 0
         }
+    };
+}
 
-        if (!data.content) {
-            showToast('Vui lòng nhập nội dung thông báo', 'error');
-            return false;
-        }
-
-        if (!data.type) {
-            showToast('Vui lòng chọn loại thông báo', 'error');
-            return false;
-        }
-
-        if (!data.targetCustomers) {
-            showToast('Vui lòng chọn đối tượng gửi', 'error');
-            return false;
-        }
-
-        if (data.targetCustomers === 'specific' && (!data.specificCustomerIds || data.specificCustomerIds.length === 0)) {
-            showToast('Vui lòng chọn ít nhất một khách hàng', 'error');
-            return false;
-        }
-
-        return true;
+validateForm(data) {
+    console.log('🔍 [VALIDATE] Validating form data:', data);
+    
+    if (!data.title?.trim()) {
+        showToast('Vui lòng nhập tiêu đề thông báo', 'error');
+        return false;
     }
+
+    if (!data.content?.trim()) {
+        showToast('Vui lòng nhập nội dung thông báo', 'error');
+        return false;
+    }
+
+    if (!data.type) {
+        showToast('Vui lòng chọn loại thông báo', 'error');
+        return false;
+    }
+
+    if (!data.targetCustomers) {
+        showToast('Vui lòng chọn đối tượng gửi', 'error');
+        return false;
+    }
+
+    // ✅ ENHANCED VALIDATION for specific customers
+    if (data.targetCustomers === 'specific') {
+        if (!data.specificCustomerIds || data.specificCustomerIds.length === 0) {
+            showToast('Vui lòng chọn ít nhất một khách hàng cụ thể để gửi thông báo', 'error');
+            
+            // ✅ SHOW SPECIFIC CUSTOMERS SECTION if hidden
+            const specificSection = document.getElementById('specific-customers-section');
+            if (specificSection && specificSection.classList.contains('hidden')) {
+                specificSection.classList.remove('hidden');
+                showToast('Phần chọn khách hàng đã được hiển thị. Hãy chọn khách hàng.', 'warning');
+            }
+            
+            return false;
+        }
+        
+        // ✅ VALIDATE CUSTOMER IDs are valid numbers
+        const invalidIds = data.specificCustomerIds.filter(id => !Number.isInteger(id) || id <= 0);
+        if (invalidIds.length > 0) {
+            console.error('❌ [VALIDATE] Invalid customer IDs:', invalidIds);
+            showToast('Có ID khách hàng không hợp lệ. Vui lòng chọn lại.', 'error');
+            return false;
+        }
+        
+        console.log(`✅ [VALIDATE] Specific customers validation passed: ${data.specificCustomerIds.length} customers`);
+    }
+
+    console.log('✅ [VALIDATE] All validations passed');
+    return true;
+}
 // ============================================
 // THÊM VÀO CLASS SellerNotificationManager
 // ============================================

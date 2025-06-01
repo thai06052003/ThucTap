@@ -208,7 +208,7 @@ namespace ShopxEX1.Controllers
             }
         }
 
-        [HttpPost("admin/{id}/send")]
+        [HttpPost("admin/send/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SendNotification(int id)
 {
@@ -251,6 +251,118 @@ namespace ShopxEX1.Controllers
     catch (Exception ex)
     {
         Console.WriteLine($"❌ [ADMIN SEND ERROR] {ex.Message}");
+        return StatusCode(500, new { message = ex.Message });
+    }
+}
+[HttpGet("admin/users")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> GetUsersForTargeting(
+    [FromQuery] string? role = null,
+    [FromQuery] string? search = null,
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 50)
+{
+    try
+    {
+        Console.WriteLine($"🔍 [ADMIN] Getting users for targeting - Role: {role}, Search: {search}");
+        
+        var query = _context.Users.Where(u => u.IsActive);
+        
+        // Filter by role
+        if (!string.IsNullOrEmpty(role) && role != "all")
+        {
+            var targetRole = role.ToLower() switch
+            {
+                "customers" => "Customer",
+                "sellers" => "Seller",
+                "admins" => "Admin",
+                _ => null
+            };
+            
+            if (targetRole != null)
+            {
+                query = query.Where(u => u.Role == targetRole);
+            }
+        }
+        
+        // Search filter
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(u => 
+                u.FullName.Contains(search) || 
+                u.Email.Contains(search) ||
+                (u.Phone != null && u.Phone.Contains(search)));
+        }
+        
+        var totalCount = await query.CountAsync();
+        
+        // ✅ SIMPLE VERSION: Basic user info only
+        var users = await query
+            .OrderBy(u => u.FullName)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(u => new
+            {
+                u.UserID,
+                u.FullName,
+                u.Email,
+                u.Phone,
+                u.Role,
+                u.Avatar,
+                u.CreatedAt,
+                
+                // ✅ SIMPLIFIED: Use static values to avoid date conversion issues
+                TotalOrders = 0, // Will be calculated client-side if needed
+                TotalProducts = 0, // Will be calculated client-side if needed  
+                LastActivity = u.CreatedAt // Just use CreatedAt to avoid complexity
+            })
+            .ToListAsync();
+        
+        Console.WriteLine($"✅ [ADMIN] Found {users.Count} users for targeting");
+        
+        return Ok(new
+        {
+            users = users,
+            totalCount = totalCount,
+            totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+            currentPage = pageNumber,
+            pageSize = pageSize,
+            role = role,
+            search = search
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ [ADMIN] Error getting users: {ex.Message}");
+        return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+    }
+}
+
+
+[HttpGet("admin/users/summary")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> GetUsersSummary()
+{
+    try
+    {
+        var summary = new
+        {
+            TotalUsers = await _context.Users.CountAsync(u => u.IsActive),
+            TotalCustomers = await _context.Users.CountAsync(u => u.Role == "Customer" && u.IsActive),
+            TotalSellers = await _context.Users.CountAsync(u => u.Role == "Seller" && u.IsActive),
+            TotalAdmins = await _context.Users.CountAsync(u => u.Role == "Admin" && u.IsActive),
+            
+            // ✅ FIX: Gọi qua service thay vì trực tiếp
+            VipCustomers = (await _notificationService.GetVipCustomersAsync()).Count,
+            ActiveSellers = (await _notificationService.GetActiveSellerssAsync()).Count,
+            NewUsersThisMonth = await _context.Users
+                .CountAsync(u => u.IsActive && u.CreatedAt >= DateTime.UtcNow.AddDays(-30))
+        };
+        
+        return Ok(summary);
+    }
+    catch (Exception ex)
+    {
         return StatusCode(500, new { message = ex.Message });
     }
 }
@@ -495,6 +607,7 @@ public async Task<IActionResult> CreateSellerNotification([FromBody] CreateSelle
     try
     {
         Console.WriteLine($"🔔 [CREATE] Starting notification creation for seller");
+        Console.WriteLine($"🔔 [CREATE] DTO received: targetCustomers='{dto.TargetCustomers}', specificIds=[{string.Join(",", dto.SpecificCustomerIds ?? new List<int>())}]");
         
         if (!ModelState.IsValid)
         {
@@ -504,15 +617,15 @@ public async Task<IActionResult> CreateSellerNotification([FromBody] CreateSelle
 
         var sellerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         
-        // ✅ GET VIETNAM TIMEZONE
+        // ✅ VIETNAM TIMEZONE
         var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
         var vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamTimeZone);
         
-        // ✅ CHECK FOR DUPLICATES WITH VIETNAM TIME
+        // ✅ CHECK FOR DUPLICATES
         var duplicateCheck = await _context.Notifications
             .Where(n => n.CreatedBy == sellerId && 
                        n.Title == dto.Title && 
-                       n.CreatedAt >= vietnamNow.AddMinutes(-1)) // Vietnam time comparison
+                       n.CreatedAt >= vietnamNow.AddMinutes(-1))
             .FirstOrDefaultAsync();
             
         if (duplicateCheck != null)
@@ -526,44 +639,18 @@ public async Task<IActionResult> CreateSellerNotification([FromBody] CreateSelle
         DateTime? vietnamScheduledAt = null;
         if (dto.ScheduledAt.HasValue)
         {
-            // Convert from client timezone to Vietnam timezone
             vietnamScheduledAt = TimeZoneInfo.ConvertTimeToUtc(dto.ScheduledAt.Value, vietnamTimeZone);
         }
         
-        // ✅ CREATE WITH VIETNAM TIMEZONE
-        var notification = new Notification
-        {
-            Title = dto.Title,
-            Content = dto.Content,
-            Type = dto.Type,
-            ActionText = dto.ActionText,
-            ActionUrl = dto.ActionUrl,
-            TargetAudience = dto.TargetCustomers,
-            CreatedBy = sellerId,
-            CreatedAt = vietnamNow,  // ✅ VIETNAM TIME
-            ScheduledAt = vietnamScheduledAt,
-            Status = "draft"
-        };
+        // ✅ FIX: USE SERVICE TO CREATE (DON'T CREATE MANUALLY)
+        Console.WriteLine($"📞 [CREATE] Calling NotificationService.CreateSellerNotificationAsync");
         
-        _context.Notifications.Add(notification);
-        await _context.SaveChangesAsync();
+        var result = await _notificationService.CreateSellerNotificationAsync(dto, sellerId);
         
         await transaction.CommitAsync();
         
-        Console.WriteLine($"✅ [CREATE] Successfully created notification {notification.NotificationID} at {vietnamNow}");
-        
-        // ✅ RETURN WITH VIETNAM TIME
-        var result = new
-        {
-            notification.NotificationID,
-            notification.Title,
-            notification.Content,
-            notification.Type,
-            notification.Status,
-            CreatedAt = vietnamNow,
-            ScheduledAt = vietnamScheduledAt,
-            VietnamTime = vietnamNow.ToString("dd/MM/yyyy HH:mm:ss")
-        };
+        Console.WriteLine($"✅ [CREATE] Successfully created notification {result.NotificationID}");
+        Console.WriteLine($"✅ [CREATE] Target audience created: '{result.TargetAudience}'");
         
         return CreatedAtAction(
             nameof(GetSellerNotificationById), 

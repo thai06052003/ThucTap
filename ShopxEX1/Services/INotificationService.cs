@@ -37,6 +37,7 @@ namespace ShopxEX1.Services.Interfaces
         Task<object> GetSellerNotificationStatsAsync(int notificationId, int sellerId);
         Task<List<NotificationRecipientDto>> GetSellerNotificationRecipientsAsync(int notificationId, int sellerId);
         Task<ResendNotificationResult> ResendNotificationToUserAsync(int userNotificationId, int sellerId);
-
+    Task<List<int>> GetVipCustomersAsync();
+    Task<List<int>> GetActiveSellerssAsync();
     }
 }
