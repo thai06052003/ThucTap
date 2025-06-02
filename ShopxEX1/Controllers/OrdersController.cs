@@ -360,7 +360,7 @@ namespace ShopxEX1.Controllers
         /// [Seller, Admin] Cập nhật trạng thái của một đơn hàng.
         /// </summary>
         [HttpPut("{orderId}/customer-status")]
-        [Authorize(Roles = "Customer")]
+        [Authorize(Roles = "Customer, Seller, Admin")]
         public async Task<IActionResult> UpdateOrderStatusForCustomer(int orderId, [FromBody] OrderStatusUpdateDto statusUpdateDto)
         {
             if (!ModelState.IsValid)
@@ -427,7 +427,7 @@ namespace ShopxEX1.Controllers
 /// [Customer] Kiểm tra khả năng mua lại đơn hàng - CHO PHÉP TẤT CẢ TRẠNG THÁI
 /// </summary>
 [HttpPost("{orderId}/rebuy")]
-[Authorize(Roles = "Customer")]
+[Authorize(Roles = "Customer, Seller, Admin")]
 public async Task<IActionResult> RebuyOrder(int orderId)
 {
     try
@@ -490,7 +490,7 @@ public async Task<IActionResult> RebuyOrder(int orderId)
 /// [Customer] Thêm các sản phẩm từ đơn hàng cũ vào giỏ hàng
 /// </summary>
 [HttpPost("{orderId}/add-to-cart")]
-[Authorize(Roles = "Customer")]
+[Authorize(Roles = "Customer, Seller, Admin")]
 public async Task<IActionResult> AddRebuyItemsToCart(int orderId, [FromBody] List<RebuyItemRequest> items)
 {
     if (!ModelState.IsValid)
@@ -561,7 +561,7 @@ public async Task<IActionResult> AddRebuyItemsToCart(int orderId, [FromBody] Lis
 /// [Customer] Mua lại toàn bộ đơn hàng - CHO PHÉP TẤT CẢ TRẠNG THÁI
 /// </summary>
 [HttpPost("{orderId}/rebuy-all")]
-[Authorize(Roles = "Customer")]
+[Authorize(Roles = "Customer, Seller, Admin")]
 public async Task<IActionResult> RebuyAllItems(int orderId)
 {
     try
