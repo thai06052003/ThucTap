@@ -142,6 +142,72 @@
             background-color: inherit;
             color: inherit;
         }
+        .status-dropdown {
+        padding: 0.35em 0.7em;
+        border-radius: 0.375rem;
+        font-size: 1em;
+        font-weight: 600;
+        min-width: 150px;
+        border: 1px solid #d1d5db;
+        background-color: white;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+        padding-right: 2.5rem;
+        text-align: center;
+        text-align-last:center ;
+    }
+    
+    .status-dropdown:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .status-dropdown:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    /* ✅ Status-specific dropdown colors */
+    .status-dropdown.cho-xac-nhan { background-color: white; color: #b45309; border-color: #fde68a; }
+    .status-dropdown.dang-xu-ly { background-color: white; color: #1e40af; border-color: #bfdbfe; }
+    .status-dropdown.dang-giao { background-color: white; color: #065f46; border-color: #a7f3d0; }
+    .status-dropdown.da-giao { background-color: white; color: #065f46; border-color: #a7f3d0; }
+    .status-dropdown.yeu-cau-tra-hang-hoan-tien { background-color: white; color: #b45309; border-color: #fef3c7; }
+    .status-dropdown.da-hoan-tien { background-color: white; color: #5b21b6; border-color: #ddd6fe; }
+        .status-dropdown.da-huy { background-color: white; color: #991b1b; border-color: #fecaca; }
+    .status-dropdown.tu-choi-hoan-tien { background-color: white; color: #4b5563; border-color: #e5e7eb; }
+    
+    /* ✅ Loading state */
+    .status-dropdown.loading {
+        opacity: 0.6;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .status-dropdown.loading::after {
+        content: "";
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid #f3f4f6;
+        border-top: 2px solid #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: translateY(-50%) rotate(0deg); }
+        100% { transform: translateY(-50%) rotate(360deg); }
+    }
     </style>
 </head>
 
@@ -271,7 +337,7 @@
                                 </thead>
                                 <tbody id="orderTableBody" class="text-gray-700 text-sm">
                                     <tr>
-                                        <td colspan="8" class="text-center py-6"><i
+                                        <td colspan="9" class="text-center py-6"><i
                                                 class="fas fa-spinner fa-spin text-blue-500 text-xl mr-2"></i>Đang tải
                                             dữ liệu...</td>
                                     </tr>
@@ -349,6 +415,84 @@
                 DA_HUY: "Đã hủy"
             });
 
+            function createStatusDropdown(orderId, currentStatus) {
+        const statusClass = getStatusClassForDropdown(currentStatus);
+        const allStatuses = Object.values(ORDER_STATUSES);
+        
+        let options = '';
+        allStatuses.forEach(status => {
+            const selected = status === currentStatus ? 'selected' : '';
+            options += `<option value="${status}" ${selected}>${status}</option>`;
+        });
+        
+        return `
+            <select class="status-dropdown ${statusClass}" 
+                    data-order-id="${orderId}" 
+                    data-current-status="${currentStatus}"
+                    onchange="handleStatusChange(this)">
+                ${options}
+            </select>
+        `;
+    }
+
+    // ✅ HÀM GET STATUS CLASS CHO DROPDOWN
+    function getStatusClassForDropdown(status) {
+        const normalizedStatus = status.toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a')
+            .replace(/[èéẹẻẽêềếệểễ]/g, 'e')
+            .replace(/[ìíịỉĩ]/g, 'i')
+            .replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o')
+            .replace(/[ùúụủũưừứựửữ]/g, 'u')
+            .replace(/[ỳýỵỷỹ]/g, 'y')
+            .replace(/đ/g, 'd')
+            .replace(/[\/]/g, '-');
+        
+        return normalizedStatus;
+    }
+    window.handleStatusChange = async function(selectElement) {
+        const orderId = selectElement.dataset.orderId;
+        const currentStatus = selectElement.dataset.currentStatus;
+        const newStatus = selectElement.value;
+        
+        // Nếu không thay đổi thì return
+        if (newStatus === currentStatus) return;
+        
+        // Xác nhận thay đổi
+        const confirmMessage = `Bạn có chắc muốn chuyển đơn hàng #${orderId} từ "${currentStatus}" sang "${newStatus}"?`;
+        if (!confirm(confirmMessage)) {
+            // Reset về trạng thái cũ nếu hủy
+            selectElement.value = currentStatus;
+            return;
+        }
+        
+        // Thêm loading state
+        selectElement.classList.add('loading');
+        selectElement.disabled = true;
+        
+        try {
+            const success = await updateOrderStatusAPI(orderId, newStatus);
+            if (success) {
+                alert(`✅ Đơn hàng #${orderId} đã được chuyển sang "${newStatus}".`);
+                // Cập nhật data-current-status
+                selectElement.dataset.currentStatus = newStatus;
+                // Cập nhật class màu sắc
+                const newStatusClass = getStatusClassForDropdown(newStatus);
+                selectElement.className = `status-dropdown ${newStatusClass}`;
+            } else {
+                // Reset về trạng thái cũ nếu lỗi
+                selectElement.value = currentStatus;
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            alert(`❌ Lỗi khi cập nhật trạng thái: ${error.message}`);
+            selectElement.value = currentStatus;
+        } finally {
+            // Remove loading state
+            selectElement.classList.remove('loading');
+            selectElement.disabled = false;
+        }
+    };
             const ALL_VALID_STATUSES_FOR_FILTER = Object.values(ORDER_STATUSES);
 
             function populateStatusFilter() {
@@ -377,6 +521,7 @@
                     case ORDER_STATUSES.YEU_CAU_TRA_HANG_HOAN_TIEN: return 'status-yeu-cau-tra-hang-hoan-tien';
                     case ORDER_STATUSES.DA_HOAN_TIEN: return 'status-da-hoan-tien';
                     case ORDER_STATUSES.DA_HUY: return 'status-da-huy';
+                    case ORDER_STATUSES.TU_CHOI_HOAN_TIEN: return 'status-tu-choi-hoan-tien';
                     default: return 'status-default'
                 }
             }
@@ -459,7 +604,7 @@
             };
 
             async function fetchOrders(page = 1) {
-                orderTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-6"><i class="fas fa-spinner fa-spin text-blue-500 text-xl mr-2"></i>Đang tải dữ liệu...</td></tr>`;
+                orderTableBody.innerHTML = `<tr><td colspan="9" class="text-center py-6"><i class="fas fa-spinner fa-spin text-blue-500 text-xl mr-2"></i>Đang tải dữ liệu...</td></tr>`;
                 [prevPageBtn, nextPageBtn, goToPageBtn].forEach(btn => btn.disabled = true);
 
                 currentPage = page;
@@ -491,7 +636,7 @@
                 if (sortBy) params.append('SortBy', sortBy)
 
                 if (typeof API_BASE_URL === 'undefined') {
-                    orderTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-red-500">Lỗi cấu hình ứng dụng.</td></tr>`;
+                    orderTableBody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-red-500">Lỗi cấu hình ứng dụng.</td></tr>`;
                     return;
                 }
                 const token = sessionStorage.getItem('token');
@@ -519,84 +664,79 @@
                     updatePaginationUI(data);
                 } catch (error) {
                     console.error('Lỗi khi lấy dữ liệu đơn hàng:', error);
-                    orderTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-red-500">Không thể tải dữ liệu. Lỗi: ${error.message}</td></tr>`;
+                    orderTableBody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-red-500">Không thể tải dữ liệu. Lỗi: ${error.message}</td></tr>`;
                     updatePaginationUI(null);
                 }
             }
 
             function renderOrderTable(orders) {
-                orderTableBody.innerHTML = '';
-                if (!orders || orders.length === 0) {
-                    orderTableBody.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-gray-500">Không tìm thấy đơn hàng nào phù hợp.</td></tr>';
-                    return;
-                }
+    orderTableBody.innerHTML = '';
+    if (!orders || orders.length === 0) {
+        orderTableBody.innerHTML = '<tr><td colspan="9" class="text-center py-6 text-gray-500">Không tìm thấy đơn hàng nào phù hợp.</td></tr>';
+        return;
+    }
 
-                const currentPgSize = parseInt(pageSizeSelect.value);
+    const currentPgSize = parseInt(pageSizeSelect.value);
 
-                orders.forEach((order, index) => {
-                    const row = document.createElement('tr');
-                    row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50 hover:bg-gray-100 transition-colors duration-150';
-                    const stt = (currentPage - 1) * currentPgSize + index + 1;
+    orders.forEach((order, index) => {
+        const row = document.createElement('tr');
+        row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50 hover:bg-gray-100 transition-colors duration-150';
+        const stt = (currentPage - 1) * currentPgSize + index + 1;
 
-                    const statusClass = getStatusClass(order.status);
-                    const nextFlowStatus = getNextStatusInFlow(order.status);
-                    const isInteractiveStatusFlow = !!nextFlowStatus;
+        // ✅ SỬ DỤNG DROPDOWN
+        const statusDropdownHtml = createStatusDropdown(order.orderID, order.status);
 
-                    let statusButtonHtml;
-                    if (isInteractiveStatusFlow) {
-                        statusButtonHtml = `
-                            <button class="status-badge interactive ${statusClass}" 
-                                    onclick="window.handleStatusButtonClick(${order.orderID}, '${order.status}')"
-                                    title="Nhấp để chuyển sang '${nextFlowStatus}'">
-                                ${order.status}
-                                <i class="fas fa-arrow-right fa-xs ml-2"></i>
-                            </button>`;
-                    } else {
-                        statusButtonHtml = `<span class="status-badge ${statusClass}">${order.status}</span>`;
-                    }
+        // ✅ BETTER ACTION BUTTONS WITH EXPLICIT EVENT HANDLING
+        let actionButtonsHtml = `
+            <a href="order-detail.html?id=${order.orderID}" 
+               class="action-button action-button-view" 
+               title="Xem chi tiết đơn hàng #${order.orderID}"
+               onclick="console.log('Navigating to detail for order:', ${order.orderID}); return true;">
+               <i class="fas fa-eye"></i> Xem
+            </a>`;
 
-                    let actionButtonsHtml = `
-                        <a href="order-detail.html?id=${order.orderID}" 
-                           class="action-button action-button-view" title="Xem chi tiết">
-                           <i class="fas fa-eye"></i> Xem
-                        </a>`;
-                    console.log(statusClass)
-                    if (order.status === ORDER_STATUSES.CHO_XAC_NHAN || order.status === ORDER_STATUSES.DANG_XU_LY || statusClass === 'status-default') {
-                        actionButtonsHtml += `
-                            <button onclick="window.handleCancelOrder(${order.orderID})" 
-                                    class="action-button action-button-cancel ml-2" title="Hủy đơn hàng">
-                                <i class="fas fa-times-circle"></i> Hủy
-                            </button>`;
-                    }
+        if (order.status === ORDER_STATUSES.CHO_XAC_NHAN || order.status === ORDER_STATUSES.DANG_XU_LY) {
+            actionButtonsHtml += `
+                <button onclick="window.handleCancelOrder(${order.orderID})" 
+                        class="action-button action-button-cancel ml-2" title="Hủy đơn hàng">
+                    <i class="fas fa-times-circle"></i> Hủy
+                </button>`;
+        }
 
-                    if (order.status === ORDER_STATUSES.YEU_CAU_TRA_HANG_HOAN_TIEN) {
-                        actionButtonsHtml += `
-                            <button onclick="window.handleConfirmRefundRequest(${order.orderID})" 
-                                    class="action-button action-button-refund ml-2" title="Xác nhận yêu cầu & hoàn tiền">
-                                <i class="fas fa-check-circle"></i> XN Hoàn tiền
-                            </button>`;
-                    }
+        if (order.status === ORDER_STATUSES.YEU_CAU_TRA_HANG_HOAN_TIEN) {
+            actionButtonsHtml += `
+                <button onclick="window.handleConfirmRefundRequest(${order.orderID})" 
+                        class="action-button action-button-refund ml-2" title="Xác nhận yêu cầu & hoàn tiền">
+                    <i class="fas fa-check-circle"></i> XN Hoàn tiền
+                </button>`;
+        }
 
-                    row.innerHTML = `
-                        <td class="py-3 px-4 border-b border-gray-200 text-left">${stt}</td>
-                        <td class="py-3 px-4 border-b border-gray-200 text-left font-medium text-blue-600 hover:text-blue-800 transition-colors">
-                            <a href="detail.html?id=${order.orderID}" title="Xem chi tiết đơn hàng ${order.orderID}">${order.orderID}</a>
-                        </td>
-                        <td class="py-3 px-4 border-b border-gray-200 text-left">${formatDate(new Date(order.orderDate))}</td>
-                        <td class="py-3 px-4 border-b border-gray-200 text-left">${order.customerName || 'N/A'}</td>
-                        <td class="py-3 px-4 border-b border-gray-200 text-right">${formatLocalCurrency(order.totalAmount)}</td>
-                        <td class="py-3 px-4 border-b border-gray-200 text-right">${formatLocalCurrency(order.totalPayment)}</td>
-                        <td class="py-3 px-4 border-b border-gray-200 text-center">${order.numberOfItems}</td>
-                        <td class="py-3 px-4 border-b border-gray-200 text-center">${statusButtonHtml}</td>
-                        <td class="py-3 px-4 border-b border-gray-200 text-left space-x-1 whitespace-nowrap">
-                            ${actionButtonsHtml}
-                        </td>
-                    `;
-                    orderTableBody.appendChild(row);
-                });
-            }
+        row.innerHTML = `
+            <td class="py-3 px-4 border-b border-gray-200 text-left">${stt}</td>
+            <td class="py-3 px-4 border-b border-gray-200 text-left font-medium">
+                <a href="detail.html?id=${order.orderID}" 
+                   class="table-order-link" 
+                   title="Xem chi tiết đơn hàng #${order.orderID}"
+                   onclick="console.log('Order link clicked:', ${order.orderID}); return true;">
+                   #${order.orderID}
+                </a>
+            </td>
+            <td class="py-3 px-4 border-b border-gray-200 text-left">${formatDate(new Date(order.orderDate))}</td>
+            <td class="py-3 px-4 border-b border-gray-200 text-left">${order.customerName || 'N/A'}</td>
+            <td class="py-3 px-4 border-b border-gray-200 text-right">${formatLocalCurrency(order.totalAmount)}</td>
+            <td class="py-3 px-4 border-b border-gray-200 text-right">${formatLocalCurrency(order.totalPayment)}</td>
+            <td class="py-3 px-4 border-b border-gray-200 text-center">${order.numberOfItems}</td>
+            <td class="py-3 px-4 border-b border-gray-200 text-center">${statusDropdownHtml}</td>
+            <td class="py-3 px-4 border-b border-gray-200 text-left space-x-1 whitespace-nowrap">
+                ${actionButtonsHtml}
+            </td>
+        `;
+        orderTableBody.appendChild(row);
+    });
+}
 
-            function updatePaginationUI(data) {
+
+function updatePaginationUI(data) {
                 if (data) {
                     currentPageInfo.textContent = data.pageNumber;
                     totalPagesInfo.textContent = data.totalPages;
