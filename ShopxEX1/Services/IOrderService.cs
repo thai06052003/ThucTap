@@ -78,6 +78,31 @@ namespace ShopxEX1.Services
         /// <exception cref="UnauthorizedAccessException">Ném ra nếu người dùng không có quyền cập nhật.</exception>
         /// <exception cref="InvalidOperationException">Ném ra nếu việc chuyển trạng thái không hợp lệ.</exception>
         Task<bool> UpdateOrderStatusForCustomerAsync(int orderId, OrderStatusUpdateDto statusUpdateDto, int userId);
+
+
+    /// <summary>
+/// Validate rebuy order và trả về thông tin sản phẩm có thể/không thể mua lại
+/// </summary>
+/// <param name="orderId">ID đơn hàng</param>
+/// <param name="userId">ID người dùng</param>
+/// <returns>Kết quả validation với danh sách sản phẩm available/unavailable</returns>
+/// <exception cref="KeyNotFoundException">Không tìm thấy đơn hàng</exception>
+/// <exception cref="UnauthorizedAccessException">Không có quyền truy cập đơn hàng</exception>
+/// <exception cref="InvalidOperationException">Đơn hàng không thể mua lại</exception>
+Task<RebuyValidationResultDto?> ValidateRebuyOrderAsync(int orderId, int userId);
+
+/// <summary>
+/// Thêm các items rebuy vào giỏ hàng
+/// </summary>
+/// <param name="orderId">ID đơn hàng gốc</param>
+/// <param name="items">Danh sách sản phẩm cần thêm vào giỏ</param>
+/// <param name="userId">ID người dùng</param>
+/// <returns>Kết quả thêm vào giỏ hàng</returns>
+/// <exception cref="KeyNotFoundException">Không tìm thấy đơn hàng hoặc sản phẩm</exception>
+/// <exception cref="UnauthorizedAccessException">Không có quyền truy cập</exception>
+/// <exception cref="InvalidOperationException">Lỗi logic nghiệp vụ</exception>
+Task<AddToCartResultDto?> AddRebuyItemsToCartAsync(int orderId, List<RebuyItemRequest> items, int userId);
+
     }
     
 }

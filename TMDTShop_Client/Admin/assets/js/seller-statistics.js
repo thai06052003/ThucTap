@@ -394,10 +394,7 @@ class SellerStatistics {
                         
                         <!-- Modal Footer -->
                         <div class="bg-gray-50 px-6 py-4 flex justify-center md:justify-end space-x-3 border-t">
-                            <button onclick="window.statisticsManager?.exportOrdersByStatus()" 
-                                    class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                                <i class="fas fa-download mr-2"></i>Xuất Excel
-                            </button>
+                            
                             <button onclick="window.statisticsManager?.closeOrderDetailsModal()" 
                                     class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors">
                                 Đóng
@@ -1171,48 +1168,86 @@ generateDummyRevenueData(days) {
     /**
      * Render dashboard overview cards
      */
-    renderDashboardOverview(data) {
+    renderDashboardOverview(response) {
         const container = document.getElementById('dashboard-overview');
         if (!container) return;
-
+    
+        // ✅ Extract data và insights từ response
+        const data = response.data || response;
+        const insights = response.insights || {};
+        
+        console.log('📊 Dashboard response with insights:', { data, insights });
+    
         const cards = [
             {
                 title: 'Tổng doanh thu',
                 value: this.formatCurrency(data.totalRevenue || 0),
                 icon: 'fas fa-wallet',
                 color: 'blue',
-                change: data.revenueTrendPercentage ? `${data.revenueTrendPercentage.toFixed(1)}%` : null
+                change: data.revenueTrendPercentage ? `${data.revenueTrendPercentage.toFixed(1)}%` : null,
+                subtitle: 'Từ đơn hàng hoàn thành', // ✅ CLARIFICATION từ backend
+                // ✅ THÊM: Insight từ backend
+                insight: insights.trendExplanation || null
             },
             {
                 title: 'Tổng đơn hàng',
                 value: (data.totalOrderCount || 0).toLocaleString(),
                 icon: 'fas fa-shopping-bag',
                 color: 'green',
-                change: data.orderTrendPercentage ? `${data.orderTrendPercentage.toFixed(1)}%` : null
+                change: data.orderTrendPercentage ? `${data.orderTrendPercentage.toFixed(1)}%` : null,
+                subtitle: `${data.ordersNeedingAttention || 0} cần xử lý`,
+                // ✅ THÊM: Action insight
+                actionNeeded: data.ordersNeedingAttention > 0
             },
             {
                 title: 'Tổng sản phẩm',
                 value: (data.totalProductCount || 0).toLocaleString(),
                 icon: 'fas fa-box-open',
                 color: 'purple',
-                subtitle: `${data.availableProductCount || 0} có sẵn`
+                subtitle: `${data.availableProductCount || 0} có sẵn`,
+                // ✅ THÊM: Stock warning
+                stockWarning: data.outOfStockProductCount > 0 ? 
+                    `${data.outOfStockProductCount} hết hàng` : null
             },
             {
                 title: 'Doanh thu tháng này',
                 value: this.formatCurrency(data.revenueThisMonth || 0),
                 icon: 'fas fa-chart-line',
                 color: 'indigo',
-                change: data.monthlyTrendPercentage ? `${data.monthlyTrendPercentage.toFixed(1)}%` : null
+                change: data.monthlyTrendPercentage ? `${data.monthlyTrendPercentage.toFixed(1)}%` : null,
+                subtitle: `Tỷ lệ hoàn thành: ${data.orderCompletionRate?.toFixed(1) || 0}%`,
+                // ✅ THÊM: Revenue status từ backend
+                revenueStatus: insights.revenueStatus || null
             }
         ];
-
+    
         container.innerHTML = cards.map(card => `
-            <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+            <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow ${card.actionNeeded ? 'border-l-4 border-orange-500' : ''}">
                 <div class="flex items-center justify-between">
                     <div class="flex-1">
                         <p class="text-gray-500 text-sm font-medium">${card.title}</p>
                         <h3 class="text-2xl font-bold mt-2 text-gray-900">${card.value}</h3>
                         ${card.subtitle ? `<p class="text-sm text-gray-600 mt-1">${card.subtitle}</p>` : ''}
+                        
+                        <!-- ✅ THÊM: Hiển thị insights từ backend -->
+                        ${card.insight ? `
+                            <div class="mt-2 text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded-lg">
+                                <i class="fas fa-info-circle mr-1"></i>${card.insight}
+                            </div>
+                        ` : ''}
+                        
+                        ${card.stockWarning ? `
+                            <div class="mt-2 text-xs text-red-700 bg-red-50 px-2 py-1 rounded-lg">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>${card.stockWarning}
+                            </div>
+                        ` : ''}
+                        
+                        ${card.revenueStatus ? `
+                            <div class="mt-2 text-xs text-green-700 bg-green-50 px-2 py-1 rounded-lg">
+                                <i class="fas fa-chart-line mr-1"></i>Xu hướng: ${card.revenueStatus}
+                            </div>
+                        ` : ''}
+                        
                         ${card.change ? `
                             <p class="text-sm mt-2 ${parseFloat(card.change) >= 0 ? 'text-green-600' : 'text-red-600'}">
                                 <i class="fas fa-arrow-${parseFloat(card.change) >= 0 ? 'up' : 'down'} mr-1"></i>
@@ -1226,8 +1261,40 @@ generateDummyRevenueData(days) {
                 </div>
             </div>
         `).join('');
+    
+        // ✅ THÊM: Hiển thị action items từ backend
+        this.renderActionItems(insights.actionItems || []);
     }
-
+    
+    renderActionItems(actionItems) {
+        if (!actionItems || actionItems.length === 0) return;
+        
+        const container = document.getElementById('dashboard-overview');
+        if (!container) return;
+        
+        // Thêm action items dưới cards
+        const actionItemsHtml = `
+            <div class="col-span-full bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                <div class="flex items-start space-x-3">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-tasks text-yellow-600 text-lg mt-1"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="text-yellow-800 font-semibold mb-2">Cần xử lý</h4>
+                        <ul class="space-y-1">
+                            ${actionItems.map(item => `
+                                <li class="text-yellow-700 text-sm">
+                                    <i class="fas fa-chevron-right mr-2 text-xs"></i>${item}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.insertAdjacentHTML('beforeend', actionItemsHtml);
+    }
     /**
      * Render dashboard error
      */
@@ -1250,132 +1317,117 @@ generateDummyRevenueData(days) {
     /**
      * Render order status statistics
      */
-renderOrderStatusStats(data) {
-    const container = document.getElementById('order-status-stats');
-    if (!container) return;
-
-    // ✅ FIXED: statusConfig CHÍNH XÁC với backend
-    const statusConfig = [
-        { 
-            key: 'pending', 
-            label: 'Chờ xác nhận', 
-            icon: 'fas fa-clock', 
-            color: 'yellow',
-            backendField: 'pending',
-            dbStatuses: ['Chờ xác nhận']
-        },
-        { 
-            key: 'processing', 
-            label: 'Đang xử lý', 
-            icon: 'fas fa-cog', 
-            color: 'blue',
-            backendField: 'processing',
-            dbStatuses: ['Đang xử lý']
-        },
-        { 
-            key: 'shipping', 
-            label: 'Đang giao', 
-            icon: 'fas fa-truck', 
-            color: 'indigo',
-            backendField: 'shipping',
-            dbStatuses: ['Đang giao']
-        },
-        { 
-            key: 'delivered', 
-            label: 'Đã giao', 
-            icon: 'fas fa-check-circle', 
-            color: 'green',
-            backendField: 'delivered',
-            dbStatuses: ['Đã giao']
-        },
-        { 
-            key: 'refundRequested', 
-            label: 'Yêu cầu hoàn tiền', 
-            icon: 'fas fa-exclamation-triangle', 
-            color: 'orange',
-            backendField: 'refundRequested',
-            dbStatuses: ['Yêu cầu trả hàng/ hoàn tiền']
-        },
-        { 
-            key: 'refunded', 
-            label: 'Đã hoàn tiền', 
-            icon: 'fas fa-undo', 
-            color: 'purple',
-            backendField: 'refunded',
-            dbStatuses: ['Đã hoàn tiền']
-        },
-        { 
-            key: 'completed', 
-            label: 'Hoàn thành', 
-            icon: 'fas fa-star', 
-            color: 'emerald',
-            backendField: 'completed',
-            dbStatuses: ['Hoàn thành']
-        },
-        { 
-            key: 'cancelled', 
-            label: 'Đã hủy', 
-            icon: 'fas fa-times-circle', 
-            color: 'red',
-            backendField: 'cancelled',
-            dbStatuses: ['Đã hủy']
-        }
-    ];
-
-    try {
-        console.log('📊 Rendering order status stats with data:', data);
-
-        if (!data || !data.data) {
-            this.renderOrderStatusError('Không có dữ liệu thống kê');
-            return;
-        }
-
-        const stats = data.data;
-        console.log('📊 Stats data:', stats);
-
-        // ✅ FIXED: Sử dụng mapping chính xác với backend fields
-        const statusCards = statusConfig.map(config => {
-            // ✅ Lấy giá trị từ backend field tương ứng
-            const count = stats[config.backendField] || 0;
-            const percentage = stats.total > 0 ? ((count / stats.total) * 100).toFixed(1) : '0.0';
-            
-            console.log(`📊 ${config.label}: ${count} (${percentage}%)`);
-            
-            return `
-                <div class="bg-white rounded-lg shadow p-4 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-                     onclick="window.statisticsManager?.showOrderDetailsByStatus('${config.key}', '${config.label}', ${JSON.stringify(config.dbStatuses).replace(/"/g, '&quot;')})">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="p-2 rounded-lg bg-${config.color}-100">
-                            <i class="${config.icon} text-${config.color}-600 text-lg"></i>
+    renderOrderStatusStats(data) {
+        const container = document.getElementById('order-status-stats');
+        if (!container) return;
+    
+        // ✅ FIXED: statusConfig CHÍNH XÁC với backend bao gồm trạng thái mới
+        const statusConfig = [
+            { 
+                key: 'pending', 
+                label: 'Chờ xác nhận', 
+                icon: 'fas fa-clock', 
+                color: 'yellow',
+                backendField: 'pending',
+                dbStatuses: ['Chờ xác nhận']
+            },
+            { 
+                key: 'processing', 
+                label: 'Đang xử lý', 
+                icon: 'fas fa-cog', 
+                color: 'blue',
+                backendField: 'processing',
+                dbStatuses: ['Đang xử lý']
+            },
+            { 
+                key: 'shipping', 
+                label: 'Đang giao', 
+                icon: 'fas fa-truck', 
+                color: 'indigo',
+                backendField: 'shipping',
+                dbStatuses: ['Đang giao']
+            },
+            { 
+                key: 'delivered', 
+                label: 'Đã giao', 
+                icon: 'fas fa-check-circle', 
+                color: 'green',
+                backendField: 'delivered',
+                dbStatuses: ['Đã giao']
+            },
+            { 
+                key: 'refundRequested', 
+                label: 'Yêu cầu hoàn tiền', 
+                icon: 'fas fa-exclamation-triangle', 
+                color: 'orange',
+                backendField: 'refundRequested',
+                dbStatuses: ['Yêu cầu trả hàng/ hoàn tiền']
+            },
+            { 
+                key: 'refundRejected', 
+                label: 'Từ chối hoàn tiền', 
+                icon: 'fas fa-ban', 
+                color: 'gray',
+                backendField: 'refundRejected',  // ✅ THÊM MỚI
+                dbStatuses: ['Từ chối hoàn tiền']
+            },
+            { 
+                key: 'refunded', 
+                label: 'Đã hoàn tiền', 
+                icon: 'fas fa-undo', 
+                color: 'purple',
+                backendField: 'refunded',
+                dbStatuses: ['Đã hoàn tiền']
+            },
+            { 
+                key: 'cancelled', 
+                label: 'Đã hủy', 
+                icon: 'fas fa-times-circle', 
+                color: 'red',
+                backendField: 'cancelled',
+                dbStatuses: ['Đã hủy']
+            }
+        ];
+    
+        try {
+            console.log('📊 Rendering order status stats with data:', data);
+    
+            // ✅ FIXED: Truy cập field chính xác từ response
+            const actualData = data.data || data;
+            console.log('📊 Actual data structure:', actualData);
+    
+            container.innerHTML = statusConfig.map(status => {
+                // ✅ FIXED: Lấy value với fallback an toàn
+                const count = actualData[status.backendField] || 0;
+                const isClickable = count > 0;
+                
+                console.log(`📊 Status ${status.key}: ${status.backendField} = ${count}`);
+    
+                return `
+                    <div class="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow ${isClickable ? 'cursor-pointer' : ''}" 
+                         ${isClickable ? `onclick="window.statisticsManager?.showOrderDetailsByStatus('${status.key}', '${status.label}', ${JSON.stringify(status.dbStatuses).replace(/"/g, '&quot;')})"` : ''}>
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="bg-${status.color}-100 p-2 rounded-full">
+                                <i class="${status.icon} text-${status.color}-600"></i>
+                            </div>
+                            ${isClickable ? '<i class="fas fa-external-link-alt text-gray-400 text-sm"></i>' : ''}
                         </div>
-                        <span class="text-2xl font-bold text-gray-900">${count}</span>
-                    </div>
-                    <div class="space-y-1">
-                        <h4 class="text-sm font-medium text-gray-700">${config.label}</h4>
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="text-gray-500">${percentage}%</span>
-                            ${count > 0 ? '<span class="text-blue-600 text-xs">→ Xem chi tiết</span>' : ''}
+                        <div class="text-center">
+                            <h3 class="text-2xl font-bold text-gray-900 mb-1">${count.toLocaleString()}</h3>
+                            <p class="text-sm text-gray-600">${status.label}</p>
+                            ${isClickable ? '<p class="text-xs text-blue-600 mt-1">Click để xem chi tiết</p>' : ''}
                         </div>
                     </div>
-                </div>
-            `;
-        });
-
-        container.innerHTML = statusCards.join('');
-
-        // ✅ LOG: Summary
-        const totalCalculated = statusConfig.reduce((sum, config) => sum + (stats[config.backendField] || 0), 0);
-        console.log(`📊 Total calculated: ${totalCalculated}, Backend total: ${stats.total}`);
-        
-        if (totalCalculated !== stats.total) {
-            console.warn(`⚠️ Total mismatch: calculated=${totalCalculated}, backend=${stats.total}`);
+                `;
+            }).join('');
+    
+            console.log('✅ Order status stats rendered successfully');
+        } catch (error) {
+            console.error('❌ Error rendering order status stats:', error);
+            this.renderOrderStatusError(`Lỗi hiển thị: ${error.message}`);
         }
-
-    } catch (error) {
-        console.error('❌ Error rendering order status stats:', error);
-        this.renderOrderStatusError(`Lỗi hiển thị: ${error.message}`);
     }
-}
+    
     /**
      * Render order status error
      */
@@ -1405,189 +1457,191 @@ renderOrderStatusStats(data) {
     /**
  * Render revenue chart - Xử lý tất cả các cấu trúc dữ liệu có thể có
  */
-renderRevenueChart(data) {
-    console.log('🎨 renderRevenueChart() called with data:', data);
-    
-    const container = document.getElementById('revenue-chart-container');
-    if (!container) {
-        console.error('❌ Container revenue-chart-container not found');
-        return;
-    }
-
-    console.log('✅ Container found:', container);
-    
-    // Kiểm tra Chart.js đã được tải hay chưa
-    if (typeof Chart === 'undefined') {
-        console.error('❌ Chart.js chưa được tải');
-        container.innerHTML = `
-            <div class="text-center text-yellow-500">
-                <i class="fas fa-exclamation-circle text-4xl mb-4"></i>
-                <p class="mb-2">Thư viện Chart.js chưa được tải</p>
-                <p class="text-sm text-gray-600 mb-4">Vui lòng thêm thư viện Chart.js vào trang</p>
-                <button onclick="window.location.reload()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm">
-                    <i class="fas fa-refresh mr-1"></i>Tải lại trang
-                </button>
-            </div>
-        `;
-        return;
-    }
-    
-    console.log('✅ Chart.js đã được tải, version:', Chart.version);
-    
-    // Xóa canvas cũ và tạo mới
-    container.innerHTML = '';
-    const canvas = document.createElement('canvas');
-    canvas.id = 'revenue-chart';
-    canvas.width = 400;
-    canvas.height = 250;
-    container.appendChild(canvas);
-    
-    console.log('✅ Canvas mới đã được tạo:', canvas);
-    
-    // Chuẩn hóa dữ liệu
-    let dataItems = [];
-    
-    if (Array.isArray(data)) {
-        dataItems = data;
-        console.log('📊 Data là array trực tiếp');
-    } else if (data && data.dailyData && Array.isArray(data.dailyData)) {
-        dataItems = data.dailyData;
-        console.log('📊 Data từ dailyData property');
-    } else if (data && data.items && Array.isArray(data.items)) {
-        dataItems = data.items;
-        console.log('📊 Data từ items property');
-    } else {
-        console.warn('⚠️ Dữ liệu không hợp lệ, sử dụng dữ liệu mẫu');
-        dataItems = this.generateDummyRevenueData(7).items;
-    }
-    
-    console.log('📊 Data items after normalization:', dataItems);
-    
-    // Kiểm tra dữ liệu hợp lệ
-    if (!dataItems || !dataItems.length) {
-        console.warn('⚠️ Không có dữ liệu để hiển thị');
-        container.innerHTML = `
-            <div class="text-center text-gray-500">
-                <i class="fas fa-chart-line text-4xl mb-4"></i>
-                <p>Không có dữ liệu doanh thu</p>
-            </div>
-        `;
-        return;
-    }
-
-    try {
-        const ctx = canvas.getContext('2d');
-        console.log('✅ Canvas context:', ctx);
+    renderRevenueChart(data) {
+        console.log('🎨 renderRevenueChart() called with data:', data);
         
-        // Chuẩn bị dữ liệu cho chart
-        const labels = dataItems.map(item => {
-            if (item.dayLabel) return item.dayLabel;
-            if (item.date) {
-                const date = new Date(item.date);
-                return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-            }
-            return 'N/A';
-        });
-
-        const revenues = dataItems.map(item => item.revenue || 0);
-        const orders = dataItems.map(item => item.ordersCount || 0);
-
-        console.log('📊 Chart data prepared:', { labels, revenues, orders });
-
-        const chartConfig = {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Doanh thu (VNĐ)',
-                    data: revenues,
-                    borderColor: 'rgb(59, 130, 246)',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.4,
-                    yAxisID: 'y'
-                }, {
-                    label: 'Số đơn hàng',
-                    data: orders,
-                    borderColor: 'rgb(16, 185, 129)',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    tension: 0.4,
-                    yAxisID: 'y1'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Biểu đồ doanh thu và đơn hàng'
-                    },
-                    legend: {
-                        display: true,
-                        position: 'top'
+        const container = document.getElementById('revenue-chart-container');
+        if (!container) {
+            console.error('❌ Container revenue-chart-container not found');
+            return;
+        }
+    
+        // Kiểm tra Chart.js
+        if (typeof Chart === 'undefined') {
+            console.error('❌ Chart.js chưa được tải');
+            container.innerHTML = `
+                <div class="text-center text-yellow-500">
+                    <i class="fas fa-exclamation-circle text-4xl mb-4"></i>
+                    <p class="mb-2">Thư viện Chart.js chưa được tải</p>
+                    <p class="text-sm text-gray-600 mb-4">Vui lòng thêm thư viện Chart.js vào trang</p>
+                    <button onclick="window.location.reload()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm">
+                        <i class="fas fa-refresh mr-1"></i>Tải lại trang
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        // Chuẩn hóa dữ liệu
+        let dataItems = [];
+        
+        if (Array.isArray(data)) {
+            dataItems = data;
+        } else if (data && data.dailyData && Array.isArray(data.dailyData)) {
+            dataItems = data.dailyData;
+        } else if (data && data.items && Array.isArray(data.items)) {
+            dataItems = data.items;
+        } else {
+            console.warn('⚠️ Không thể nhận diện cấu trúc dữ liệu:', data);
+            dataItems = [];
+        }
+        
+        if (!dataItems || !dataItems.length) {
+            console.warn('⚠️ Không có dữ liệu để hiển thị');
+            container.innerHTML = `
+                <div class="text-center text-gray-500">
+                    <i class="fas fa-chart-line text-4xl mb-4"></i>
+                    <p>Không có dữ liệu doanh thu</p>
+                    <p class="text-sm mt-2">Có thể do không có đơn hàng "Đã giao" hoặc "Từ chối hoàn tiền" trong kỳ này</p>
+                </div>
+            `;
+            return;
+        }
+    
+        // Xóa canvas cũ và tạo mới
+        container.innerHTML = '';
+        const canvas = document.createElement('canvas');
+        canvas.id = 'revenue-chart';
+        canvas.width = 400;
+        canvas.height = 250;
+        container.appendChild(canvas);
+        
+        try {
+            const ctx = canvas.getContext('2d');
+            
+            // ✅ FIXED: Chuẩn bị dữ liệu với date format chính xác
+            const labels = dataItems.map(item => {
+                if (item.date) {
+                    // ✅ Handle different date formats
+                    const date = new Date(item.date);
+                    if (isNaN(date.getTime())) {
+                        console.warn('Invalid date:', item.date);
+                        return 'N/A';
                     }
+                    return date.toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' });
+                }
+                return item.period || item.dayLabel || 'N/A';
+            });
+    
+            const revenues = dataItems.map(item => item.revenue || 0);
+            const orders = dataItems.map(item => item.ordersCount || item.orderCount || 0);
+    
+            console.log('📊 Chart data prepared:', { labels, revenues, orders });
+    
+            const chartConfig = {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Doanh thu (VNĐ)',
+                        data: revenues,
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y',
+                        fill: true
+                    }, {
+                        label: 'Số đơn hàng',
+                        data: orders,
+                        borderColor: 'rgb(16, 185, 129)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y1',
+                        fill: false
+                    }]
                 },
-                scales: {
-                    x: {
-                        display: true,
-                        title: {
-                            display: true,
-                            text: 'Ngày'
-                        }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
                     },
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
+                    plugins: {
                         title: {
                             display: true,
-                            text: 'Doanh thu (VNĐ)'
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return new Intl.NumberFormat('vi-VN').format(value);
+                            text: 'Doanh thu từ đơn hàng hoàn thành (Đã giao + Từ chối hoàn tiền)',
+                            font: {
+                                size: 14
                             }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
                         }
                     },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
+                    scales: {
+                        x: {
                             display: true,
-                            text: 'Số đơn hàng'
+                            title: {
+                                display: true,
+                                text: 'Ngày'
+                            }
                         },
-                        grid: {
-                            drawOnChartArea: false,
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Doanh thu (VNĐ)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return new Intl.NumberFormat('vi-VN', {
+                                        style: 'currency',
+                                        currency: 'VND',
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 0
+                                    }).format(value);
+                                }
+                            }
                         },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Số đơn hàng'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
                     }
                 }
-            }
-        };
-
-        console.log('📊 Creating chart with config:', chartConfig);
-        
-        const chart = new Chart(ctx, chartConfig);
-        console.log('✅ Chart created successfully:', chart);
-        
-    } catch (error) {
-        console.error('❌ Lỗi render biểu đồ:', error);
-        container.innerHTML = `
-            <div class="text-center text-red-500">
-                <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
-                <p class="mb-2">Lỗi tạo biểu đồ</p>
-                <p class="text-sm text-gray-600 mb-4">${error.message}</p>
-                <button onclick="window.statisticsManager?.loadRevenueStats()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition text-sm">
-                    <i class="fas fa-retry mr-1"></i>Thử lại
-                </button>
-            </div>
-        `;
+            };
+    
+            console.log('📊 Creating chart with config:', chartConfig);
+            
+            const chart = new Chart(ctx, chartConfig);
+            console.log('✅ Chart created successfully:', chart);
+            
+        } catch (error) {
+            console.error('❌ Lỗi render biểu đồ:', error);
+            container.innerHTML = `
+                <div class="text-center text-red-500">
+                    <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                    <p class="mb-2">Lỗi tạo biểu đồ</p>
+                    <p class="text-sm text-gray-600 mb-4">${error.message}</p>
+                    <button onclick="window.statisticsManager?.loadRevenueStats()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition text-sm">
+                        <i class="fas fa-retry mr-1"></i>Thử lại
+                    </button>
+                </div>
+            `;
+        }
     }
-}
 
 
     /**
@@ -1711,12 +1765,6 @@ async loadProfitAnalysis() {
         throw error;
     }
 }
-    /**
-     * Export statistics - PLACEHOLDER
-     */
-    exportStatistics() {
-        this.showErrorMessage('Tính năng xuất báo cáo đang được phát triển', 'info');
-    }
 
     /**
      * Show error message
@@ -1879,6 +1927,10 @@ async loadProfitAnalysis() {
         }
     }
 
+
+
+
+    
     // ============= NEW RENDER METHODS =============
 
     /**
@@ -2122,7 +2174,6 @@ async showOrderDetailsByStatus(statusKey, statusLabel, dbStatuses) {
                 'delivered': 'Đã giao',
                 'refundRequested': 'Yêu cầu trả hàng/ hoàn tiền',
                 'refunded': 'Đã hoàn tiền',
-                'completed': 'Hoàn thành',
                 'cancelled': 'Đã hủy'
             };
             apiStatuses = statusMapping[statusKey] || statusKey;
@@ -2131,7 +2182,7 @@ async showOrderDetailsByStatus(statusKey, statusLabel, dbStatuses) {
         console.log(`🌐 API call with statuses: "${apiStatuses}"`);
         
         // ✅ FIXED: Call API với proper error handling
-        const response = await this.makeRequest(`/Statistics/orders-by-status?statuses=${encodeURIComponent(apiStatuses)}`);
+        const response = await this.makeRequest(`/statistics/orders-by-status?statuses=${encodeURIComponent(apiStatuses)}`);
         
         if (response && response.success && response.data) {
             console.log(`✅ Loaded ${response.data.length} orders for ${statusLabel}`);
@@ -2160,7 +2211,6 @@ async loadStatistics() {
 /**
  * Render nội dung chi tiết đơn hàng 
  */
-// ✅ SỬA: renderOrderDetailsContent method
 
 renderOrderDetailsContent(response, statusLabel, statusKey) {
     const content = document.getElementById('order-details-content');
@@ -2567,13 +2617,6 @@ renderOrderDetailsError(errorMessage, statusLabel) {
             </button>
         </div>
     `;
-}
-
-/**
- * Xuất danh sách đơn hàng theo trạng thái - PLACEHOLDER
- */
-exportOrdersByStatus() {
-    this.showErrorMessage('Tính năng xuất Excel đang được phát triển', 'info');
 }
 
 /**
@@ -3043,29 +3086,294 @@ showSingleOrderModal(orderDetails) {
     console.log('✅ Order modal content updated successfully with beautiful modern design');
 }
 
-/**
- * Xác nhận đơn hàng - PLACEHOLDER
- */
-confirmOrder(orderId) {
-    this.showErrorMessage(`Xác nhận đơn hàng #${orderId} - Tính năng đang được phát triển`, 'info');
+
+
+
 }
+// ============= EXCEL EXPORT FUNCTIONS =============
 
 /**
- * Giao hàng - PLACEHOLDER
+ * API Configuration for Statistics Excel
  */
-shipOrder(orderId) {
-    this.showErrorMessage(`Cập nhật giao hàng #${orderId} - Tính năng đang được phát triển`, 'info');
+const STATISTICS_EXCEL_ENDPOINTS = {
+    dashboard: '/api/Statistics/dashboard/excel',
+    revenue: '/api/Statistics/revenue/excel',
+    topProducts: '/api/Statistics/top-products/excel',
+    comprehensive: '/api/Statistics/comprehensive-report/excel'
+};
+
+/**
+ * Trigger Excel download with proper error handling
+ */
+async function triggerStatisticsExcelDownload(endpoint, params = {}) {
+    try {
+        console.log(`📊 [EXCEL] Starting download from: ${endpoint}`);
+        console.log(`📊 [EXCEL] With params:`, params);
+        
+        showExcelLoadingState(true);
+        
+        // ✅ GET TOKEN WITH MULTIPLE FALLBACKS
+        const token = window.statisticsManager?.getToken() || 
+                     sessionStorage.getItem('authToken') || 
+                     sessionStorage.getItem('token') ||
+                     localStorage.getItem('authToken');
+        
+        if (!token) {
+            throw new Error('Không tìm thấy token xác thực. Vui lòng đăng nhập lại.');
+        }
+        
+        // ✅ BUILD URL WITH PARAMS
+        const baseUrl = 'https://localhost:7088';
+        const fullUrl = new URL(endpoint, baseUrl);
+        
+        // Add parameters to URL
+        Object.keys(params).forEach(key => {
+            if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+                fullUrl.searchParams.append(key, params[key]);
+            }
+        });
+        
+        console.log(`📊 [EXCEL] Full URL: ${fullUrl.toString()}`);
+        
+        // ✅ MAKE REQUEST
+        const response = await fetch(fullUrl.toString(), {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            }
+        });
+        
+        console.log(`📊 [EXCEL] Response status: ${response.status}`);
+        
+        if (!response.ok) {
+            let errorMessage = `Lỗi ${response.status}`;
+            
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorMessage;
+            } catch (e) {
+                const errorText = await response.text();
+                errorMessage = errorText || errorMessage;
+            }
+            
+            throw new Error(`${errorMessage}`);
+        }
+        
+        // ✅ HANDLE FILE DOWNLOAD
+        const blob = await response.blob();
+        console.log(`📊 [EXCEL] Blob size: ${blob.size} bytes`);
+        
+        if (blob.size === 0) {
+            throw new Error('File Excel trống. Vui lòng thử lại.');
+        }
+        
+        // ✅ EXTRACT FILENAME FROM HEADERS
+        const disposition = response.headers.get('content-disposition');
+        let filename = 'statistics_report.xlsx';
+        
+        if (disposition) {
+            const filenameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (filenameMatch && filenameMatch[1]) {
+                filename = filenameMatch[1].replace(/['"]/g, '');
+            }
+        }
+        
+        // ✅ TRIGGER DOWNLOAD
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        console.log(`✅ [EXCEL] Download completed: ${filename}`);
+        
+        // ✅ SHOW SUCCESS MESSAGE
+        if (typeof showToast === 'function') {
+            showToast(`Đã tải xuống ${filename} thành công!`, 'success');
+        }
+        
+    } catch (error) {
+        console.error('❌ [EXCEL] Download error:', error);
+        
+        let userMessage = 'Có lỗi xảy ra khi tải file Excel';
+        if (error.message.includes('404')) {
+            userMessage = 'Chức năng xuất Excel đang được phát triển. Vui lòng thử lại sau.';
+        } else if (error.message.includes('401') || error.message.includes('403')) {
+            userMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+        } else if (error.message.includes('token')) {
+            userMessage = 'Lỗi xác thực. Vui lòng đăng nhập lại.';
+        } else if (error.message) {
+            userMessage = error.message;
+        }
+        
+        if (typeof showToast === 'function') {
+            showToast(userMessage, 'error');
+        } else {
+            alert(userMessage);
+        }
+        
+        throw error;
+    } finally {
+        showExcelLoadingState(false);
+    }
 }
 
 /**
- * Hoàn thành đơn hàng - PLACEHOLDER
+ * Show/hide loading state for Excel download
  */
-completeOrder(orderId) {
-    this.showErrorMessage(`Hoàn thành đơn hàng #${orderId} - Tính năng đang được phát triển`, 'info');
+function showExcelLoadingState(isLoading) {
+    const buttons = document.querySelectorAll('[data-excel-export]');
+    buttons.forEach(button => {
+        if (isLoading) {
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang xuất...';
+        } else {
+            button.disabled = false;
+            // Restore original text based on button type
+            const exportType = button.getAttribute('data-excel-export');
+            const buttonTexts = {
+                'dashboard': '<i class="fas fa-file-excel mr-2"></i>Xuất Dashboard',
+                'revenue': '<i class="fas fa-file-excel mr-2"></i>Xuất Doanh Thu',
+                'products': '<i class="fas fa-file-excel mr-2"></i>Xuất Sản Phẩm',
+                'comprehensive': '<i class="fas fa-download mr-2"></i>Xuất Báo Cáo Tổng Hợp'
+            };
+            button.innerHTML = buttonTexts[exportType] || '<i class="fas fa-file-excel mr-2"></i>Xuất Excel';
+        }
+    });
 }
 
+/**
+ * Export dashboard to Excel
+ */
+function exportDashboardExcel() {
+    console.log('📊 Exporting dashboard to Excel...');
+    triggerStatisticsExcelDownload(STATISTICS_EXCEL_ENDPOINTS.dashboard);
 }
 
+/**
+ * Export revenue stats to Excel
+ */
+function exportRevenueExcel() {
+    console.log('💰 Exporting revenue stats to Excel...');
+    
+    // Get current filter values from UI if they exist
+    const startDate = document.getElementById('revenue-start-date')?.value;
+    const endDate = document.getElementById('revenue-end-date')?.value;
+    const groupBy = document.getElementById('revenue-group-by')?.value || 'day';
+
+    const params = { groupBy };
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+
+    triggerStatisticsExcelDownload(STATISTICS_EXCEL_ENDPOINTS.revenue, params);
+}
+
+/**
+ * Export top products to Excel
+ */
+function exportTopProductsExcel() {
+    console.log('🏆 Exporting top products to Excel...');
+    
+    // Get current filter values
+    const startDate = document.getElementById('products-start-date')?.value;
+    const endDate = document.getElementById('products-end-date')?.value;
+    const limit = document.getElementById('products-limit')?.value || 50;
+    const categoryId = document.getElementById('products-category')?.value;
+
+    const params = { limit };
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    if (categoryId && categoryId !== '') params.categoryId = categoryId;
+
+    triggerStatisticsExcelDownload(STATISTICS_EXCEL_ENDPOINTS.topProducts, params);
+}
+
+/**
+ * Export comprehensive report to Excel
+ */
+function exportComprehensiveReport() {
+    console.log('📋 Exporting comprehensive report to Excel...');
+    
+    // Use date range or default to last month
+    const startDate = document.getElementById('report-start-date')?.value;
+    const endDate = document.getElementById('report-end-date')?.value;
+
+    const params = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+
+    triggerStatisticsExcelDownload(STATISTICS_EXCEL_ENDPOINTS.comprehensive, params);
+}
+
+// ============= UPDATE EXISTING EXPORT FUNCTION =============
+
+/**
+ * Update the existing exportStatistics method
+ */
+if (window.SellerStatistics) {
+    window.SellerStatistics.prototype.exportStatistics = function() {
+        // Show export options modal or use comprehensive report as default
+        exportComprehensiveReport();
+    };
+}
+
+// ============= ADD EVENT LISTENERS =============
+
+/**
+ * Initialize export button event listeners
+ */
+function initializeExportButtons() {
+    // Dashboard export
+    const dashboardExportBtn = document.getElementById('export-dashboard-btn');
+    if (dashboardExportBtn) {
+        dashboardExportBtn.setAttribute('data-excel-export', 'dashboard');
+        dashboardExportBtn.addEventListener('click', exportDashboardExcel);
+    }
+
+    // Revenue export
+    const revenueExportBtn = document.getElementById('export-revenue-btn');
+    if (revenueExportBtn) {
+        revenueExportBtn.setAttribute('data-excel-export', 'revenue');
+        revenueExportBtn.addEventListener('click', exportRevenueExcel);
+    }
+
+    // Products export
+    const productsExportBtn = document.getElementById('export-products-btn');
+    if (productsExportBtn) {
+        productsExportBtn.setAttribute('data-excel-export', 'products');
+        productsExportBtn.addEventListener('click', exportTopProductsExcel);
+    }
+
+    // Comprehensive export
+    const comprehensiveExportBtn = document.getElementById('export-comprehensive-btn');
+    if (comprehensiveExportBtn) {
+        comprehensiveExportBtn.setAttribute('data-excel-export', 'comprehensive');
+        comprehensiveExportBtn.addEventListener('click', exportComprehensiveReport);
+    }
+
+    // Update main export button
+    const mainExportBtn = document.getElementById('export-stats-btn');
+    if (mainExportBtn) {
+        mainExportBtn.removeEventListener('click', window.statisticsManager?.exportStatistics);
+        mainExportBtn.addEventListener('click', exportComprehensiveReport);
+    }
+}
+
+// ============= AUTO-INITIALIZE =============
+
+// Initialize export buttons when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeExportButtons);
+} else {
+    initializeExportButtons();
+}
+
+// Also initialize after a delay to catch dynamically added buttons
+setTimeout(initializeExportButtons, 1000);
 // ============= GLOBAL FUNCTIONS =============
 
 /**

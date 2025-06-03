@@ -10,61 +10,6 @@
   <link rel="icon" type="image/png" href="/Customer/assets/images/logo.jpg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="../assets/css/style.css">
-  <style>
-    /* Chatbot Animations */
-@keyframes bounce-in {
-    0% { transform: scale(0.3) rotate(-45deg); opacity: 0; }
-    50% { transform: scale(1.05) rotate(-10deg); }
-    70% { transform: scale(0.9) rotate(5deg); }
-    100% { transform: scale(1) rotate(0deg); opacity: 1; }
-}
-
-@keyframes pulse-slow {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-#botpress-chat-toggle {
-    animation: bounce-in 0.6s ease-out;
-}
-
-#chat-status {
-    animation: pulse-slow 2s infinite;
-}
-
-/* ✅ Responsive adjustments */
-@media (max-width: 768px) {
-    #botpress-chat-toggle {
-        bottom: 20px;
-        right: 20px;
-        width: 50px;
-        height: 50px;
-    }
-    
-    #botpress-chat-toggle i {
-        font-size: 1.25rem;
-    }
-}
-
-/* ✅ High contrast mode support */
-@media (prefers-contrast: high) {
-    #botpress-chat-toggle {
-        border: 2px solid white;
-    }
-}
-
-/* ✅ Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-    #botpress-chat-toggle {
-        animation: none;
-        transition: none;
-    }
-    
-    #chat-status {
-        animation: none;
-    }
-}
-  </style>
 </head>
 
 <body class="bg-gray-50 font-sans">
@@ -171,285 +116,370 @@
   
 
   <!-- Chatbot -->
-<!-- ✅ ENHANCED Chatbot với better UI -->
-<div class="fixed bottom-6 right-6 z-50">
-  <!-- Chat Toggle Button -->
-  <button id="botpress-chat-toggle" 
-          class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-blue-300" 
-          aria-label="Chat với ShopX AI"
-          title="Chat với ShopX AI">
-      <i id="chat-icon" class="fas fa-robot text-2xl"></i>
-      <i id="loading-icon" class="fas fa-spinner fa-spin text-2xl hidden"></i>
-  </button>
-  
-  <!-- ✅ NEW: Chat Status Indicator -->
-  <div id="chat-status" class="absolute -top-2 -right-2 w-4 h-4 bg-green-500 rounded-full border-2 border-white hidden animate-pulse"></div>
-  
-  <!-- ✅ NEW: Notification Badge -->
-  <div id="chat-notification" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold hidden">
-    !
-  </div>
-  
-  <!-- Botpress Scripts -->
-  <script src="https://cdn.botpress.cloud/webchat/v2.5/inject.js"></script>
-  <script src="https://files.bpcontent.cloud/2025/05/16/06/20250516065823-OF1G5JIH.js"></script>
-</div>
 
   <!-- Scripts -->
   <script src="../assets/js/index.js"></script>
   <script type="module" src="../assets/js/components.js"></script>
-  <script>
-    // ✅ ENHANCED Botpress Configuration với Error Handling
-    (function() {
-        'use strict';
+ 
+ 
+
+<!-- ✅ 1. INTERCOM CONFIGURATION - BASED ON OFFICIAL SCRIPT -->
+<script>
+  // ✅ Development Environment Detection
+  const isDevelopment = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.port === '5500';
+
+  // ✅ Get user info từ ShopX session TRƯỚC KHI CONFIG
+  function getUserForIntercom() {
+    try {
+      if (typeof getSession === 'function') {
+        const token = getSession('token');
+        const userInfo = getSession('userInfo');
         
-        let botpressReady = false;
-        let chatToggleButton;
-        let chatIcon;
-        let loadingIcon;
-        let chatStatus;
-        
-        // Wait for DOM to be ready
-        function initializeChatbot() {
-            chatToggleButton = document.getElementById('botpress-chat-toggle');
-            chatIcon = document.getElementById('chat-icon');
-            loadingIcon = document.getElementById('loading-icon');
-            chatStatus = document.getElementById('chat-status');
-            
-            if (!chatToggleButton) {
-                console.error('Chatbot toggle button not found');
-                return;
-            }
-            
-            // Show loading state
-            showLoadingState();
-            
-            // Initialize Botpress with error handling
-            initializeBotpress();
-            
-            // Bind events
-            bindChatEvents();
+        if (token && userInfo) {
+          return {
+            id: userInfo.userID || userInfo.userId || 'anonymous_' + Date.now(),
+            name: userInfo.fullName || 'ShopX Customer',
+            email: userInfo.email || null,
+            createdAt: Math.floor(Date.now() / 1000), // Unix timestamp
+            phone: userInfo.phone || null
+          };
         }
+      }
+    } catch (error) {
+      console.warn('Could not get user info for Intercom:', error);
+    }
+    
+    // Fallback for anonymous users
+    return {
+      id: 'anonymous_' + Date.now(),
+      name: 'Khách hàng ShopX',
+      email: null,
+      createdAt: Math.floor(Date.now() / 1000)
+    };
+  }
+
+  // ✅ Get user data
+  const user = getUserForIntercom();
+
+  // ✅ Intercom Settings - THEO SCRIPT CHÍNH THỨC
+  window.intercomSettings = {
+    api_base: "https://api-iam.intercom.io", // ✅ GIỐNG SCRIPT GỐC
+    app_id: "rk8if99h",
+    user_id: user.id, // ✅ THEO SCRIPT GỐC
+    name: user.name, // ✅ THEO SCRIPT GỐC  
+    email: user.email, // ✅ THEO SCRIPT GỐC
+    created_at: user.createdAt, // ✅ THEO SCRIPT GỐC
+    
+    // ✅ Additional customization
+    background_color: "#2563eb",
+    action_color: "#2563eb", 
+    language_override: "vi",
+    
+    // ✅ KHÔNG ẨN LAUNCHER - để Intercom tự quyết định
+    // hide_default_launcher: false, // ✅ EXPLICIT FALSE
+    
+    // ✅ Custom attributes
+    custom_attributes: {
+      'customer_type': 'ShopX_Customer',
+      'registration_source': 'Website',
+      'website_section': 'Contact Page',
+      'shopx_customer_id': user.id,
+      'development_mode': isDevelopment
+    }
+  };
+
+  console.log('✅ Intercom settings configured:', {
+    user_id: user.id,
+    name: user.name,
+    email: user.email,
+    development: isDevelopment
+  });
+</script>
+
+<!-- ✅ 2. INTERCOM INSTALLATION - SCRIPT CHÍNH THỨC TỪ INTERCOM -->
+<script>
+  // We pre-filled your app ID in the widget URL: 'https://widget.intercom.io/widget/rk8if99h'
+  (function(){
+    try {
+      var w=window;
+      var ic=w.Intercom;
+      if(typeof ic==="function"){
+        ic('reattach_activator');
+        ic('update',w.intercomSettings);
+      } else {
+        var d=document;
+        var i=function(){i.c(arguments);};
+        i.q=[];
+        i.c=function(args){i.q.push(args);};
+        w.Intercom=i;
+        var l=function(){
+          var s=d.createElement('script');
+          s.type='text/javascript';
+          s.async=true;
+          s.src='https://widget.intercom.io/widget/rk8if99h'; // ✅ HARDCODED như script gốc
+          
+          // ✅ Error handling cho development
+          s.onerror = function() {
+            if (isDevelopment) {
+              console.warn('⚠️ Intercom script failed to load (CORS in development)');
+              setTimeout(createFallbackChat, 2000);
+            } else {
+              console.error('❌ Intercom script failed to load');
+            }
+          };
+          
+          s.onload = function() {
+            console.log('✅ Intercom script loaded successfully');
+          };
+          
+          var x=d.getElementsByTagName('script')[0];
+          x.parentNode.insertBefore(s,x);
+        };
         
-        function showLoadingState() {
-            if (chatIcon && loadingIcon) {
-                chatIcon.classList.add('hidden');
-                loadingIcon.classList.remove('hidden');
-            }
-            
-            if (chatToggleButton) {
-                chatToggleButton.disabled = true;
-                chatToggleButton.title = 'Đang khởi tạo chatbot...';
-            }
-        }
-        
-        function showReadyState() {
-            if (chatIcon && loadingIcon) {
-                chatIcon.classList.remove('hidden');
-                loadingIcon.classList.add('hidden');
-            }
-            
-            if (chatToggleButton) {
-                chatToggleButton.disabled = false;
-                chatToggleButton.title = 'Chat với ShopX AI';
-            }
-            
-            if (chatStatus) {
-                chatStatus.classList.remove('hidden');
-            }
-            
-            botpressReady = true;
-        }
-        
-        function showErrorState() {
-            if (chatIcon && loadingIcon) {
-                chatIcon.classList.remove('hidden');
-                loadingIcon.classList.add('hidden');
-                chatIcon.className = 'fas fa-exclamation-triangle text-2xl text-red-300';
-            }
-            
-            if (chatToggleButton) {
-                chatToggleButton.disabled = true;
-                chatToggleButton.title = 'Chatbot không khả dụng';
-                chatToggleButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                chatToggleButton.classList.add('bg-gray-400', 'cursor-not-allowed');
-            }
-        }
-        
-        async function initializeBotpress() {
-            try {
-                // Check if Botpress WebChat is available
-                if (typeof window.botpressWebChat === 'undefined') {
-                    throw new Error('Botpress WebChat not loaded');
-                }
-                
-                // ✅ ENHANCED: Get user info if logged in
-                const userInfo = getUserInfo();
-                
-                // Initialize with enhanced config
-                await window.botpressWebChat.init({
-                    botId: "9c478974-8f3b-4df2-ad85-28261b16c4ae",
-                    clientId: "9c478974-8f3b-4df2-ad85-28261b16c4ae",
-                    hostUrl: "https://mediafiles.botpress.cloud",
-                    messagingUrl: "https://messaging.botpress.cloud",
-                    botName: "ShopX Bot",
-                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                    showConversationsButton: false,
-                    enableReset: true,
-                    
-                    // ✅ NEW: User context integration
-                    ...(userInfo && {
-                        userId: userInfo.userId,
-                        userName: userInfo.fullName,
-                        userEmail: userInfo.email
-                    }),
-                    
-                    // ✅ NEW: Styling customization
-                    stylesheet: `
-                        .bpw-chat-container {
-                            border-radius: 12px !important;
-                            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-                        }
-                        .bpw-header {
-                            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
-                            border-radius: 12px 12px 0 0 !important;
-                        }
-                        .bpw-send-button {
-                            background-color: #2563eb !important;
-                        }
-                    `,
-                    
-                    // ✅ NEW: Welcome message
-                    welcomeMessage: userInfo ? 
-                        `Xin chào ${userInfo.fullName}! Tôi là ShopX Bot, có thể giúp gì cho bạn hôm nay?` :
-                        'Xin chào! Tôi là ShopX Bot, có thể giúp gì cho bạn hôm nay?'
-                });
-                
-                console.log('✅ Botpress WebChat initialized successfully');
-                showReadyState();
-                
-                // ✅ Setup event listeners for chat events
-                setupChatEventListeners();
-                
-            } catch (error) {
-                console.error('❌ Botpress initialization failed:', error);
-                showErrorState();
-                
-                // ✅ Fallback: Show contact form link
-                if (chatToggleButton) {
-                    chatToggleButton.addEventListener('click', () => {
-                        alert('Chatbot tạm thời không khả dụng. Vui lòng sử dụng form liên hệ phía trên.');
-                    });
-                }
-            }
-        }
-        
-        function getUserInfo() {
-            try {
-                // ✅ Integration với session management từ index.js
-                if (typeof getSession === 'function') {
-                    const token = getSession('token');
-                    const userInfo = getSession('userInfo');
-                    
-                    if (token && userInfo) {
-                        return {
-                            userId: userInfo.userID || userInfo.userId,
-                            fullName: userInfo.fullName,
-                            email: userInfo.email
-                        };
-                    }
-                }
-            } catch (error) {
-                console.warn('Could not get user info for chatbot:', error);
-            }
-            return null;
-        }
-        
-        function setupChatEventListeners() {
-            try {
-                // ✅ Listen for chat open/close events
-                window.botpressWebChat.onEvent((event) => {
-                    switch (event.type) {
-                        case 'webchat:opened':
-                            console.log('💬 Chat opened');
-                            // Hide notification badge
-                            const notification = document.getElementById('chat-notification');
-                            if (notification) {
-                                notification.classList.add('hidden');
-                            }
-                            break;
-                            
-                        case 'webchat:closed':
-                            console.log('💬 Chat closed');
-                            break;
-                            
-                        case 'message:received':
-                            console.log('📨 New message received');
-                            // Show notification if chat is closed
-                            const notificationBadge = document.getElementById('chat-notification');
-                            if (notificationBadge && !isChatOpen()) {
-                                notificationBadge.classList.remove('hidden');
-                            }
-                            break;
-                    }
-                });
-            } catch (error) {
-                console.warn('Could not setup chat event listeners:', error);
-            }
-        }
-        
-        function bindChatEvents() {
-            if (!chatToggleButton) return;
-            
-            chatToggleButton.addEventListener('click', () => {
-                if (!botpressReady) {
-                    console.warn('Botpress not ready yet');
-                    return;
-                }
-                
-                try {
-                    window.botpressWebChat.sendEvent({ type: 'toggle' });
-                } catch (error) {
-                    console.error('Error toggling chat:', error);
-                    alert('Có lỗi xảy ra khi mở chatbot. Vui lòng thử lại.');
-                }
-            });
-            
-            // ✅ NEW: Keyboard shortcut (Ctrl + Alt + C)
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.altKey && e.key === 'c' && botpressReady) {
-                    e.preventDefault();
-                    window.botpressWebChat.sendEvent({ type: 'toggle' });
-                }
-            });
-        }
-        
-        function isChatOpen() {
-            try {
-                return window.botpressWebChat && window.botpressWebChat.isOpen();
-            } catch (error) {
-                return false;
-            }
-        }
-        
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeChatbot);
+        if(document.readyState==='complete'){
+          l();
+        } else if(w.attachEvent){
+          w.attachEvent('onload',l);
         } else {
-            // DOM already loaded, wait a bit for other scripts
-            setTimeout(initializeChatbot, 500);
+          w.addEventListener('load',l,false);
         }
-        
-        // ✅ Global error handler for chatbot
-        window.addEventListener('error', (event) => {
-            if (event.message && event.message.includes('botpress')) {
-                console.error('Botpress error detected:', event.error);
-                showErrorState();
-            }
-        });
-        
-    })();
-    </script>
+      }
+    } catch (error) {
+      console.warn('⚠️ Intercom initialization failed:', error);
+      if (isDevelopment) {
+        setTimeout(createFallbackChat, 2000);
+      }
+    }
+  })();
+</script>
+
+<!-- ✅ 3. INTERCOM INTEGRATION & FALLBACK -->
+<script>
+  (function() {
+      'use strict';
+      
+      let intercomReady = false;
+      
+      // ✅ Wait for Intercom to be ready
+      function waitForIntercomReady() {
+          if (typeof window.Intercom !== 'undefined' && window.Intercom.q) {
+              // Intercom is loaded
+              setTimeout(initializeIntercomIntegration, 1000);
+          } else {
+              setTimeout(waitForIntercomReady, 500);
+          }
+      }
+      
+      function initializeIntercomIntegration() {
+          try {
+              console.log('✅ Initializing Intercom integration');
+              
+              // ✅ Check if launcher appears
+              setTimeout(function() {
+                  const launcher = document.querySelector('.intercom-launcher');
+                  if (launcher && launcher.style.display !== 'none') {
+                      console.log('✅ Intercom launcher detected');
+                      intercomReady = true;
+                      setupIntercomEvents();
+                      injectCustomCSS();
+                  } else {
+                      console.warn('⚠️ Intercom launcher not found, creating fallback');
+                      createFallbackChat();
+                  }
+              }, 3000);
+              
+          } catch (error) {
+              console.warn('⚠️ Intercom integration error:', error);
+              createFallbackChat();
+          }
+      }
+      
+      function setupIntercomEvents() {
+          try {
+              window.Intercom('onShow', function() {
+                  console.log('💬 Intercom opened');
+              });
+              
+              window.Intercom('onHide', function() {
+                  console.log('💬 Intercom closed');
+              });
+              
+              window.Intercom('onUnreadCountChanged', function(unreadCount) {
+                  console.log('📨 Unread messages:', unreadCount);
+              });
+              
+          } catch (error) {
+              console.warn('Could not setup Intercom event listeners:', error);
+          }
+      }
+      
+      function injectCustomCSS() {
+          const style = document.createElement('style');
+          style.textContent = `
+              .intercom-launcher {
+                  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+                  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.4) !important;
+                  transition: all 0.3s ease !important;
+              }
+              
+              .intercom-launcher:hover {
+                  transform: scale(1.1) !important;
+                  box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.6) !important;
+              }
+              
+              .intercom-lightweight-app {
+                  border-radius: 12px !important;
+                  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
+              }
+          `;
+          document.head.appendChild(style);
+      }
+      
+      // ✅ Global fallback chat function
+      window.createFallbackChat = function() {
+          // Remove existing fallback
+          const existing = document.getElementById('shopx-fallback-chat');
+          if (existing) existing.remove();
+          
+          const fallbackHTML = `
+              <div id="shopx-fallback-chat" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
+                  <div id="fallback-launcher" 
+                       style="background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); 
+                              width: 60px; height: 60px; border-radius: 50%; 
+                              display: flex; align-items: center; justify-content: center; 
+                              color: white; cursor: pointer; 
+                              box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+                              transition: all 0.3s ease;"
+                       onclick="toggleFallbackWindow()"
+                       onmouseover="this.style.transform='scale(1.1)'"
+                       onmouseout="this.style.transform='scale(1)'">
+                      <i class="fas fa-comments" style="font-size: 24px;"></i>
+                  </div>
+                  
+                  <div id="fallback-window" 
+                       style="position: absolute; bottom: 70px; right: 0; 
+                              background: white; width: 350px; height: 450px; 
+                              border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); 
+                              display: none; flex-direction: column; overflow: hidden;
+                              border: 1px solid #e5e7eb;">
+                      <!-- Header -->
+                      <div style="background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); 
+                                  color: white; padding: 16px; display: flex; justify-content: space-between; 
+                                  align-items: center;">
+                          <div>
+                              <h3 style="margin: 0; font-size: 16px; font-weight: bold;">
+                                  <i class="fas fa-headset"></i> ShopX Support
+                              </h3>
+                              <p style="margin: 0; font-size: 12px; opacity: 0.9;">
+                                  Hỗ trợ khách hàng 24/7
+                              </p>
+                          </div>
+                          <button onclick="toggleFallbackWindow()" 
+                                  style="background: none; border: none; color: white; 
+                                         font-size: 18px; cursor: pointer;">
+                              <i class="fas fa-times"></i>
+                          </button>
+                      </div>
+                      
+                      <!-- Content -->
+                      <div style="flex: 1; padding: 20px; overflow-y: auto;">
+                          <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                              <p style="margin: 0; color: #374151; line-height: 1.5;">
+                                  👋 Chào bạn! Tôi là ShopX Support.<br><br>
+                                  ${isDevelopment ? '🚧 <strong>Development Mode:</strong> Intercom đang gặp vấn đề.<br><br>' : ''}
+                                  💡 <strong>Bạn có thể liên hệ qua:</strong>
+                              </p>
+                          </div>
+                          
+                          <div onclick="scrollToContactForm()" 
+                               style="background: #eff6ff; padding: 12px; border-radius: 8px; 
+                                      cursor: pointer; margin-bottom: 8px; border-left: 4px solid #2563eb;">
+                              <strong style="color: #2563eb;">📝 Form liên hệ</strong><br>
+                              <small style="color: #6b7280;">Gửi tin nhắn trên trang này</small>
+                          </div>
+                          
+                          <div onclick="window.open('tel:19001234')" 
+                               style="background: #f0fdf4; padding: 12px; border-radius: 8px; 
+                                      cursor: pointer; margin-bottom: 8px; border-left: 4px solid #16a34a;">
+                              <strong style="color: #16a34a;">📞 Hotline</strong><br>
+                              <small style="color: #6b7280;">1900 1234 (24/7)</small>
+                          </div>
+                          
+                          <div onclick="window.open('mailto:support@shopx.vn')" 
+                               style="background: #fef7ff; padding: 12px; border-radius: 8px; 
+                                      cursor: pointer; margin-bottom: 8px; border-left: 4px solid #a855f7;">
+                              <strong style="color: #a855f7;">📧 Email</strong><br>
+                              <small style="color: #6b7280;">support@shopx.vn</small>
+                          </div>
+                          
+                          <div onclick="window.open('https://www.facebook.com/quocminh20')" 
+                               style="background: #eff6ff; padding: 12px; border-radius: 8px; 
+                                      cursor: pointer; border-left: 4px solid #1877f2;">
+                              <strong style="color: #1877f2;">📱 Facebook</strong><br>
+                              <small style="color: #6b7280;">Nhắn tin Facebook</small>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          `;
+          
+          document.body.insertAdjacentHTML('beforeend', fallbackHTML);
+          console.log('🔧 Fallback chat created');
+          
+          // Global functions
+          window.toggleFallbackWindow = function() {
+              const window_el = document.getElementById('fallback-window');
+              const launcher = document.getElementById('fallback-launcher');
+              
+              if (window_el.style.display === 'none') {
+                  window_el.style.display = 'flex';
+                  launcher.innerHTML = '<i class="fas fa-times" style="font-size: 24px;"></i>';
+              } else {
+                  window_el.style.display = 'none';
+                  launcher.innerHTML = '<i class="fas fa-comments" style="font-size: 24px;"></i>';
+              }
+          };
+          
+          window.scrollToContactForm = function() {
+              document.getElementById('contactForm').scrollIntoView({ 
+                  behavior: 'smooth', 
+                  block: 'center' 
+              });
+              setTimeout(() => {
+                  document.getElementById('contactMessage').focus();
+              }, 500);
+              window.toggleFallbackWindow();
+          };
+      };
+      
+      // ✅ Keyboard shortcut
+      document.addEventListener('keydown', (e) => {
+          if (e.ctrlKey && e.altKey && e.key === 'c') {
+              e.preventDefault();
+              if (intercomReady && typeof window.Intercom !== 'undefined') {
+                  try {
+                      window.Intercom('show');
+                  } catch (error) {
+                      window.toggleFallbackWindow();
+                  }
+              } else {
+                  window.toggleFallbackWindow();
+              }
+          }
+      });
+      
+      // ✅ Initialize
+      if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', waitForIntercomReady);
+      } else {
+          setTimeout(waitForIntercomReady, 1000);
+      }
+      
+  })();
+</script>
+
   <script>
     // Đảm bảo script này chạy sau khi index.js và components.js đã được load
     function initializeContactPage() {
@@ -551,6 +581,7 @@
       // DOMContentLoaded đã xảy ra, components.js có thể vẫn đang load
       setTimeout(initializeContactPage, 200); // Chờ 200ms để components load xong
     }
+    
   </script>
 </body>
 

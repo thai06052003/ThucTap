@@ -270,6 +270,58 @@
         background-color: #f9fafb;
         border-color: #9ca3af;
     }
+    .btn-primary.selected {
+    background-color: #3B82F6;
+    border-color: #3B82F6;
+    color: white;
+}
+
+.btn-outline.selected {
+    background-color: #EFF6FF;
+    border-color: #3B82F6;
+    color: #3B82F6;
+}
+
+/* ✅ ADD TO YOUR CSS FILE */
+.target-audience-display {
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.recipient-count-display {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+#select-users-btn {
+    transition: all 0.2s ease;
+}
+
+#select-users-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+#recipient-count {
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    margin-top: 0.5rem;
+}
+
+.form-error {
+    border-color: #EF4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
     </style>
 </head>
 
@@ -488,17 +540,32 @@
                                     </select>
                                 </div>
                                 
-                                <div class="form-group-compact">
-                                    <label for="target_audience" class="form-label-compact required">Đối tượng</label>
-                                    <select id="target_audience" name="target_audience" required class="form-input-compact">
-                                        <option value="">-- Chọn đối tượng --</option>
-                                        <option value="customers">👥 Khách hàng</option>
-                                        <option value="sellers">🏪 Người bán</option>
-                                        <option value="admins">👑 Quản trị viên</option>
-                                        <option value="both">👥🏪 KH & Người bán</option>
-                                        <option value="all">🌐 Tất cả</option>
-                                    </select>
-                                    <div id="recipient-count"></div>
+                                <div class="mb-4">
+                                    <label for="target_audience" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Đối tượng nhận thông báo *
+                                    </label>
+                                    <div class="flex space-x-2">
+                                        <select id="target_audience" name="target_audience" required 
+                                                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                onchange="updateTargetAudienceUI(); updateRecipientCount();">
+                                            <option value="">-- Chọn đối tượng --</option>
+                                            <option value="all">🌐 Tất cả người dùng</option>
+                                            <option value="customers">👥 Tất cả khách hàng</option>
+                                            <option value="sellers">🏪 Tất cả người bán</option>
+                                            <option value="admins">👑 Tất cả quản trị viên</option>
+                                            <option value="both">👥🏪 Khách hàng & Người bán</option>
+                                            <option value="specific">🎯 Chọn người dùng cụ thể</option>
+                                            </optgroup>
+                                        </select>
+                                        
+                                        <!-- ✅ BUTTON TO OPEN USER SELECTION -->
+                                        <button type="button" onclick="openUserSelectionModal()" 
+                                                id="select-users-btn"
+                                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors hidden">
+                                            <i class="fas fa-users mr-1"></i> Chọn người dùng
+                                        </button>
+                                    </div>
+                                    <p id="recipient-count" class="mt-1 text-sm"></p>
                                 </div>
                             </div>
 

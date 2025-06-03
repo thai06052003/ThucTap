@@ -316,6 +316,8 @@
 
     <script src="../assets/js/index.js"></script>
     <script type="module" src="../assets/js/components.js"></script>
+    <script src="../assets/js/rebuy-handler.js"></script>
+
     <script>
         function initializeOrderDetailPage() {
             const loadingElement = document.getElementById('customerLoadingOrderDetail');
@@ -382,7 +384,7 @@
                     window.location.assign('/Customer/templates/login.html')
                 }
                 try {
-                    const response = await fetch(`${API_BASE_URL}/Orders/${orderId}/order-status`, {
+                    const response = await fetch(`${API_BASE_URL}/Orders/${orderId}/customer-status`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                         body: JSON.stringify({ newStatus: newStatus })
@@ -513,9 +515,10 @@
                     }
                 }
                 actionButtonsContainer.innerHTML += `
-                        <button onclick="window.location.href='/Customer/templates/cart.html?rebuyOrderId=${order.orderID}'" class="action-button bg-gray-200 text-gray-700 hover:bg-gray-300 ml-0 sm:ml-3 mt-2 sm:mt-0">
-                            <i class="fas fa-redo-alt"></i>Mua Lại
-                        </button>`;
+                        <button onclick="rebuyHandler.showRebuyModal(${order.orderID})" 
+                            class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-600 px-4 py-2 rounded-sm text-sm font-medium transition-colors">
+                        <i class="fas fa-redo-alt mr-2"></i>Mua Lại
+                    </button>`;
             }
 
             const urlParams = new URLSearchParams(window.location.search);

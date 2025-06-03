@@ -7,40 +7,152 @@ let categoryPagination = {
     totalItems: 0,
     totalPages: 0
 };
+let currentActiveSection = 'shop'; // Default section
+
+// ✅ Hàm lưu trạng thái vào localStorage và URL
+function saveActiveSection(sectionName) {
+    currentActiveSection = sectionName;
+    sessionStorage.setItem('activeSection', sectionName);
+    
+    // Cập nhật URL hash mà không reload trang
+    if (window.location.hash !== `#${sectionName}`) {
+        history.replaceState(null, null, `#${sectionName}`);
+    }
+    }
+    function updateActiveNavItem(sectionName) {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active', 'bg-blue-50', 'text-blue-600');
+        });
+        
+        const activeNavItem = document.querySelector(`[data-section="${sectionName}"]`);
+        if (activeNavItem) {
+            activeNavItem.classList.add('active', 'bg-blue-50', 'text-blue-600');
+        }
+    }
+
+// ✅ Hàm khôi phục trạng thái 
+function restoreActiveSection() {
+    console.group("=== RESTORE ACTIVE SECTION ===");
+    
+    // Ưu tiên 1: URL hash
+    let sectionToActivate = window.location.hash.substring(1);
+    
+    // Ưu tiên 2: sessionStorage
+    if (!sectionToActivate) {
+        sectionToActivate = sessionStorage.getItem('activeSection');
+    }
+    
+    // Ưu tiên 3: Mặc định
+    if (!sectionToActivate) {
+        sectionToActivate = 'shop';
+    }
+    
+    // Kiểm tra section có tồn tại không
+    const targetSection = document.getElementById(`${sectionToActivate}-section`);
+    if (!targetSection) {
+        console.warn(`Section ${sectionToActivate} không tồn tại, fallback về shop`);
+        sectionToActivate = 'shop';
+    }
+    
+    console.log(`🔄 Restoring section: ${sectionToActivate}`);
+    
+    // Kích hoạt section
+    setActiveSection(sectionToActivate);
+    
+    // Cập nhật nav item active
+    updateActiveNavItem(sectionToActivate);
+    
+    console.groupEnd();
+    return sectionToActivate;
+}
+
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Set default active section
-    setActiveSection('shop');
     
-    // Set default page title
-    document.getElementById('pageTitle').textContent = 'Quản lý cửa hàng';
+    try {
+        // Apply immediate styles
+        applyImmediateStyles();
+        
+        // Debug token
+        debugCheckToken();
+        
+        // Check token validity
+        if (!checkTokenValidity()) {
+            console.error('Token không hợp lệ! Chuyển hướng đến trang đăng nhập...');
+            setTimeout(() => {
+                window.location.href = "../../Customer/templates/login.html";
+            }, 2000);
+            return;
+        }
+        
+        // Initialize UI first
+        initializeUI();
+        
+        // ✅ Sau khi UI được khởi tạo, khôi phục trạng thái
+        setTimeout(() => {
+            restoreActiveSection();
+            
+            // Load seller info và shop data
+            loadSellerInfo();
+            loadShopCategories();
+            loadShopManagementData();
+            
+            // Fix layout
+            fixLayoutAfterLoad();
+        }, 200);
+        
+    } catch (error) {
+        console.error("Lỗi trong DOM Content Loaded:", error);
+    }
     
-    // Load shop data immediately
-    loadShopData();
+    console.groupEnd();
+});
+window.addEventListener('popstate', function(event) {
+    console.log('🔙 Browser navigation detected');
+    
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+        setActiveSection(hash);
+    } else {
+        setActiveSection('shop');
+    }
 });
 
+// ✅ Thêm listener cho hashchange
+window.addEventListener('hashchange', function(event) {
+    console.log('🔗 Hash changed');
+    
+    const hash = window.location.hash.substring(1);
+    if (hash && hash !== currentActiveSection) {
+        setActiveSection(hash);
+    }
+});
 // Hàm helper để set active section
 function setActiveSection(sectionName) {
+    console.log(`🎯 Setting active section: ${sectionName}`);
+    
     // Remove active class from all sections
     document.querySelectorAll('.section').forEach(section => {
         section.classList.remove('active');
+        section.style.display = 'none';
     });
     
     // Remove active class from all nav items
     document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
+        item.classList.remove('active', 'bg-blue-50', 'text-blue-600');
     });
     
     // Add active class to target section
     const targetSection = document.getElementById(sectionName + '-section');
     if (targetSection) {
         targetSection.classList.add('active');
+        targetSection.style.display = 'block';
     }
     
     // Add active class to corresponding nav item
     const targetNavItem = document.querySelector(`[data-section="${sectionName}"]`);
     if (targetNavItem) {
-        targetNavItem.classList.add('active');
+        targetNavItem.classList.add('active', 'bg-blue-50', 'text-blue-600');
     }
     
     // Update page title
@@ -49,10 +161,20 @@ function setActiveSection(sectionName) {
         'categories': 'Quản lý danh mục', 
         'products': 'Quản lý sản phẩm',
         'orders': 'Quản lý đơn hàng',
-        'statistics': 'Thống kê'
+        'statistics': 'Thống kê',
+        'notifications': 'Thông báo'
     };
     
-    document.getElementById('pageTitle').textContent = titles[sectionName] || 'Trang quản lý';
+    const pageTitle = document.getElementById('pageTitle');
+    if (pageTitle) {
+        pageTitle.textContent = titles[sectionName] || 'Trang quản lý';
+    }
+    
+    // ✅ Lưu trạng thái sau khi set
+    saveActiveSection(sectionName);
+    
+    // Load dữ liệu cho section nếu cần
+    loadSectionData(sectionName);
 }
 // Thêm biến global để theo dõi thông tin shop
 let globalShopData = {
@@ -717,161 +839,52 @@ function checkTokenValidity() {
 async function loadSectionData(sectionId) {
     try {
         console.group(`=== LOADING DATA FOR SECTION: ${sectionId} ===`);
-        console.log(`Bắt đầu tải dữ liệu cho section: ${sectionId}`);
         
-        // Đảm bảo section ID hợp lệ
-        if (!sectionId || typeof sectionId !== 'string') {
-            console.error('Section ID không hợp lệ:', sectionId);
+        // Ensure section is visible
+        const targetSection = document.getElementById(`${sectionId}-section`);
+        if (!targetSection) {
+            console.warn(`Section ${sectionId} không tồn tại`);
             console.groupEnd();
             return;
         }
         
-        // Đảm bảo section hiển thị đúng
-        document.querySelectorAll('.section').forEach(section => {
-            section.classList.remove('active');
-            section.style.display = 'none';
-        });
-        
-        const targetSection = document.getElementById(`${sectionId}-section`);
-        if (targetSection) {
-            targetSection.classList.add('active');
-            targetSection.style.display = 'block';
-            console.log(`Đã kích hoạt section: ${sectionId}-section`);
-        } else {
-            console.warn(`Không tìm thấy phần tử ${sectionId}-section trong DOM`);
-            
-            // Kiểm tra xem có bị lỗi chính tả trong ID không
-            const allSections = document.querySelectorAll('.section');
-            console.log('Các sections có sẵn:', Array.from(allSections).map(sec => sec.id).join(', '));
-            
-            // In ra tất cả các phần tử có class section
-            console.log("Danh sách đầy đủ các sections:");
-            allSections.forEach((sec, index) => {
-                console.log(`${index + 1}. ID: "${sec.id}", Display: ${window.getComputedStyle(sec).display}`);
-            });
-            
-            // Trường hợp đặc biệt
-            if (sectionId === 'shop-management') {
-                const shopSection = document.getElementById('shop-section');
-                if (shopSection) {
-                    shopSection.classList.add('active');
-                    shopSection.style.display = 'block';
-                    console.log('Đã điều hướng từ shop-management sang shop-section');
+        // Load data based on section
+        switch (sectionId) {
+            case 'shop':
+                await loadShopData();
+                break;
+            case 'categories':
+                await loadShopCategories(1);
+                break;
+            case 'products':
+                await loadProducts(1);
+                break;
+            case 'orders':
+                // Load orders if implemented
+                if (typeof loadOrdersSection === 'function') {
+                    await loadOrdersSection();
                 }
-            }
+                break;
+            case 'statistics':
+                // Load statistics if implemented
+                if (typeof loadStatisticsSection === 'function') {
+                    await loadStatisticsSection();
+                }
+                break;
+            case 'notifications':
+                // Load notifications if implemented
+                if (typeof loadNotificationsSection === 'function') {
+                    await loadNotificationsSection();
+                }
+                break;
+            default:
+                console.log(`No specific data loading for section: ${sectionId}`);
         }
         
-        // Cập nhật hash trong URL để phản ánh section hiện tại
-        if (window.location.hash !== `#${sectionId}`) {
-            window.location.hash = sectionId;
-            console.log(`Đã cập nhật URL hash thành: #${sectionId}`);
-        }
-        
-        // Đánh dấu nav item phù hợp
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => {
-            item.classList.remove('bg-gray-200', 'text-blue-600', 'bg-blue-50');
-            if (item.getAttribute('data-section') === sectionId) {
-                item.classList.add('bg-gray-200');
-                console.log(`Đã đánh dấu nav item: ${sectionId}`);
-            }
-        });
-        
-        // Tải dữ liệu dựa trên section
-        console.log(`Đang tải dữ liệu cho section: ${sectionId}`);
-        try {
-            switch (sectionId) {
-                case "dashboard":
-                    console.log('Tải dữ liệu dashboard...');
-                    if (typeof loadDashboardData === 'function') {
-                        await loadDashboardData();
-                    } else {
-                        console.warn('Hàm loadDashboardData không tồn tại!');
-                    }
-                    break;
-                    
-                case "shop":
-                case "shop-management":
-                    console.log('Tải dữ liệu quản lý cửa hàng...');
-                    if (typeof loadShopManagementData === 'function') {
-                        await loadShopManagementData();
-                    } else {
-                        console.warn('Hàm loadShopManagementData không tồn tại!');
-                    }
-                    break;
-                    
-                case "shop-categories":
-                case "categories":
-                    console.log('Tải dữ liệu danh mục...');
-                    if (typeof loadShopCategories === 'function') {
-                        await loadShopCategories(1);
-                    } else {
-                        console.warn('Hàm loadShopCategories không tồn tại!');
-                    }
-                    break;
-                    
-                case "products":
-                    console.log('Tải dữ liệu sản phẩm...');
-                    if (typeof loadProducts === 'function') {
-                        await loadProducts(1);
-                    } else {
-                        console.warn('Hàm loadProducts không tồn tại!');
-                    }
-                    break;
-                    
-                case "orders":
-                    console.log('Tải dữ liệu đơn hàng...');
-                    if (typeof window.loadSellerOrders === 'function') {
-                        await window.loadSellerOrders(1);
-                    } else {
-                        console.warn('Hàm loadSellerOrders không tồn tại!');
-                    }
-                    break;
-                    
-                case "statistics":
-                    console.log('Tải dữ liệu thống kê...');
-                    if (typeof loadStatistics === 'function') {
-                        await loadStatistics();
-                    } else {
-                        console.warn('Hàm loadStatistics không tồn tại!');
-                    }
-                    break;
-                    
-                case "shipping":
-                    console.log('Tải dữ liệu vận chuyển...');
-                    if (typeof loadShipping === 'function') {
-                        await loadShipping();
-                    } else {
-                        console.warn('Hàm loadShipping không tồn tại!');
-                    }
-                    break;
-                    
-                case "revenue":
-                    console.log('Tải dữ liệu doanh thu...');
-                    if (typeof loadRevenue === 'function') {
-                        await loadRevenue();
-                    } else {
-                        console.warn('Hàm loadRevenue không tồn tại!');
-                    }
-                    break;
-                    
-                default:
-                    console.warn(`Section ${sectionId} không được xử lý trong quá trình tải dữ liệu.`);
-            }
-        } catch (sectionError) {
-            console.error(`Lỗi khi tải dữ liệu cho section ${sectionId}:`, sectionError);
-            showToast(`Không thể tải dữ liệu cho ${sectionId}: ${sectionError.message}`, "error");
-        }
-        
-        console.log(`Hoàn thành tải dữ liệu cho section: ${sectionId}`);
         console.groupEnd();
     } catch (error) {
         console.error(`Lỗi khi tải dữ liệu cho ${sectionId}:`, error);
-        showToast(`Không thể tải dữ liệu: ${error.message}`, "error");
         console.groupEnd();
-    } finally {
-        // Đảm bảo layout được sửa chữa sau khi tải xong
-        setTimeout(fixLayoutAfterLoad, 100);
     }
 }
 
@@ -919,223 +932,57 @@ function initializeUI() {
     
     try {
         const navItems = document.querySelectorAll(".nav-item");
-        const sections = document.querySelectorAll(".section");
-        const sidebar = document.getElementById("sidebar");
-        const toggleSidebarBtn = document.getElementById("toggleSidebar");
         
-        console.log("Found elements:", {
-            "nav items": navItems.length, 
-            "sections": sections.length, 
-            "sidebar": sidebar ? "yes" : "no", 
-            "toggle btn": toggleSidebarBtn ? "yes" : "no"
-        });
+        // ✅ Thêm event listener cho navigation
+        if (navItems && navItems.length > 0) {
+            navItems.forEach(item => {
+                // Skip logout button và toggle button
+                if (item.id === 'logout-btn' || item.id === 'toggleSidebar') {
+                    return;
+                }
+                
+                const sectionId = item.getAttribute("data-section");
+                if (sectionId) {
+                    // Remove existing listeners
+                    const newItem = item.cloneNode(true);
+                    item.parentNode.replaceChild(newItem, item);
+                    
+                    // Add new listener
+                    newItem.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        console.log(`🖱️ Nav clicked: ${sectionId}`);
+                        
+                        // Set active section và lưu trạng thái
+                        setActiveSection(sectionId);
+                    });
+                }
+            });
+        }
+        
+        // ✅ Khôi phục trạng thái sau khi setup events
+        setTimeout(() => {
+            restoreActiveSection();
+        }, 100);
         
         // Initialize product form handlers
         initProductFormHandlers();
         
-        // Xử lý nút đăng xuất
+        // Setup category handlers
+        setupCategoryHandlers();
+        
+        // Logout handler
         const logoutBtn = document.getElementById("logout-btn");
-            if (logoutBtn) {
-    // Xóa tất cả event listener cũ bằng cách clone node
-    const newLogoutBtn = logoutBtn.cloneNode(true);
-    logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
-    
-    // Thêm event listener mới
-    newLogoutBtn.addEventListener("click", function(e) {
-        e.preventDefault();
-        logout();
-    });
-} else {
-    console.warn('Không tìm thấy nút đăng xuất (id="logout-btn")');
-}
-        
-        // Lưu trữ section active hiện tại
-        let currentActiveSection = "dashboard";
-        
-        // Đảm bảo tất cả nav items có sự kiện click
-        if (navItems && navItems.length > 0) {
-            console.log(`Thiết lập sự kiện click cho ${navItems.length} nav items`);
+        if (logoutBtn) {
+            const newLogoutBtn = logoutBtn.cloneNode(true);
+            logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
             
-            navItems.forEach(item => {
-                // Xóa tất cả event listeners cũ nếu có
-                const newItem = item.cloneNode(true);
-                item.parentNode.replaceChild(newItem, item);
-                
-                // Thêm event listener mới
-                newItem.addEventListener("click", (e) => {
-                    e.preventDefault();
-                    const sectionId = newItem.getAttribute("data-section");
-                    console.log(`Clicked on nav item: ${sectionId}`);
-                    
-                    if (!sectionId) {
-                        console.warn("Nav item không có thuộc tính data-section");
-                        return;
-                    }
-                    
-                    currentActiveSection = sectionId; // Cập nhật section active
-                    
-                    // Ẩn tất cả các sections
-                    sections.forEach(section => {
-                        section.classList.remove("active");
-                        section.style.display = "none";
-                    });
-                    
-                    // Hiển thị section mục tiêu
-                    const targetSection = document.getElementById(`${sectionId}-section`);
-                    if (targetSection) {
-                        targetSection.classList.add("active");
-                        targetSection.style.display = "block";
-                        console.log(`Đã kích hoạt section: ${sectionId}-section`);
-                    } else {
-                        console.warn(`Không tìm thấy section: ${sectionId}-section`);
-                    }
-                    
-                    // Cập nhật trạng thái active cho nav items
-                    navItems.forEach(nav => nav.classList.remove("bg-gray-200", "text-blue-600", "bg-blue-50"));
-                    newItem.classList.add("bg-gray-200");
-                    
-                    // Cập nhật tiêu đề trang
-                    const sidebarText = newItem.querySelector(".sidebar-text")?.textContent || newItem.textContent;
-                    const pageTitle = document.getElementById("pageTitle");
-                    if (pageTitle) {
-                        pageTitle.textContent = sidebarText;
-                        console.log(`Đã cập nhật tiêu đề trang: ${sidebarText}`);
-                    }
-                    
-                    // Tải dữ liệu cho section tương ứng
-                    if (typeof loadSectionData === 'function') {
-                        loadSectionData(sectionId);
-                    } else {
-                        console.error('Không tìm thấy hàm loadSectionData!');
-                    }
-                });
-            });
-        } else {
-            console.error('Không tìm thấy phần tử nav-item nào!');
-        }
-        
-        // Xử lý toggle sidebar - giữ nguyên tab active
-        if (toggleSidebarBtn) {
-            // Xóa event listener cũ
-            const newToggleBtn = toggleSidebarBtn.cloneNode(true);
-            toggleSidebarBtn.parentNode.replaceChild(newToggleBtn, toggleSidebarBtn);
-            
-            // Thêm event listener mới
-            newToggleBtn.addEventListener("click", (e) => {
+            newLogoutBtn.addEventListener("click", function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                
-                console.log("Toggle sidebar clicked");
-                
-                // Lưu trạng thái active hiện tại
-                const activeNavItem = document.querySelector(".nav-item.bg-gray-200");
-                
-                // Toggle sidebar class
-                if (sidebar) {
-                    sidebar.classList.toggle("collapsed");
-                    const isCollapsed = sidebar.classList.contains("collapsed");
-                    
-                    // Cập nhật sidebar style trực tiếp
-                    sidebar.style.width = isCollapsed ? "5rem" : "16rem";
-                    
-                    // Cập nhật icon và text
-                    const icon = newToggleBtn.querySelector("i");
-                    if (icon) {
-                        if (isCollapsed) {
-                            icon.classList.replace("fa-chevron-left", "fa-chevron-right");
-                        } else {
-                            icon.classList.replace("fa-chevron-right", "fa-chevron-left");
-                        }
-                    }
-                    
-                    // Cập nhật text button
-                    const textElement = newToggleBtn.querySelector(".sidebar-text");
-                    if (textElement) {
-                        textElement.textContent = isCollapsed ? "Mở rộng" : "Thu gọn";
-                    }
-                    
-                    // Cập nhật tất cả các phần tử cần thiết đồng thời
-                    const mainContent = document.getElementById("mainContent");
-                    if (mainContent) {
-                        mainContent.classList.toggle("collapsed", isCollapsed);
-                        mainContent.style.marginLeft = isCollapsed ? "5rem" : "16rem";
-                        mainContent.style.width = isCollapsed ? "calc(100% - 5rem)" : "calc(100% - 16rem)";
-                    }
-                    
-                    // Cập nhật header style trực tiếp
-                    const header = document.querySelector("header");
-                    if (header) {
-                        header.classList.toggle("collapsed", isCollapsed);
-                        header.style.left = isCollapsed ? "5rem" : "16rem";
-                        header.style.width = isCollapsed ? "calc(100% - 5rem)" : "calc(100% - 16rem)";
-                        console.log("Header updated:", header.style.left, header.style.width);
-                    }
-                    
-                    // Lưu trạng thái thu gọn vào localStorage để nhớ giữa các lần tải trang
-                    localStorage.setItem("sidebarCollapsed", isCollapsed);
-                    
-                    // Debug thông tin layout
-                    console.log("Sidebar toggle:", isCollapsed ? "Thu gọn" : "Mở rộng");
-                    console.log("Sidebar width:", sidebar.style.width);
-                    console.log("Header left:", header?.style.left);
-                    
-                    // Kích hoạt fixLayoutAfterLoad để đảm bảo mọi thứ đúng
-                    setTimeout(fixLayoutAfterLoad, 100);
-                } else {
-                    console.error("Không tìm thấy phần tử sidebar!");
+                if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+                    logout();
                 }
             });
-            
-            console.log("Đã thiết lập sự kiện toggle sidebar");
-        } else {
-            console.warn("Không tìm thấy nút toggle sidebar");
         }
-        
-        // Khôi phục trạng thái sidebar từ localStorage
-        const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
-        if (sidebarCollapsed && sidebar) {
-            sidebar.classList.add("collapsed");
-            
-            // Cập nhật tất cả phần tử liên quan
-            const contentElements = document.querySelectorAll(".content, #mainContent");
-            contentElements.forEach(element => {
-                if (element) element.classList.add("collapsed");
-            });
-            
-            const header = document.querySelector("header");
-            if (header) {
-                header.classList.add("collapsed");
-            }
-            
-            // Cập nhật icon và text
-            if (toggleSidebarBtn) {
-                const icon = toggleSidebarBtn.querySelector("i");
-                if (icon) {
-                    icon.classList.replace("fa-chevron-left", "fa-chevron-right");
-                }
-                
-                const textElement = toggleSidebarBtn.querySelector(".sidebar-text");
-                if (textElement) {
-                    textElement.textContent = "Mở rộng";
-                }
-            }
-            
-            console.log("Đã khôi phục trạng thái sidebar từ localStorage:", sidebarCollapsed);
-        }
-        
-        // Xử lý URL hash để định hướng đến section tương ứng
-        const hash = window.location.hash.substring(1);
-        if (hash) {
-            console.log(`Phát hiện hash URL: ${hash}`);
-            const hashNavItem = document.querySelector(`.nav-item[data-section="${hash}"]`);
-            if (hashNavItem) {
-                console.log(`Tự động click vào nav item: ${hash}`);
-                setTimeout(() => hashNavItem.click(), 300);
-            }
-        }
-        
-        // Kích hoạt fixLayoutAfterLoad để đảm bảo mọi thứ đúng
-        setTimeout(fixLayoutAfterLoad, 100);
         
         console.log("UI initialization completed successfully");
     } catch (error) {

@@ -61,13 +61,7 @@ function showSuccessMessage() {
   setTimeout(() => window.location.href = 'index.html', 1000);
 }
 
-function togglePassword(inputId) {
-  const input = document.getElementById(inputId);
-  const icon = input.nextElementSibling.querySelector('i');
-  input.type = (input.type === 'password') ? 'text' : 'password';
-  icon.classList.toggle('fa-eye');
-  icon.classList.toggle('fa-eye-slash');
-}
+
 
 // === On Load: Show correct form from hash ===
 window.addEventListener('load', () => {

@@ -79,46 +79,100 @@ function debounce(func, wait) {
     const ORDER_STATUSES = Object.freeze({
         CHO_XAC_NHAN: "Chờ xác nhận",
         DANG_XU_LY: "Đang xử lý",
-        DANG_GIAO_HANG: "Đang giao hàng",
+        DANG_GIAO: "Đang giao",
         DA_GIAO: "Đã giao",
         YEU_CAU_TRA_HANG_HOAN_TIEN: "Yêu cầu trả hàng/ hoàn tiền",
         DA_HOAN_TIEN: "Đã hoàn tiền",
+        TU_CHOI_HOAN_TIEN: "Từ chối hoàn tiền",
         DA_HUY: "Đã hủy"
     });
     const STATUS_MAPPING = {
-        'Chờ xác nhận': { display: 'Chờ xác nhận', class: 'status-pending', vietnameseName: 'chờ xác nhận' },
-        'Đang xử lý': { display: 'Đang xử lý', class: 'status-processing', vietnameseName: 'đang xử lý' },
-        'Đang giao': { display: 'Đang giao', class: 'status-shipping', vietnameseName: 'đang giao' }, // ✅ SỬA
-        'Đã giao': { display: 'Đã giao', class: 'status-delivered', vietnameseName: 'đã giao' },
-        'Yêu cầu trả hàng/ hoàn tiền': { display: 'Yêu cầu hoàn tiền', class: 'status-refund-request', vietnameseName: 'yêu cầu trả hàng/ hoàn tiền' },
-        'Đã hoàn tiền': { display: 'Đã hoàn tiền', class: 'status-refunded', vietnameseName: 'đã hoàn tiền' },
-        'Hoàn thành': { display: 'Hoàn thành', class: 'status-completed', vietnameseName: 'hoàn thành' }, // ✅ THÊM MỚI
-        'Đã hủy': { display: 'Đã hủy', class: 'status-cancelled', vietnameseName: 'đã hủy' }
+        'Chờ xác nhận': { 
+            display: 'Chờ xác nhận', 
+            class: 'status-pending', 
+            vietnameseName: 'chờ xác nhận',
+            color: 'yellow',
+            allowedTransitions: ['Đang xử lý', 'Đã hủy']
+        },
+        'Đang xử lý': { 
+            display: 'Đang xử lý', 
+            class: 'status-processing', 
+            vietnameseName: 'đang xử lý',
+            color: 'blue',
+            allowedTransitions: ['Đang giao', 'Đã hủy']
+        },
+        'Đang giao': {  
+            display: 'Đang giao', 
+            class: 'status-shipping', 
+            vietnameseName: 'đang giao',
+            color: 'indigo',
+            allowedTransitions: ['Đã giao']
+        },
+        'Đã giao': {  
+            display: 'Đã giao', 
+            class: 'status-delivered', 
+            vietnameseName: 'đã giao',
+            color: 'green',
+            allowedTransitions: [] // Customer có thể yêu cầu hoàn tiền, nhưng seller không thể chuyển
+        },
+        'Yêu cầu trả hàng/ hoàn tiền': { 
+            display: 'Yêu cầu hoàn tiền', 
+            class: 'status-refund-request', 
+            vietnameseName: 'yêu cầu trả hàng/ hoàn tiền',
+            color: 'orange',
+            allowedTransitions: ['Đã hoàn tiền']
+        },
+        'Đã hoàn tiền': { 
+            display: 'Đã hoàn tiền', 
+            class: 'status-refunded', 
+            vietnameseName: 'đã hoàn tiền',
+            color: 'purple',
+            allowedTransitions: []
+        },
+            'Từ chối hoàn tiền': {  
+            display: 'Từ chối hoàn tiền', 
+            class: 'status-refund-rejected', 
+            vietnameseName: 'từ chối hoàn tiền',
+            color: 'gray',
+            allowedTransitions: ['Yêu cầu trả hàng/ hoàn tiền']
+            },
+        'Đã hủy': { 
+            display: 'Đã hủy', 
+            class: 'status-cancelled', 
+            vietnameseName: 'đã hủy',
+            color: 'red',
+            allowedTransitions: []
+        }
     };
     const STATUS_VARIATIONS = {
-        // Các biến thể của "Delivered"
-        'đã giao hàng': 'Delivered',
-        'đã giao hang': 'Delivered', 
-        'giao hàng thành công': 'Delivered',
-        'hoàn tất giao hàng': 'Delivered',
+        // Vietnamese variations
+        'chờ xác nhận': 'Chờ xác nhận',
+        'cho xac nhan': 'Chờ xác nhận',
+        'đang xử lý': 'Đang xử lý',
+        'dang xu ly': 'Đang xử lý',
+        'đang giao': 'Đang giao',  // ✅ FIXED: Backend exact value
+        'dang giao': 'Đang giao',
+        'đã giao': 'Đã giao',
+        'da giao': 'Đã giao',
+        'yêu cầu trả hàng/ hoàn tiền': 'Yêu cầu trả hàng/ hoàn tiền',
+        'yeu cau tra hang/ hoan tien': 'Yêu cầu trả hàng/ hoàn tiền',
+        'đã hoàn tiền': 'Đã hoàn tiền',
+        'da hoan tien': 'Đã hoàn tiền',
+        'từ chối hoàn tiền': 'Từ chối hoàn tiền', 
+        'tu choi hoan tien': 'Từ chối hoàn tiền',
+        'đã hủy': 'Đã hủy',
+        'da huy': 'Đã hủy',
         
-        // Các biến thể của "Processing"
-        'đang xử lí': 'Processing',
-        'dang xu ly': 'Processing',
-        'đang xử lý đơn hàng': 'Processing',
-        
-        // Các biến thể của "Shipped"
-        'đang vận chuyển': 'Shipped',
-        'đã xuất kho': 'Shipped',
-        // Các biến thể của "Pending"
-        'chờ duyệt': 'Pending',
-        'chờ xử lý': 'Pending',
-        'đang chờ': 'Pending',
-        
-        // Các biến thể của "Cancelled"
-        'bị hủy': 'Cancelled',
-        'đã hủy bỏ': 'Cancelled',
-        'hủy đơn': 'Cancelled'
+        // English variations
+        'pending': 'Chờ xác nhận',
+        'processing': 'Đang xử lý',
+        'shipping': 'Đang giao',    // ✅ FIXED: Maps to correct backend value
+        'shipped': 'Đang giao',
+        'delivered': 'Đã giao',
+        'refund request': 'Yêu cầu trả hàng/ hoàn tiền',
+        'refunded': 'Đã hoàn tiền',
+        'refund rejected': 'Từ chối hoàn tiền',
+        'cancelled': 'Đã hủy'
     };
     const VIETNAMESE_TO_API = Object.entries(STATUS_MAPPING).reduce((acc, [apiStatus, info]) => {
         acc[info.vietnameseName.toLowerCase()] = apiStatus;
@@ -134,16 +188,17 @@ function debounce(func, wait) {
 
     function getAvailableStatuses(currentStatus) {
         // Chuyển đổi trạng thái hiện tại thành lowercase để so sánh
-        const status = currentStatus?.toLowerCase() || 'pending';
+        const status = currentStatus?.toLowerCase() || '';
         
         // Danh sách tất cả các trạng thái
         const allStatuses = [
             { value: 'Chờ xác nhận', text: 'Chờ xác nhận' },
             { value: 'Đang xử lý', text: 'Đang xử lý' },
-            { value: 'Đang giao hàng', text: 'Đang giao hàng' },
+            { value: 'Đang giao', text: 'Đang giao' },
             { value: 'Đã giao', text: 'Đã giao' },
             { value: 'Yêu cầu trả hàng/ hoàn tiền', text: 'Yêu cầu trả hàng/ hoàn tiền' },
             { value: 'Đã hoàn tiền', text: 'Đã hoàn tiền' },
+            { value: 'Từ chối hoàn tiền', text: 'Từ chối hoàn tiền' },
             { value: 'Đã hủy', text: 'Đã hủy' }
         ];
         
@@ -153,28 +208,31 @@ function debounce(func, wait) {
             'cho xac nhan': ['Đang xử lý', 'Đã hủy'],
             'pending': ['Đang xử lý', 'Đã hủy'],
             
-            'đang xử lý': ['Đang giao hàng', 'Đã hủy'],
-            'dang xu ly': ['Đang giao hàng', 'Đã hủy'],
-            'processing': ['Đang giao hàng', 'Đã hủy'],
+            'đang xử lý': ['Đang giao', 'Đã hủy'],  // ✅ Chuyển sang "Đang giao"
+            'dang xu ly': ['Đang giao', 'Đã hủy'],
+            'processing': ['Đang giao', 'Đã hủy'],
             
-            'đang giao hàng': ['Đã giao', 'Đã hủy'],
-            'dang giao': ['Đã giao', 'Đã hủy'],
-            'shipped': ['Đã giao', 'Đã hủy'],
+            'đang giao': ['Đã giao'],  // ✅ FIXED: Backend exact key
+            'dang giao': ['Đã giao'],
+            'shipping': ['Đã giao'],
+            'shipped': ['Đã giao'],
             
-            'đã giao': ['Yêu cầu trả hàng/ hoàn tiền'],
-            'da giao': ['Yêu cầu trả hàng/ hoàn tiền'],
-            'delivered': ['Yêu cầu trả hàng/ hoàn tiền'],
+            'đã giao': [],  // ✅ Seller không thể chuyển từ "Đã giao"
+            'da giao': [],
+            'delivered': [],
             
             'yêu cầu trả hàng/ hoàn tiền': ['Đã hoàn tiền'],
             'yeu cau tra hang/ hoan tien': ['Đã hoàn tiền'],
             
-            // Trạng thái kết thúc - không thể chuyển
+            // Final states
             'đã hoàn tiền': [],
             'da hoan tien': [],
+            'từ chối hoàn tiền': [],
+            'tu choi hoan tien': [],
             'đã hủy': [],
             'da huy': [],
             'cancelled': [],
-            'completed': []
+            'refunded': []
         };
         
         // Lấy danh sách trạng thái có thể chuyển đến
@@ -211,10 +269,10 @@ function debounce(func, wait) {
             return 'status-shipped';
         case normalizedStatus.includes('delivered') || normalizedStatus.includes('đã giao'):
             return 'status-delivered';
+        case normalizedStatus.includes('refunded') || normalizedStatus.includes('đã hoàn tiền'):
+            return 'status-refunded';
         case normalizedStatus.includes('cancelled') || normalizedStatus.includes('đã hủy'):
             return 'status-cancelled';
-        case normalizedStatus.includes('completed') || normalizedStatus.includes('hoàn thành'):
-            return 'status-completed';
         default:
             return 'status-default';
     }
@@ -244,32 +302,7 @@ function debounce(func, wait) {
                 return null;
         }
     }
-    function getAvailableSellerStatuses(currentStatus) {
-        const status = currentStatus?.toLowerCase() || '';
-        
-        // ✅ NEW LOGIC: Transitions theo yêu cầu mới
-        const statusTransitions = {
-            'chờ xác nhận': ['Đang xử lý', 'Đã hủy'],
-            'đang xử lý': ['Đang giao', 'Đã hủy'],
-            'đang giao': ['Đã giao'],
-            'đã giao': [], // ✅ Seller KHÔNG thể chuyển từ "Đã giao"
-            'yêu cầu trả hàng/ hoàn tiền': ['Đã hoàn tiền', 'Hoàn thành'], // ✅ NEW: Seller có thể chấp nhận hoặc từ chối
-            'đã hoàn tiền': [], // Final state
-            'hoàn thành': [],   // Final state
-            'đã hủy': []        // Final state
-        };
-        
-        const allowedTransitions = statusTransitions[status] || [];
-        
-        return [
-            { value: 'Đang xử lý', text: 'Đang xử lý' },
-            { value: 'Đang giao', text: 'Đang giao' },
-            { value: 'Đã giao', text: 'Đã giao' },
-            { value: 'Đã hoàn tiền', text: 'Đã hoàn tiền' },
-            { value: 'Hoàn thành', text: 'Hoàn thành' }, // ✅ THÊM MỚI
-            { value: 'Đã hủy', text: 'Đã hủy' }
-        ].filter(s => allowedTransitions.includes(s.value));
-    }
+   
     async function handleConfirmRefund(orderId) {
         if (confirm(`Xác nhận hoàn tiền cho đơn hàng #${orderId}? Đơn hàng sẽ chuyển sang trạng thái "Đã hoàn tiền".`)) {
             const result = await updateOrderStatus(orderId, 'Đã hoàn tiền', 'Seller xác nhận hoàn tiền');
@@ -297,12 +330,11 @@ function getOrderStatusInfo(status, orderId) {
     let html = '';
     
     // ✅ NEW LOGIC: Xử lý đặc biệt cho "Yêu cầu trả hàng/ hoàn tiền"
-    if (status && status.toLowerCase().includes('yêu cầu trả hàng/ hoàn tiền')) {
-        // Click vào trạng thái = TỪ CHỐI (chuyển sang Hoàn thành)
+    if (apiStatus === 'Yêu cầu trả hàng/ hoàn tiền') {
         html = `
             <button class="status-badge interactive ${statusInfo.class}" 
                 onclick="handleRejectRefundByStatus(${orderId})"
-                title="Click để TỪ CHỐI yêu cầu hoàn tiền (chuyển sang Hoàn thành)">
+                title="Click để TỪ CHỐI yêu cầu hoàn tiền">
                 ${statusInfo.display}
                 <i class="fas fa-times fa-xs ml-2 text-red-500"></i>
             </button>
@@ -336,7 +368,7 @@ function getOrderStatusInfo(status, orderId) {
 
 
 function getOrderActions(orderId, status) {
-    const statusLower = status?.toLowerCase() || '';
+    const apiStatus = normalizeStatusForApi(status);
     
     let actions = `
         <button onclick="viewOrderDetails(${orderId})" 
@@ -347,19 +379,18 @@ function getOrderActions(orderId, status) {
     `;
     
     // ✅ NEW LOGIC: Xử lý nút cho "Yêu cầu trả hàng/ hoàn tiền"
-    if (statusLower.includes('yêu cầu trả hàng/ hoàn tiền')) {
-        // Thay thế nút "Hủy" bằng nút "Xác nhận" (ĐỒNG Ý hoàn tiền)
+    if (apiStatus === 'Yêu cầu trả hàng/ hoàn tiền') {
         actions += `
             <button onclick="handleAcceptRefundByButton(${orderId})" 
                     class="action-button action-button-accept ml-2" 
-                    title="XÁC NHẬN hoàn tiền (ĐỒNG Ý yêu cầu)">
+                    title="XÁC NHẬN hoàn tiền">
                 <i class="fas fa-check-circle"></i> Xác nhận
             </button>
         `;
     } else {
         // Logic bình thường cho các trạng thái khác
         // Cancel button cho giai đoạn đầu
-        if (statusLower.includes('chờ xác nhận') || statusLower.includes('đang xử lý')) {
+        if (apiStatus === 'Chờ xác nhận' || apiStatus === 'Đang xử lý') {
             actions += `
                 <button onclick="handleCancelOrder(${orderId})" 
                         class="action-button action-button-cancel ml-2" 
@@ -375,8 +406,8 @@ function getOrderActions(orderId, status) {
 
 // ✅ NEW: Handler function - TỪ CHỐI qua click trạng thái
 async function handleRejectRefundByStatus(orderId) {
-    if (confirm(`❌ TỪ CHỐI yêu cầu hoàn tiền cho đơn hàng #${orderId}?\n\n• Đơn hàng sẽ chuyển sang "Hoàn thành"\n• Khách hàng KHÔNG thể yêu cầu hoàn tiền lại\n• Seller từ chối hoàn tiền`)) {
-        const result = await updateOrderStatus(orderId, 'Hoàn thành');
+    if (confirm(`❌ TỪ CHỐI yêu cầu hoàn tiền cho đơn hàng #${orderId}?\n\n• Đơn hàng sẽ chuyển sang "Từ chối hoàn tiền"\n• Khách hàng KHÔNG thể yêu cầu hoàn tiền lại\n• Seller từ chối hoàn tiền`)) {
+        const result = await updateOrderStatus(orderId, 'Từ chối hoàn tiền');
         if (result.success) {
             displayToastMessage(`❌ Đã từ chối yêu cầu hoàn tiền cho đơn hàng #${orderId}`, 'info');
             loadSellerOrders(orderPagination.currentPage);
@@ -432,7 +463,7 @@ window.handleAcceptRefundByButton = handleAcceptRefundByButton;
      */
     async function handleCancelOrder(orderId) {
         if (confirm(`Bạn có chắc chắn muốn HỦY đơn hàng #${orderId} không?`)) {
-            const result = await updateOrderStatus(orderId, 'Cancelled'); // ← API format
+            const result = await updateOrderStatus(orderId, 'Đã hủy'); // ← API format
             if (result.success) {
                 displayToastMessage(`Đơn hàng #${orderId} đã được hủy thành công`, 'success');
                 loadSellerOrders(orderPagination.currentPage);
@@ -479,16 +510,15 @@ window.handleAcceptRefundByButton = handleAcceptRefundByButton;
         
         // Chuẩn hóa trạng thái theo API
         const apiStatus = normalizeStatusForApi(newStatus) || newStatus;
+        console.log(`📤 API Status: ${apiStatus}`);
         
+        // ✅ FIXED: Request body format chính xác với OrderStatusUpdateDto
         const requestBody = {
-            newStatus: apiStatus,
-            reason: 'Cập nhật bởi người bán',
-            updatedBy: 'Seller',
-            updateTime: new Date().toISOString()
+            newStatus: apiStatus,  // ✅ ĐÚNG field name
+            notes: `Cập nhật bởi seller lúc ${new Date().toLocaleString('vi-VN')}`  // ✅ ĐÚNG field name
         };
         
         console.log(`📤 Request body:`, requestBody);
-        
         
         const response = await fetch(`${API_BASE}/Orders/${orderId}/status`, {
             method: 'PUT',
@@ -512,12 +542,14 @@ window.handleAcceptRefundByButton = handleAcceptRefundByButton;
                         const validationErrors = Object.values(errorData.errors).flat();
                         errorMessage = `Lỗi validation: ${validationErrors.join(', ')}`;
                     } else if (errorData.message) {
-                        errorMessage = `Lỗi: ${errorData.message}`;
+                        errorMessage = errorData.message;
                     } else {
-                        errorMessage = `Lỗi 400: Dữ liệu không hợp lệ - ${JSON.stringify(errorData)}`;
+                        errorMessage = `Lỗi 400: Dữ liệu không hợp lệ`;
                     }
+                } else {
+                    errorMessage = errorData.message || errorMessage;
                 }
-            } catch (e) {
+            } catch (parseError) {
                 const textError = await response.text();
                 console.error(`❌ Raw error response:`, textError);
                 errorMessage = `Lỗi ${response.status}: ${textError || response.statusText}`;
@@ -528,8 +560,15 @@ window.handleAcceptRefundByButton = handleAcceptRefundByButton;
             };
         }
         
-        console.log(`✅ Order ${orderId} status updated successfully to ${newStatus}`);
-        return { success: true };
+        // ✅ Handle success response
+        const responseData = await response.json();
+        console.log(`📦 Success response:`, responseData);
+        
+        console.log(`✅ Order ${orderId} status updated successfully to "${apiStatus}"`);
+        return { 
+            success: true, 
+            message: responseData.message || `Cập nhật trạng thái thành công`
+        };
         
     } catch (error) {
         console.error(`❌ Network/Exception error updating order ${orderId}:`, error);
@@ -1694,53 +1733,6 @@ sellerOrders = data.items || [];
         }
     }
 
-    /**
-     * Lấy danh sách trạng thái có thể chuyển đến từ trạng thái hiện tại
-     * @param {string} currentStatus - Trạng thái hiện tại
-     * @returns {Array<{value: string, text: string}>} Danh sách trạng thái có thể chuyển đến
-     */
-    function getAvailableStatuses(currentStatus) {
-        // Chuyển đổi trạng thái hiện tại thành lowercase để so sánh
-        const status = currentStatus?.toLowerCase() || 'pending';
-        
-        // Danh sách tất cả các trạng thái
-        const allStatuses = [
-            { value: 'Pending', text: 'Chờ xử lý' },
-            { value: 'Processing', text: 'Đang xử lý' },
-            { value: 'Shipped', text: 'Đang giao hàng' },
-            { value: 'Delivered', text: 'Đã giao' },
-            { value: 'Completed', text: 'Hoàn thành' },
-            { value: 'Cancelled', text: 'Đã hủy' }
-        ];
-        
-        // Định nghĩa các trạng thái được phép chuyển từ trạng thái hiện tại
-        const statusTransitions = {
-            'pending': ['Processing', 'Cancelled'],
-            'chờ xử lý': ['Processing', 'Cancelled'],
-            
-            'processing': ['Shipped', 'Cancelled'],
-            'đang xử lý': ['Shipped', 'Cancelled'],
-            
-            'shipped': ['Delivered', 'Cancelled'],
-            'đang giao hàng': ['Delivered', 'Cancelled'],
-            
-            
-            'delivered': ['Completed', 'Cancelled'],
-            'đã giao': ['Completed', 'Cancelled'],
-            
-            'completed': [], // Không thể chuyển từ completed
-            'hoàn thành': [],
-            
-            'cancelled': [],  // Không thể chuyển từ cancelled
-            'đã hủy': []
-        };
-        
-        // Lấy danh sách trạng thái có thể chuyển đến
-        const allowedTransitions = statusTransitions[status] || [];
-        
-        // Lọc các trạng thái cho phép
-        return allStatuses.filter(s => allowedTransitions.includes(s.value));
-    }
 
     /**
      * Chuyển đổi trạng thái từ UI sang định dạng API
@@ -1779,9 +1771,6 @@ sellerOrders = data.items || [];
             'da hoan tien': 'Đã hoàn tiền',
             'refunded': 'Đã hoàn tiền',
             
-            'hoàn thành': 'Hoàn thành', // ✅ THÊM MỚI
-            'hoan thanh': 'Hoàn thành',
-            'completed': 'Hoàn thành',
             
             'đã hủy': 'Đã hủy',
             'da huy': 'Đã hủy',

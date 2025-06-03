@@ -322,14 +322,15 @@ namespace ShopxEX1.Controllers
                 var success = await _orderService.UpdateOrderStatusAsync(orderId, statusUpdateDto, idForService, userRole);
                 if (success)
                 {
-                            var message = GetSuccessMessageForStatusChange(statusUpdateDto.NewStatus);
-                    return Ok(new { 
+                    var message = GetSuccessMessageForStatusChange(statusUpdateDto.NewStatus);
+                    return Ok(new
+                    {
                         success = true,
                         message = message,
                         orderId = orderId,
                         newStatus = statusUpdateDto.NewStatus,
                         timestamp = DateTime.UtcNow
-            });
+                    });
                 }
                 // Trường hợp service trả về false (ví dụ: trạng thái không đổi) nhưng không ném exception
                 return BadRequest("Không thể cập nhật trạng thái đơn hàng hoặc trạng thái không thay đổi.");
@@ -359,6 +360,7 @@ namespace ShopxEX1.Controllers
         /// [Seller, Admin] Cập nhật trạng thái của một đơn hàng.
         /// </summary>
         [HttpPut("{orderId}/customer-status")]
+        [Authorize]
         public async Task<IActionResult> UpdateOrderStatusForCustomer(int orderId, [FromBody] OrderStatusUpdateDto statusUpdateDto)
         {
             if (!ModelState.IsValid)
@@ -406,18 +408,217 @@ namespace ShopxEX1.Controllers
             }
         }
         private string GetSuccessMessageForStatusChange(string newStatus)
+        {
+            return newStatus switch
+            {
+                "Đang xử lý" => "Đơn hàng đã được xác nhận và đang được xử lý",
+                "Đang giao" => "Đơn hàng đang được giao đến khách hàng",
+                "Đã giao" => "Đơn hàng đã được giao thành công. Sẽ tự động hoàn thành sau 3 ngày.",
+                "Đã hoàn tiền" => "Đã xác nhận hoàn tiền cho khách hàng",
+                "Hoàn thành" => "Đã từ chối yêu cầu hoàn tiền. Đơn hàng hoàn thành.",
+                "Đã hủy" => "Đơn hàng đã được hủy và hoàn trả số lượng sản phẩm",
+                _ => "Cập nhật trạng thái thành công"
+            };
+        }
+
+
+
+/// <summary>
+/// [Customer] Kiểm tra khả năng mua lại đơn hàng - CHO PHÉP TẤT CẢ TRẠNG THÁI
+/// </summary>
+[HttpPost("{orderId}/rebuy")]
+[Authorize(Roles = "Customer, Seller, Admin")]
+public async Task<IActionResult> RebuyOrder(int orderId)
 {
-    return newStatus switch
+    try
     {
-        "Đang xử lý" => "Đơn hàng đã được xác nhận và đang được xử lý",
-        "Đang giao" => "Đơn hàng đang được giao đến khách hàng",
-        "Đã giao" => "Đơn hàng đã được giao thành công. Sẽ tự động hoàn thành sau 3 ngày.",
-        "Đã hoàn tiền" => "Đã xác nhận hoàn tiền cho khách hàng",
-        "Hoàn thành" => "Đã từ chối yêu cầu hoàn tiền. Đơn hàng hoàn thành.",
-        "Đã hủy" => "Đơn hàng đã được hủy và hoàn trả số lượng sản phẩm",
-        _ => "Cập nhật trạng thái thành công"
-    };
+        var userId = _getID.GetCurrentUserId();
+        
+        _logger.LogInformation($"🔄 Processing rebuy request for order {orderId} by user {userId}");
+        
+        // ✅ BASIC ORDER OWNERSHIP VALIDATION ONLY
+        var originalOrder = await _orderService.GetOrderDetailsByIdAsync(orderId, userId, "Customer");
+        if (originalOrder == null)
+        {
+            _logger.LogWarning($"User {userId} attempted to rebuy non-existent or unauthorized order {orderId}");
+            return NotFound(new { message = "Không tìm thấy đơn hàng hoặc bạn không có quyền truy cập" });
+        }
+        
+        // ✅ NO STATUS RESTRICTIONS - Allow all statuses
+        _logger.LogInformation($"📋 [REBUY] Order {orderId} has status '{originalOrder.Status}' - allowing rebuy for all statuses");
+        
+        // ✅ PROCESS REBUY VALIDATION
+        var rebuyResult = await _orderService.ValidateRebuyOrderAsync(orderId, userId);
+        
+        if (rebuyResult == null)
+        {
+            return BadRequest(new { message = "Không thể xử lý yêu cầu mua lại đơn hàng" });
+        }
+        
+        _logger.LogInformation($"✅ Rebuy validation completed for order {orderId}. Available items: {rebuyResult.AvailableItems?.Count ?? 0}, Unavailable: {rebuyResult.UnavailableItems?.Count ?? 0}");
+        
+        return Ok(new {
+            success = true,
+            orderId = orderId,
+            orderStatus = originalOrder.Status,
+            rebuyItems = rebuyResult.AvailableItems,
+            unavailableItems = rebuyResult.UnavailableItems,
+            message = rebuyResult.AvailableItems?.Count > 0 
+                ? $"Có {rebuyResult.AvailableItems.Count} sản phẩm có thể mua lại từ đơn hàng #{orderId} (trạng thái: {originalOrder.Status})" 
+                : $"Không có sản phẩm nào có thể mua lại từ đơn hàng #{orderId} (trạng thái: {originalOrder.Status})"
+        });
+    }
+    catch (KeyNotFoundException ex)
+    {
+        _logger.LogWarning(ex, $"Order {orderId} not found for rebuy request");
+        return NotFound(new { message = ex.Message });
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        _logger.LogWarning(ex, $"Unauthorized rebuy attempt for order {orderId}");
+        return Forbid(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, $"Unexpected error processing rebuy for order {orderId}");
+        return StatusCode(StatusCodes.Status500InternalServerError, 
+            new { message = "Lỗi hệ thống khi xử lý yêu cầu mua lại đơn hàng" });
+    }
 }
+
+/// <summary>
+/// [Customer] Thêm các sản phẩm từ đơn hàng cũ vào giỏ hàng
+/// </summary>
+[HttpPost("{orderId}/add-to-cart")]
+[Authorize(Roles = "Customer, Seller, Admin")]
+public async Task<IActionResult> AddRebuyItemsToCart(int orderId, [FromBody] List<RebuyItemRequest> items)
+{
+    if (!ModelState.IsValid)
+    {
+        return BadRequest(ModelState);
+    }
+    
+    if (items == null || !items.Any())
+    {
+        return BadRequest(new { message = "Danh sách sản phẩm không được để trống" });
+    }
+    
+    try
+    {
+        var userId = _getID.GetCurrentUserId();
+        
+        _logger.LogInformation($"🛒 Adding {items.Count} rebuy items to cart for user {userId} from order {orderId}");
+        
+        // ✅ VALIDATE ORDER OWNERSHIP
+        var originalOrder = await _orderService.GetOrderDetailsByIdAsync(orderId, userId, "Customer");
+        if (originalOrder == null)
+        {
+            return NotFound(new { message = "Không tìm thấy đơn hàng" });
+        }
+        
+        // ✅ VALIDATE ITEMS BELONG TO THIS ORDER
+        var orderProductIds = originalOrder.OrderDetails?.Select(od => od.ProductID).ToList() ?? new List<int>();
+        var invalidItems = items.Where(item => !orderProductIds.Contains(item.ProductId)).ToList();
+        
+        if (invalidItems.Any())
+        {
+            return BadRequest(new { 
+                message = "Một số sản phẩm không thuộc đơn hàng này",
+                invalidProductIds = invalidItems.Select(i => i.ProductId)
+            });
+        }
+        
+        // ✅ PROCESS ADD TO CART
+        var result = await _orderService.AddRebuyItemsToCartAsync(orderId, items, userId);
+        
+        if (result == null)
+        {
+            return BadRequest(new { message = "Không thể thêm sản phẩm vào giỏ hàng" });
+        }
+        
+        _logger.LogInformation($"✅ Successfully added {result.AddedItems?.Count ?? 0} items to cart for user {userId}");
+        
+        return Ok(new {
+            success = true,
+            orderId = orderId,
+            orderStatus = originalOrder.Status,
+            addedItems = result.AddedItems,
+            failedItems = result.FailedItems,
+            message = result.AddedItems?.Count > 0 
+                ? $"Đã thêm {result.AddedItems.Count} sản phẩm vào giỏ hàng từ đơn hàng #{orderId}"
+                : "Không có sản phẩm nào được thêm vào giỏ hàng"
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, $"Unexpected error adding rebuy items to cart for order {orderId}");
+        return StatusCode(StatusCodes.Status500InternalServerError, 
+            new { message = "Lỗi khi thêm sản phẩm vào giỏ hàng" });
+    }
+}
+
+/// <summary>
+/// [Customer] Mua lại toàn bộ đơn hàng - CHO PHÉP TẤT CẢ TRẠNG THÁI
+/// </summary>
+[HttpPost("{orderId}/rebuy-all")]
+[Authorize(Roles = "Customer, Seller, Admin")]
+public async Task<IActionResult> RebuyAllItems(int orderId)
+{
+    try
+    {
+        var userId = _getID.GetCurrentUserId();
+        
+        _logger.LogInformation($"🚀 Processing rebuy-all request for order {orderId} by user {userId}");
+        
+        // ✅ VALIDATE ORDER
+        var originalOrder = await _orderService.GetOrderDetailsByIdAsync(orderId, userId, "Customer");
+        if (originalOrder == null)
+        {
+            return NotFound(new { message = "Không tìm thấy đơn hàng" });
+        }
+        
+        // ✅ GET REBUY VALIDATION
+        var rebuyResult = await _orderService.ValidateRebuyOrderAsync(orderId, userId);
+        if (rebuyResult?.AvailableItems == null || !rebuyResult.AvailableItems.Any())
+        {
+            return BadRequest(new { 
+                message = "Không có sản phẩm nào có thể mua lại",
+                unavailableItems = rebuyResult?.UnavailableItems,
+                orderStatus = originalOrder.Status
+            });
+        }
+        
+        // ✅ CONVERT TO REBUY ITEMS
+        var rebuyItems = rebuyResult.AvailableItems.Select(item => new RebuyItemRequest
+        {
+            ProductId = item.ProductID,
+            Quantity = item.OriginalQuantity
+        }).ToList();
+        
+        // ✅ ADD ALL AVAILABLE ITEMS TO CART
+        var result = await _orderService.AddRebuyItemsToCartAsync(orderId, rebuyItems, userId);
+        
+        _logger.LogInformation($"✅ Rebuy-all completed for order {orderId}. Added: {result?.AddedItems?.Count ?? 0}, Failed: {result?.FailedItems?.Count ?? 0}");
+        
+        return Ok(new {
+            success = true,
+            orderId = orderId,
+            orderStatus = originalOrder.Status,
+            totalRequested = rebuyItems.Count,
+            addedItems = result?.AddedItems,
+            failedItems = result?.FailedItems,
+            unavailableItems = rebuyResult.UnavailableItems,
+            message = $"Đã xử lý {rebuyItems.Count} sản phẩm từ đơn hàng #{orderId} (trạng thái: {originalOrder.Status}). Thêm thành công: {result?.AddedItems?.Count ?? 0}"
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, $"Unexpected error in rebuy-all for order {orderId}");
+        return StatusCode(StatusCodes.Status500InternalServerError, 
+            new { message = "Lỗi khi xử lý mua lại toàn bộ đơn hàng" });
+    }
+}
+
 
     }
 }

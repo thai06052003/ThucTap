@@ -1,8 +1,27 @@
-// ============================================
-// API HELPER FUNCTIONS - THÊM VÀO ĐẦU FILE
-// ============================================
-
+const SELLER_TARGET_OPTIONS = {
+    // Basic targeting cho seller
+    'all': 'Tất cả khách hàng',
+    'recent': 'Khách hàng gần đây (30 ngày)', 
+    'frequent': 'Khách hàng thường xuyên (≥3 đơn)',
+    'vip': 'Khách hàng VIP (≥1M)',
+    'specific': 'Chọn khách hàng cụ thể'
+};
+const API_ENDPOINTS = {
+    seller: {
+        base: '/notifications/seller',
+        create: '/notifications/seller',
+        list: '/notifications/seller',
+        update: (id) => `/notifications/seller/${id}`,
+        delete: (id) => `/notifications/seller/${id}`,
+        send: (id) => `/notifications/seller/${id}/send`,
+        stats: (id) => `/notifications/seller/${id}/stats`,
+        recipients: (id) => `/notifications/seller/${id}/recipients`,
+        customers: '/notifications/seller/customers',
+        templates: '/notifications/seller/notification-templates'
+    }
+};
 /**
+ * 
  * API Request Helper with Authentication
  */
 async function apiRequest(url, options = {}) {
@@ -445,7 +464,7 @@ class SellerNotificationManager {
             console.log(`🔍 [LOAD] Request params:`, Object.fromEntries(params));
     
             // ✅ ENHANCED API CALL với PROPER ERROR HANDLING
-            const response = await apiRequest(`/notifications/seller?${params.toString()}`);
+            const response = await apiRequest(`${API_ENDPOINTS.seller.list}?${params.toString()}`);
             
             console.log(`✅ [LOAD] API Response:`, {
                 hasResponse: !!response,
@@ -778,7 +797,7 @@ async goToPage(page) {
 }
     async loadCustomers() {
         try {
-            const response = await apiRequest('/notifications/seller/customers');
+            const response = await apiRequest(API_ENDPOINTS.seller.customers);
             this.customers = response || [];
             
             this.renderCustomerList();
@@ -790,7 +809,7 @@ async goToPage(page) {
 
     async loadTemplates() {
         try {
-            const response = await apiRequest('/notifications/seller/notification-templates');
+            const response = await apiRequest(API_ENDPOINTS.seller.templates);
             this.templates = response || [];
             
             this.renderTemplateOptions();
@@ -1153,48 +1172,68 @@ async goToPage(page) {
     }
 
     handleTargetChange(target) {
+        console.log(`🎯 [TARGET] Target changed to: ${target}`);
+        
         const specificSection = document.getElementById('specific-customers-section');
-        const targetCount = document.getElementById('target-count');
-
+        
         if (target === 'specific') {
             specificSection?.classList.remove('hidden');
+            console.log('✅ [TARGET] Specific customers section shown');
+            
+            // ✅ ENSURE CUSTOMER LIST IS LOADED
+            if (this.customers.length === 0) {
+                console.log('🔄 [TARGET] Loading customers for specific selection...');
+                this.loadCustomers();
+            }
         } else {
             specificSection?.classList.add('hidden');
+            console.log('✅ [TARGET] Specific customers section hidden');
+            
+            // ✅ CLEAR SPECIFIC SELECTIONS when changing to non-specific
+            const checkboxes = document.querySelectorAll('.customer-checkbox:checked');
+            checkboxes.forEach(cb => cb.checked = false);
+            console.log(`🧹 [TARGET] Cleared ${checkboxes.length} specific customer selections`);
         }
-
-        // Update target count
+    
+        // ✅ UPDATE: Seller target count calculation
         this.updateTargetCount(target);
     }
 
     updateTargetCount(target) {
         let count = 0;
-
+    
+        // ✅ UPDATE: Seller-specific target counting
         switch (target) {
             case 'all':
                 count = this.customers.length;
                 break;
             case 'recent':
                 count = this.customers.filter(c => {
+                    if (!c.lastOrderDate) return false;
                     const lastOrderDays = Math.floor((new Date() - new Date(c.lastOrderDate)) / (1000 * 60 * 60 * 24));
                     return lastOrderDays <= 30;
                 }).length;
                 break;
             case 'frequent':
-                count = this.customers.filter(c => c.totalOrders >= 3).length;
+                count = this.customers.filter(c => (c.totalOrders || 0) >= 3).length;
                 break;
             case 'vip':
-                count = this.customers.filter(c => c.totalSpent >= 1000000).length;
+                count = this.customers.filter(c => (c.totalSpent || 0) >= 1000000).length;
                 break;
             case 'specific':
                 count = document.querySelectorAll('.customer-checkbox:checked').length;
                 break;
+            default:
+                count = 0;
         }
-
-        document.getElementById('target-count').textContent = count;
+    
+        const targetCountElement = document.getElementById('target-count');
+        if (targetCountElement) {
+            targetCountElement.textContent = count;
+        }
     }
 
     async saveNotification(action) {
-        // ✅ PREVENT DUPLICATE CALLS
         if (this.isSaving) {
             console.log('⚠️ Save already in progress, ignoring duplicate call');
             return;
@@ -1213,36 +1252,53 @@ async goToPage(page) {
             
             // ✅ VALIDATE FORM
             const formData = this.getFormData();
+            console.log('📋 [SAVE] Form data:', formData);
+            
             if (!this.validateForm(formData)) {
                 return; // Validation error already shown
             }
             
-            // ✅ PREPARE REQUEST DATA
+            // ✅ ENHANCED VALIDATION for specific customers
+            if (formData.targetCustomers === 'specific') {
+                if (!formData.specificCustomerIds || formData.specificCustomerIds.length === 0) {
+                    showToast('Vui lòng chọn ít nhất một khách hàng để gửi thông báo', 'error');
+                    return;
+                }
+                console.log(`🎯 [SAVE] Specific targeting: ${formData.specificCustomerIds.length} customers selected`);
+                console.log(`🎯 [SAVE] Customer IDs: [${formData.specificCustomerIds.join(', ')}]`);
+            }
+            
+            // ✅ PREPARE REQUEST DATA with PROPER LOGIC
             const requestData = {
                 title: formData.title,
                 content: formData.content,
                 type: formData.type,
                 actionText: formData.actionText,
                 actionUrl: formData.actionUrl,
-                targetAudience: formData.targetCustomers,
-                specificCustomerIds: formData.specificCustomerIds,
+                // ✅ FIX: Send the correct field name based on backend expectation
+                targetCustomers: formData.targetCustomers, // Backend expects this field name
+                specificCustomerIds: formData.specificCustomerIds, // Backend will use this when targetCustomers === 'specific'
                 scheduledAt: formData.scheduledAt
             };
             
-            console.log('📤 [SAVE] Request data:', requestData);
+            console.log('📤 [SAVE] Request data being sent:', {
+                ...requestData,
+                specificCustomerIds: requestData.specificCustomerIds?.length || 0,
+                targetCustomers: requestData.targetCustomers
+            });
             
             let response;
             
             // ✅ CREATE OR UPDATE
             if (this.editingNotificationId) {
                 console.log(`📝 [SAVE] Updating notification ${this.editingNotificationId}`);
-                response = await apiRequest(`/notifications/seller/${this.editingNotificationId}`, {
+                response = await apiRequest(`${API_ENDPOINTS.seller.update(this.editingNotificationId)}`, {
                     method: 'PUT',
                     body: JSON.stringify(requestData)
                 });
             } else {
                 console.log('📝 [SAVE] Creating new notification');
-                response = await apiRequest('/notifications/seller', {
+                response = await apiRequest(API_ENDPOINTS.seller.create, {
                     method: 'POST',
                     body: JSON.stringify(requestData)
                 });
@@ -1254,7 +1310,7 @@ async goToPage(page) {
             if (action === 'send' && response.notificationID) {
                 console.log(`📤 [SEND] Sending notification ${response.notificationID}`);
                 
-                await apiRequest(`/notifications/seller/${response.notificationID}/send`, {
+                await apiRequest(`${API_ENDPOINTS.seller.send(response.notificationID)}`, {
                     method: 'POST'
                 });
                 
@@ -1554,53 +1610,88 @@ populateViewModal(notification) {
     
     actionsContainer.innerHTML = actionButtons;
 }
-    getFormData() {
-        const target = document.getElementById('target-customers').value;
-        const specificCustomers = target === 'specific' ? 
-            Array.from(document.querySelectorAll('.customer-checkbox:checked')).map(cb => parseInt(cb.value)) : 
-            null;
+getFormData() {
+    const target = document.getElementById('target-customers').value;
+    const specificCustomers = target === 'specific' ? 
+        Array.from(document.querySelectorAll('.customer-checkbox:checked')).map(cb => parseInt(cb.value)) : 
+        null;
 
-        return {
-            title: document.getElementById('notification-title').value,
-            content: document.getElementById('notification-content').value,
-            type: document.getElementById('notification-type').value,
-            actionText: document.getElementById('action-text').value || null,
-            actionUrl: document.getElementById('action-url').value || null,
-            targetCustomers: target,
-            specificCustomerIds: specificCustomers,
-            scheduledAt: document.getElementById('schedule-notification').checked ? 
-                document.getElementById('scheduled-time').value || null : null
-        };
+    // ✅ FIX: Validate specific customers selection
+    if (target === 'specific' && (!specificCustomers || specificCustomers.length === 0)) {
+        console.warn('⚠️ [FORM] Specific target selected but no customers chosen');
     }
 
-    validateForm(data) {
-        if (!data.title) {
-            showToast('Vui lòng nhập tiêu đề thông báo', 'error');
-            return false;
+    return {
+        title: document.getElementById('notification-title').value,
+        content: document.getElementById('notification-content').value,
+        type: document.getElementById('notification-type').value,
+        actionText: document.getElementById('action-text').value || null,
+        actionUrl: document.getElementById('action-url').value || null,
+        targetCustomers: target,
+        specificCustomerIds: specificCustomers,
+        scheduledAt: document.getElementById('schedule-notification').checked ? 
+            document.getElementById('scheduled-time').value || null : null,
+        // ✅ ADD: Debug info
+        _debug: {
+            targetType: target,
+            hasSpecificCustomers: specificCustomers?.length > 0,
+            customerCount: specificCustomers?.length || 0
         }
+    };
+}
 
-        if (!data.content) {
-            showToast('Vui lòng nhập nội dung thông báo', 'error');
-            return false;
-        }
-
-        if (!data.type) {
-            showToast('Vui lòng chọn loại thông báo', 'error');
-            return false;
-        }
-
-        if (!data.targetCustomers) {
-            showToast('Vui lòng chọn đối tượng gửi', 'error');
-            return false;
-        }
-
-        if (data.targetCustomers === 'specific' && (!data.specificCustomerIds || data.specificCustomerIds.length === 0)) {
-            showToast('Vui lòng chọn ít nhất một khách hàng', 'error');
-            return false;
-        }
-
-        return true;
+validateForm(data) {
+    console.log('🔍 [VALIDATE] Validating form data:', data);
+    
+    if (!data.title?.trim()) {
+        showToast('Vui lòng nhập tiêu đề thông báo', 'error');
+        return false;
     }
+
+    if (!data.content?.trim()) {
+        showToast('Vui lòng nhập nội dung thông báo', 'error');
+        return false;
+    }
+
+    if (!data.type) {
+        showToast('Vui lòng chọn loại thông báo', 'error');
+        return false;
+    }
+
+    if (!data.targetCustomers) {
+        showToast('Vui lòng chọn đối tượng gửi', 'error');
+        return false;
+    }
+
+    // ✅ ENHANCED VALIDATION for specific customers
+    if (data.targetCustomers === 'specific') {
+        if (!data.specificCustomerIds || data.specificCustomerIds.length === 0) {
+            showToast('Vui lòng chọn ít nhất một khách hàng cụ thể để gửi thông báo', 'error');
+            
+            // ✅ SHOW SPECIFIC CUSTOMERS SECTION if hidden
+            const specificSection = document.getElementById('specific-customers-section');
+            if (specificSection && specificSection.classList.contains('hidden')) {
+                specificSection.classList.remove('hidden');
+                showToast('Phần chọn khách hàng đã được hiển thị. Hãy chọn khách hàng.', 'warning');
+            }
+            
+            return false;
+        }
+        
+        // ✅ VALIDATE CUSTOMER IDs are valid numbers
+        const invalidIds = data.specificCustomerIds.filter(id => !Number.isInteger(id) || id <= 0);
+        if (invalidIds.length > 0) {
+            console.error('❌ [VALIDATE] Invalid customer IDs:', invalidIds);
+            showToast('Có ID khách hàng không hợp lệ. Vui lòng chọn lại.', 'error');
+            return false;
+        }
+        
+        console.log(`✅ [VALIDATE] Specific customers validation passed: ${data.specificCustomerIds.length} customers`);
+    }
+
+    console.log('✅ [VALIDATE] All validations passed');
+    return true;
+}
 // ============================================
 // THÊM VÀO CLASS SellerNotificationManager
 // ============================================
@@ -1951,63 +2042,7 @@ populateStats(stats) {
     }
 }
 
-// ⭐ Update saveNotification để handle edit mode
-async saveNotification(action) {
-    const saveButton = document.getElementById(action === 'send' ? 'send-notification' : 'save-draft-notification');
-    
-    try {
-        const formData = this.getFormData();
-        
-        if (!this.validateForm(formData)) {
-            return;
-        }
 
-        setLoadingState(saveButton, true);
-        
-        let response;
-        
-        if (this.editingNotificationId) {
-            // Update existing notification
-            console.log('📝 Updating notification:', this.editingNotificationId);
-            response = await apiRequest(`/notifications/seller/${this.editingNotificationId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            showToast('Thông báo đã được cập nhật!', 'success');
-        } else {
-            // Create new notification
-            console.log('📤 Creating notification:', formData);
-            response = await apiRequest('/notifications/seller', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-        }
-
-        console.log('✅ Notification saved:', response);
-
-        if (action === 'send') {
-            // Send immediately
-            const notificationId = response.notificationID || this.editingNotificationId;
-            console.log('📨 Sending notification immediately...');
-            await apiRequest(`/notifications/seller/${notificationId}/send`, {
-                method: 'POST'
-            });
-            showToast('Thông báo đã được gửi thành công!', 'success');
-        }
-
-        this.closeNotificationModal();
-        await this.loadNotifications();
-
-    } catch (error) {
-        console.error('❌ Error saving notification:', error);
-        const errorMessage = error.message || 'Có lỗi xảy ra khi lưu thông báo';
-        showToast(errorMessage, 'error');
-    } finally {
-        setLoadingState(saveButton, false);
-    }
-}
 
 // Update openNotificationModal để reset edit mode
 openNotificationModal() {
@@ -2082,12 +2117,28 @@ openNotificationModal() {
     }
 
     getTargetText(audience) {
-        if (audience.includes('all')) return 'Tất cả KH';
+        // ✅ UPDATE: Seller chỉ có customer targeting, không có seller/admin targeting
+        const sellerTargetMap = {
+            'all': 'Tất cả khách hàng',
+            'recent': 'KH gần đây (30 ngày)',
+            'frequent': 'KH thường xuyên (≥3 đơn)', 
+            'vip': 'KH VIP (≥1M)',
+            'specific': 'KH được chọn'
+        };
+        
+        // Try exact match first
+        if (sellerTargetMap[audience]) {
+            return sellerTargetMap[audience];
+        }
+        
+        // Fallback for legacy audience strings
+        if (audience.includes('all') || audience.includes('customer')) return 'Tất cả KH';
         if (audience.includes('recent')) return 'KH gần đây';
         if (audience.includes('frequent')) return 'KH thường xuyên';
         if (audience.includes('vip')) return 'KH VIP';
-        if (audience.includes('specific')) return 'KH cụ thể';
-        return 'Không xác định';
+        if (audience.includes('specific')) return 'KH được chọn';
+        
+        return audience || 'Không xác định';
     }
 
     getCustomerTypeBadgeClass(type) {
@@ -2120,7 +2171,7 @@ async function showRecipientList(notificationId) {
         document.body.appendChild(loadingModal);
         loadingModal.classList.remove('hidden');
         
-        const response = await apiRequest(`/notifications/seller/${notificationId}/recipients`);
+        const response = await apiRequest(`${API_ENDPOINTS.seller.recipients(notificationId)}`);
         
         loadingModal.remove();
         
@@ -2789,7 +2840,7 @@ async function sendNotification(id) {
     try {
         setLoadingState(button, true);
         
-        await apiRequest(`/notifications/seller/${id}/send`, { method: 'POST' });
+        await apiRequest(`${API_ENDPOINTS.seller.send(id)}`, { method: 'POST' });
         showToast('Thông báo đã được gửi thành công!', 'success');
         
         // Reload notifications after successful send
@@ -2813,7 +2864,7 @@ async function deleteNotification(id) {
         setLoadingState(button, true);
         
         // ✅ API: DELETE /api/notifications/seller/{id}
-        await apiRequest(`/notifications/seller/${id}`, { method: 'DELETE' });
+        await apiRequest(`${API_ENDPOINTS.seller.delete(id)}`, { method: 'DELETE' });
         showToast('Thông báo đã được xóa thành công!', 'success');
         
         if (window.sellerNotificationManager) {
@@ -2841,7 +2892,7 @@ async function editNotification(id) {
         if (!notification) {
             console.log('📥 Loading notification from API...');
             try {
-                notification = await apiRequest(`/notifications/seller/${id}`);
+                notification = await apiRequest(`${API_ENDPOINTS.seller.get(id)}`);
                 console.log('✅ Loaded from API:', notification);
             } catch (apiError) {
                 console.error('❌ API Error:', apiError);
