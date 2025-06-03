@@ -309,5 +309,14 @@
     
     <script type="module" src="../assets/js/login.js"></script>
     <script type="module" src="../assets/js/components.js"></script>
+    <script>
+      function togglePassword(inputId) {
+          const input = document.getElementById(inputId);
+          const icon = input.nextElementSibling.querySelector('i');
+          input.type = (input.type === 'password') ? 'text' : 'password';
+          icon.classList.toggle('fa-eye');
+          icon.classList.toggle('fa-eye-slash');
+        }
+    </script>
 </body>
 </html>

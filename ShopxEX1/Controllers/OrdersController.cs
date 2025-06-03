@@ -359,7 +359,6 @@ namespace ShopxEX1.Controllers
         /// [Seller, Admin] Cập nhật trạng thái của một đơn hàng.
         /// </summary>
         [HttpPut("{orderId}/customer-status")]
-        [Authorize(Roles = "Customer")]
         public async Task<IActionResult> UpdateOrderStatusForCustomer(int orderId, [FromBody] OrderStatusUpdateDto statusUpdateDto)
         {
             if (!ModelState.IsValid)
