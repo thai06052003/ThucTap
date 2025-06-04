@@ -25,13 +25,15 @@
 
     <div class="flex-grow overflow-y-auto custom-scrollbar pb-4">
         <nav class="space-y-1 px-4">
-            <a href="/Admin/" data-target="dashboard data-link" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg bg-blue-700 text-white">
+            <a href="/Admin/" data-target="dashboard data-link"
+                class="sidebar-item flex items-center space-x-3 p-3 rounded-lg bg-blue-700 text-white">
                 <i class="far fa-chart-bar"></i>
                 <span class="sidebar-item-text">Thống kê doanh thu</span>
             </a>
             <!-- người dùng -->
             <div class="sidebar-group">
-                <div class="flex items-center justify-between p-3 rounded-lg hover:bg-blue-700 cursor-pointer sidebar-group-toggle">
+                <div
+                    class="flex items-center justify-between p-3 rounded-lg hover:bg-blue-700 cursor-pointer sidebar-group-toggle">
                     <div class="flex items-center space-x-3">
                         <i class="fas fa-user text-lg"></i>
                         <span class="sidebar-item-text">Người dùng</span>
@@ -42,9 +44,9 @@
                     <a href="/Admin/templates/user/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700">
                         <i class="far fa-circle mr-2"></i> Quản lý người dùng
                     </a>
-            
-                    <a href="/Admin/templates/user/create.html" class="block p-3 pl-3 rounded hover:bg-blue-700 data-link"><i
-                            class="far fa-circle mr-2">
+
+                    <a href="/Admin/templates/user/create.html"
+                        class="block p-3 pl-3 rounded hover:bg-blue-700 data-link"><i class="far fa-circle mr-2">
                         </i> Tạo mới người dùng
                     </a>
                 </div>
@@ -108,10 +110,15 @@
                     <a href="/Admin/templates/order/list.html" class="block p-3 pl-3 rounded hover:bg-blue-700">
                         <i class="far fa-circle mr-2"></i>Danh sách đơn hàng
                     </a>
-                    <a href="/Admin#" class="block p-3 pl-3 rounded hover:bg-blue-700">
-                        <i class="far fa-circle mr-2"></i> Đơn hàng mới
+                    <a href="/Admin/templates/order/list.html?status=CHO_XAC_NHAN"
+                        class="block p-3 pl-3 rounded hover:bg-blue-700 flex items-center">
+                        <i class="far fa-circle mr-2"></i>
+                        Đơn hàng mới
+                        <span id="badge-new-orders"
+                            class="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full hidden"></span>
                     </a>
-                    <a href="/Admin#" class="block p-3 pl-3 rounded hover:bg-blue-700">
+                    <a href="/Admin/templates/order/list.html?status=DANG_XU_LY"
+                        class="block p-3 pl-3 rounded hover:bg-blue-700">
                         <i class="far fa-circle mr-2"></i> Đơn hàng đang xử lý
                     </a>
                 </div>
@@ -132,7 +139,8 @@
                         <i class="far fa-circle mr-2"></i> Quản lý Mã giảm giá
                     </a>
 
-                    <a href="/Admin/templates/discount/create.html" class="block p-3 pl-3 rounded hover:bg-blue-700 data-link"><i class="far fa-circle mr-2">
+                    <a href="/Admin/templates/discount/create.html"
+                        class="block p-3 pl-3 rounded hover:bg-blue-700 data-link"><i class="far fa-circle mr-2">
                         </i> Tạo mới mã giảm giá
                     </a>
                 </div>
@@ -155,7 +163,8 @@
             </div>
             <!-- Liên hệ -->
             <div class="sidebar-group">
-                <div class="flex items-center justify-between p-3 rounded-lg hover:bg-blue-700 cursor-pointer sidebar-group-toggle">
+                <div
+                    class="flex items-center justify-between p-3 rounded-lg hover:bg-blue-700 cursor-pointer sidebar-group-toggle">
                     <div class="flex items-center space-x-3">
                         <i class="fas fa-phone"></i>
                         <span class="sidebar-item-text">Liên hệ</span>
@@ -198,7 +207,7 @@
             toggle.addEventListener('click', () => {
                 // Ngăn chặn hành vi mặc định của link nếu có
                 e.preventDefault();
-                
+
                 const content = toggle.nextElementSibling;
                 const chevron = toggle.querySelector('.fa-chevron-down');
 
@@ -213,5 +222,6 @@
                 }
             });
         });
+
     });
 </script>

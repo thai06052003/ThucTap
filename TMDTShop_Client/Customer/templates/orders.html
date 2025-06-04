@@ -357,11 +357,23 @@ async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refre
     }
 }
 
+            // Hàm xử lý yêu cầu trả hàng/ hoàn tiền
             window.customerRequestReturn = (orderId) => {
                 if (confirm(`Bạn có muốn gửi Yêu cầu trả hàng/ hoàn tiền cho đơn hàng #${orderId} không?`)) {
                     updateOrderStatusViaAPI(orderId, ORDER_STATUSES.YEU_CAU_TRA_HANG_HOAN_TIEN,
                         `Yêu cầu trả hàng/ hoàn tiền cho đơn hàng #${orderId} đã được gửi. Shop sẽ liên hệ với bạn.`,
                         () => fetchCustomerOrders(page = 1)
+                    );
+                }
+            };
+            // Hàm xử lý hủy đơn hàng
+            window.customerCancelOrder = (orderId) => {
+                if (confirm(`Bạn có chắc chắn muốn hủy đơn hàng #${orderId} không?`)) {
+                    updateOrderStatusViaAPI(
+                        orderId,
+                        ORDER_STATUSES.DA_HUY,
+                        `Đơn hàng #${orderId} đã được hủy thành công.`,
+                        () => fetchCustomerOrders(1)
                     );
                 }
             };
@@ -438,104 +450,98 @@ async function updateOrderStatusViaAPI(orderId, newStatus, successMessage, refre
                 orderListContainer.innerHTML = '';
                 orders.forEach(order => {
                     const orderCard = document.createElement('div');
-                    orderCard.className = 'bg-white rounded-lg shadow-md mb-6 overflow-hidden'; // Thêm mb-6 và overflow-hidden
+                    orderCard.className = 'bg-white rounded-lg shadow-md mb-6 overflow-hidden';
 
                     const currentStatus = order.status;
                     const statusClass = getStatusClass(currentStatus);
-                    console.log(order)
-                    // --- Phần Header của Card Đơn Hàng ---
-                    // Cố gắng lấy tên shop từ sản phẩm đầu tiên làm đại diện, hoặc hiển thị "Nhiều người bán"
-                    // Logic này cần được cải thiện nếu bạn muốn nhóm theo người bán một cách chính xác
-                    let representativeShopName = "ShopX Mall"; // Mặc định
+
+                    let representativeShopName = "ShopX Mall";
                     let representativeSellerID = null;
                     if (order.items && order.items.length > 0 && order.items[0].shopName && order.items[0].shopName !== "N/A") {
-                        // Kiểm tra xem tất cả sản phẩm có cùng shopName không
                         const allSameShop = order.items.every(item => item.shopName === order.items[0].shopName);
                         if (allSameShop) {
                             representativeShopName = order.items[0].shopName;
                             representativeSellerID = order.items[0].sellerID
                         } else {
-                            representativeShopName = "Nhiều người bán"; // Hoặc không hiển thị gì cả
+                            representativeShopName = "Nhiều người bán";
                         }
                     }
 
                     let orderHeaderHTML = `
-                        <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
-                            <div class="flex items-center">
-                                <i class="fas fa-store text-indigo-600 mr-2"></i> <!-- Icon shop -->
-                                <a href="https://127.0.0.1:5500/Customer/templates/seller-profile.html?sellerId=${representativeSellerID}" class="font-semibold text-gray-700 text-sm hover:text-blue-500 hover:underline">${representativeShopName}</a>
-                                <!-- Nút Chat và Xem Shop có thể thêm sau nếu có API/link -->
-                            </div>
-                            <div class="text-xs font-medium uppercase ${statusClass === 'status-da-giao' ? 'text-green-600' : (statusClass === 'status-da-huy' ? 'text-red-600' : 'text-orange-500')}">
-                                ${currentStatus}
-                            </div>
-                        </div>
-                    `;
+            <div class="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+                <div class="flex items-center">
+                    <i class="fas fa-store text-indigo-600 mr-2"></i>
+                    <a href="https://127.0.0.1:5500/Customer/templates/seller-profile.html?sellerId=${representativeSellerID}" class="font-semibold text-gray-700 text-sm hover:text-blue-500 hover:underline">${representativeShopName}</a>
+                </div>
+                <div class="text-xs font-medium uppercase ${statusClass === 'status-da-giao' ? 'text-green-600' : (statusClass === 'status-da-huy' ? 'text-red-600' : 'text-orange-500')}">
+                    ${currentStatus}
+                </div>
+            </div>
+        `;
 
-                    // --- Phần Danh sách Sản phẩm ---
                     let itemsHtml = '';
                     if (order.items && order.items.length > 0) {
                         order.items.forEach(item => {
-                            // Giả sử chưa có thông tin phân loại hàng, chỉ có số lượng
-                            // Giá gốc và giá bán có thể cần thêm trường vào OrderDetailDto nếu API hỗ trợ
-                            // Hiện tại chỉ có unitPrice (là giá bán)
                             itemsHtml += `
-                                        <div class="flex items-start p-4 border-b border-gray-100 last:border-b-0">
-                                            <img src="${getImageUrl(item.productImageURL)}" alt="${item.productName}" class="w-16 h-16 object-cover rounded mr-4 flex-shrink-0">
-                                            <div class="flex-grow">
-                                                <a href="/Customer/templates/product-detail.html?productId=${item.productID}" 
-                                                class="mb-2 text-lg text-gray-800 leading-tight hover:text-indigo-600 rounded-full ${!item.isActive ? 'no-event' : ''}">
-                                                ${item.productName}
-                                                ${!item.isActive ? `<span class="text-xs font-medium px-3 py-1 ml-8 bg-gray-500 rounded-full w-24 text-center text-white">Đã ngừng bán</span>` : ''}
-                                                </a>
-                                                <p class="text-sm text-gray-500">Phân loại hàng: ${item.categoryName}</p>
-                                                <p class="text-xs text-gray-500">Số lượng: x${item.quantity}</p>
-                                                ${item.shopName && item.shopName !== "N/A" && representativeShopName === "Nhiều người bán" ? `<p class="text-xs text-gray-500">Shop: ${item.shopName}</p>` : ''}
-                                            </div>
-                                            <div class="text-sm text-right ml-4 flex-shrink-0">
-                                                <span class="text-indigo-600 font-medium">${formatCurrency(item.unitPrice * item.quantity)}</span>
-                                            </div>
-                                        </div>
-                                    `;
+                    <div class="flex items-start p-4 border-b border-gray-100 last:border-b-0">
+                        <img src="${getImageUrl(item.productImageURL)}" alt="${item.productName}" class="w-16 h-16 object-cover rounded mr-4 flex-shrink-0">
+                        <div class="flex-grow">
+                            <a href="/Customer/templates/product-detail.html?productId=${item.productID}" 
+                            class="mb-2 text-lg text-gray-800 leading-tight hover:text-indigo-600 rounded-full ${!item.isActive ? 'no-event' : ''}">
+                            ${item.productName}
+                            ${!item.isActive ? `<span class="text-xs font-medium px-3 py-1 ml-8 bg-gray-500 rounded-full w-24 text-center text-white">Đã ngừng bán</span>` : ''}
+                            </a>
+                            <p class="text-sm text-gray-500">Phân loại hàng: ${item.categoryName}</p>
+                            <p class="text-xs text-gray-500">Số lượng: x${item.quantity}</p>
+                            ${item.shopName && item.shopName !== "N/A" && representativeShopName === "Nhiều người bán" ? `<p class="text-xs text-gray-500">Shop: ${item.shopName}</p>` : ''}
+                        </div>
+                        <div class="text-sm text-right ml-4 flex-shrink-0">
+                            <span class="text-indigo-600 font-medium">${formatCurrency(item.unitPrice * item.quantity)}</span>
+                        </div>
+                    </div>
+                `;
                         });
                     } else {
                         itemsHtml = '<p class="p-4 text-sm text-gray-500">Không có sản phẩm trong đơn hàng này.</p>';
                     }
 
-                    // --- Phần Tổng tiền và Nút Hành động ---
+                    // --- Footer: Thêm nút Hủy đơn hàng nếu trạng thái là "Chờ xác nhận", bỏ nút Mua lại ---
                     let orderFooterHTML = `
-                        <div class="p-4 bg-gray-50">
-                            <div class="flex justify-between items-center mb-3">
-                                <span class="text-sm text-gray-600 mr-2">${date(order.orderDate)}</span>
-                                <div>
-                                    <span class="text-sm text-gray-600 mr-2">Thành tiền:</span>
-                                    <span class="text-xl font-bold text-red-500">${formatCurrency(order.totalPayment)}</span>
-                                </div>
-                            </div>
-                            <div class="flex flex-col sm:flex-row justify-end items-center gap-2">
-                                <!-- Nút yêu cầu trả hàng/ hoàn tiền: chỉ hiển thị khi Đã giao và chưa yêu cầu trả hàng/ hoàn tiền (cần thêm logic/flag) -->
-                                ${order.status === ORDER_STATUSES.DA_GIAO && order?.orderDate && getDateDifference(order.orderDate) < 3 ? `
-                                    <button onclick="customerRequestReturn(${order.orderID})" class="customer-return-request-btn w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-sm text-sm font-medium transition-colors">
-                                        Yêu cầu trả hàng/ hoàn tiền
-                                    </button>` : ''
+            <div class="p-4 bg-gray-50">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-sm text-gray-600 mr-2">${date(order.orderDate)}</span>
+                    <div>
+                        <span class="text-sm text-gray-600 mr-2">Thành tiền:</span>
+                        <span class="text-xl font-bold text-red-500">${formatCurrency(order.totalPayment)}</span>
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row justify-end items-center gap-2">
+                    <!-- Nút yêu cầu trả hàng/ hoàn tiền -->
+                    ${order.status === ORDER_STATUSES.DA_GIAO && order?.orderDate && getDateDifference(order.orderDate) < 3 ? `
+                        <button onclick="customerRequestReturn(${order.orderID})" class="customer-return-request-btn w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-sm text-sm font-medium transition-colors">
+                            <i class="fas fa-undo-alt mr-2"></i> Yêu cầu trả hàng/ hoàn tiền
+                        </button>` : ''
                         }
-                                <!-- Nút Mua lại: có thể dẫn đến trang sản phẩm hoặc thêm lại vào giỏ (cần logic phức tạp) -->
-                                <button onclick="rebuyHandler.showRebuyModal(${order.orderID})" 
-                                        class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-600 px-4 py-2 rounded-sm text-sm font-medium transition-colors">
-                                    <i class="fas fa-redo-alt mr-2"></i>Mua Lại
-                                </button>
-                                <a href="/Customer/templates/order-detail.html?id=${order.orderID}" 
-                                   class="w-full sm:w-auto text-center bg-white hover:bg-gray-100 text-indigo-600 border border-indigo-300 px-4 py-2 rounded-sm text-sm font-medium transition-colors">
-                                   Xem Chi Tiết Đơn
-                                </a>
-                            </div>
-                        </div>
-                    `;
+                    <!-- Nút Hủy đơn hàng -->
+                    ${order.status === ORDER_STATUSES.CHO_XAC_NHAN ? `
+                        <button onclick="customerCancelOrder(${order.orderID})" class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white border border-red-500 px-4 py-2 rounded-sm text-sm font-medium transition-colors">
+                            <i class="fas fa-times-circle mr-2"></i>Hủy đơn hàng
+                        </button>
+                    ` : ''}
+                    <a href="/Customer/templates/order-detail.html?id=${order.orderID}" 
+                       class="w-full sm:w-auto text-center bg-white hover:bg-gray-100 text-indigo-600 border border-indigo-300 px-4 py-2 rounded-sm text-sm font-medium transition-colors">
+                       Xem Chi Tiết Đơn
+                    </a>
+                </div>
+            </div>
+        `;
 
                     orderCard.innerHTML = orderHeaderHTML + itemsHtml + orderFooterHTML;
                     orderListContainer.appendChild(orderCard);
                 });
             }
+
+            
 
             async function fetchProductDetails(productIdParam) {
                 try {
