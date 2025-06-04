@@ -330,7 +330,8 @@
                                 <input type="text" id="shippingAddressInput"
                                     placeholder="Ví dụ: 123 Đường ABC, Phường XYZ, Quận 1, TP.HCM"
                                     class="p-3 border border-gray-300 rounded-md w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                                <h2 id="shippingAddressError" class="text-red-500 text-base mt-1 hidden">* Bạn phải nhập đại chỉ giao hàng</h2>
+                                <h2 id="shippingAddressError" class="text-red-500 text-base mt-1 hidden">* Bạn phải nhập
+                                    đại chỉ giao hàng</h2>
                             </div>
                             <div>
                                 <label for="discountCodeInput" class="block text-sm font-medium text-gray-700 mb-1">Mã
@@ -607,7 +608,7 @@
                 cartContentEl.classList.remove('hidden');
             }
 
-            function handleSelectAllChange() { 
+            function handleSelectAllChange() {
                 const isChecked = selectAllCheckbox.checked;
                 document.querySelectorAll('.cart-item-checkbox:not([disabled])').forEach(checkbox => {
                     checkbox.checked = isChecked;
@@ -615,7 +616,7 @@
                 updateSelectedSummary();
             }
 
-            function attachEventListeners() { 
+            function attachEventListeners() {
                 selectAllCheckbox.removeEventListener('change', handleSelectAllChange);
                 selectAllCheckbox.addEventListener('change', handleSelectAllChange);
 
@@ -698,7 +699,7 @@
                 // Không cần gọi updateSelectedSummary() ở đây nữa, vì updateCartItemQuantity/removeCartItem sẽ gọi fetchCart() => renderCart() => updateSelectedSummary()
             }
 
-            function handleRemoveItem(event) { 
+            function handleRemoveItem(event) {
                 const itemId = event.target.closest('.remove-item').dataset.itemId;
                 removeCartItem(itemId);
             }
@@ -872,7 +873,7 @@
                 }
             }
 
-            async function updateCartItemQuantity(cartItemId, newQuantity) { 
+            async function updateCartItemQuantity(cartItemId, newQuantity) {
                 const token = getSession('token');
                 if (!token) return;
 
@@ -902,7 +903,7 @@
                 }
             }
 
-            async function removeCartItem(cartItemId, silent = false) { 
+            async function removeCartItem(cartItemId, silent = false) {
                 const token = getSession('token');
                 if (!token) return;
 
@@ -1055,18 +1056,18 @@
                 }
             }
 
-            if (openDiscountModalBtn) { 
+            if (openDiscountModalBtn) {
                 openDiscountModalBtn.addEventListener('click', () => {
                     discountModal.classList.add('active');
                     loadDiscountsForModal();
                 });
             }
-            if (closeDiscountModalBtn) { 
+            if (closeDiscountModalBtn) {
                 closeDiscountModalBtn.addEventListener('click', () => {
                     discountModal.classList.remove('active');
                 });
             }
-            if (discountModal) { 
+            if (discountModal) {
                 discountModal.addEventListener('click', (event) => {
                     if (event.target === discountModal) {
                         discountModal.classList.remove('active');
@@ -1141,9 +1142,9 @@
                     let isValidAddress = true;
                     shippingAddressError.classList.add('hidden');
                     const shippingAddress = shippingAddressInput.value.trim();
-                    if (!shippingAddress) { 
-                        shippingAddressError.classList.remove('hidden'); 
-                        isValidAddress = false; 
+                    if (!shippingAddress) {
+                        shippingAddressError.classList.remove('hidden');
+                        isValidAddress = false;
                     }
                     if (!isValidAddress) return;
 

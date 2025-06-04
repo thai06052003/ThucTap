@@ -1,0 +1,36 @@
+{
+  "ConnectionStrings": {
+    "ShopX": "Server=...;Database=...;User ID=sa;Password=123;TrustServerCertificate=True;"
+  },
+  "Jwt": {
+    "SecretKey": "...",
+    "Issuer": "...",
+    "Audience": "...",
+    "ExpiryInMinutes": 1440 // 1 ngày
+  },
+  "EmailSettings": {
+    "SmtpHost": "smtp.gmail.com",
+    "SmtpPort": 587,
+    "SmtpUser": "...",
+    "SmtpPass": "...",
+    "SenderEmail": "...",
+    "SenderName": "ShopX Team",
+    "EnableSsl": true
+  },
+  "AppSettings": {
+    "BaseUrl": "https://localhost:7088",
+    "IsDevelopment": true,
+    "PasswordResetTokenExpiryMinutes": 15
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Information",
+      "Microsoft.EntityFrameworkCore.Query": "Debug",
+      "Microsoft.EntityFrameworkCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "FirebaseAdminSdkPath": "..."
+}

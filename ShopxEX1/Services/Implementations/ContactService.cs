@@ -98,7 +98,12 @@ namespace ShopxEX1.Services.Implementations
                 }
 
                 // Sắp xếp (ví dụ: mặc định theo ngày tạo mới nhất)
-                query = query.OrderByDescending(c => c.CreatedAt);
+                query = query
+                        .OrderBy(c => c.Status == DefaultNewStatus ? 0
+                                    : c.Status == StatusResponded ? 1
+                                    : c.Status == StatusClosed ? 2
+                                    : 3)
+                        .ThenBy(c => c.CreatedAt);
                 // if (!string.IsNullOrWhiteSpace(filter.SortBy)) { /* Thêm logic sắp xếp nếu cần */ }
 
 
