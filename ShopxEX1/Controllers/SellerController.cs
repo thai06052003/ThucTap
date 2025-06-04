@@ -2,6 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using ShopxEX1.Services.Interfaces;
 using ShopxEX1.Dtos.Sellers;
 using Microsoft.Extensions.Logging;
+using ShopxEX1.Data;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using ShopxEX1.Models;
 
 namespace ShopxEX1.Controllers
 {
@@ -55,6 +60,94 @@ namespace ShopxEX1.Controllers
                 });
             }
         }
+
+[Route("api/[controller]")]
+[ApiController]
+public class SellerController : ControllerBase
+{
+    private readonly AppDbContext _context;
+    private readonly ILogger<SellerController> _logger;
+
+    public SellerController(AppDbContext context, ILogger<SellerController> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+
+    [HttpPost("convert-to-seller")]
+    [Authorize]
+    public async Task<IActionResult> ConvertToSeller([FromBody] ConvertToSellerDto dto)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0)
+            {
+                return Unauthorized(new { message = "Token không hợp lệ" });
+            }
+
+            // Kiểm tra user tồn tại
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound(new { message = "Không tìm thấy người dùng" });
+            }
+
+            // Kiểm tra đã có SellerProfile chưa
+            var existingSeller = await _context.Sellers
+                .FirstOrDefaultAsync(s => s.UserID == userId);
+
+            if (existingSeller != null)
+            {
+                // Kích hoạt lại
+                existingSeller.IsActive = true;
+                if (!string.IsNullOrEmpty(dto.ShopName))
+                {
+                    existingSeller.ShopName = dto.ShopName;
+                }
+                await _context.SaveChangesAsync();
+
+                return Ok(new { 
+                    success = true, 
+                    SellerId = existingSeller.SellerID,
+                    message = "Seller profile activated"
+                });
+            }
+
+            // Tạo mới SellerProfile
+            var newSeller = new Seller
+            {
+                UserID = userId,
+                ShopName = dto.ShopName ?? $"{user.FullName}'s Shop",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            _context.Sellers.Add(newSeller);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { 
+                success = true, 
+                SellerId = newSeller.SellerID,
+                message = "Seller profile created"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error converting to seller");
+            return StatusCode(500, new { message = "Lỗi hệ thống" });
+        }
+    }
+}
+
+// ✅ DTO CHO CONVERT
+public class ConvertToSellerDto
+{
+    public int UserId { get; set; }
+    public string ShopName { get; set; }
+}
+
+
 
         /// <summary>
         /// 🔥 GET SELLER PRODUCTS WITH FILTERS & PAGINATION

@@ -3551,7 +3551,7 @@ async function loadShopManagementData() {
         // Kiểm tra trạng thái cửa hàng từ API
         try {
             console.log('Đang kiểm tra trạng thái cửa hàng từ API...');
-            const statusResponse = await fetchAPI('/seller/status');
+            const statusResponse = await fetchAPI('/sellers/toggle-status');
             console.log('Phản hồi trạng thái cửa hàng:', statusResponse);
             
             if (statusResponse && statusResponse.success) {
@@ -4083,7 +4083,7 @@ async function toggleShopStatus() {
         const currentStatus = sellerData.isActive !== undefined ? sellerData.isActive : true;
         
         // Gọi API với đầy đủ đường dẫn
-        const response = await fetchAPI('/seller/toggle-maintenance', {
+        const response = await fetchAPI('/sellers/toggle-status', {
             method: 'PUT'
         });
         
@@ -4163,167 +4163,65 @@ async function handleShopFormSubmit(event) {
     }
     
     try {
-        // Hiển thị loading
-        showToast('Đang cập nhật thông tin cửa hàng...', 'info');
-        
-        // Thu thập dữ liệu từ form
-        const shopData = {
-            shopName: formData.get('shopName'),
-            email: formData.get('contactEmail'),
-            phone: formData.get('phoneNumber'),
-            address: formData.get('address'),
-            // Thêm trường Role là bắt buộc theo yêu cầu từ API
-            Role: "Seller"
-        };
-        
-        // Lấy dữ liệu từ sessionStorage và token
-        const sellerData = JSON.parse(sessionStorage.getItem('sellerData') || '{}');
-        const userData = JSON.parse(sessionStorage.getItem('userData') || '{}');
-        const token = getTokenFromSession();
-        const tokenInfo = token ? parseJwtToken(token) : {};
-        
-        // Thêm fullname từ các nguồn dữ liệu (ưu tiên từ userData, tokenInfo, hoặc tên shop)
-        shopData.FullName = userData.fullName || tokenInfo.fullName || tokenInfo.name || formData.get('shopName');
-        
-        // Xử lý trạng thái hoạt động
+        // ✅ THU THẬP DỮ LIỆU THEO ĐÚNG SellerDto FORMAT
         const statusValue = formData.get('status');
-        const currentStatus = sellerData.isActive !== undefined ? sellerData.isActive : true;
-        const isActive = statusValue === 'Active'; // Sửa đúng giá trị từ form HTML
-        
-        // Xử lý upload logo (nếu có)
-        const logoFile = formData.get('logo');
-        let logoUrl = null;
-        
-        if (logoFile && logoFile.size > 0) {
-            try {
-                // Upload ảnh lên Cloudinary
-            logoUrl = await uploadImage(logoFile);
-                if (logoUrl) {
-                    // Thêm URL avatar vào dữ liệu gửi đi
-                    shopData.avatar = logoUrl; // Đổi từ avatarUrl thành avatar để đồng bộ với tên trường trong sessionStorage
-                    console.log('Đã upload logo thành công:', logoUrl);
-                }
-            } catch (uploadError) {
-                console.error('Lỗi khi upload ảnh logo:', uploadError);
-                showToast('Không thể upload logo. Thông tin khác vẫn được cập nhật.', 'warning');
-            }
-        }
-        
-        console.log('Thông tin form:', {
-            shopName: shopData.shopName,
-            email: shopData.email,
-            phone: shopData.phone,
-            address: shopData.address,
-            fullName: shopData.FullName,
-            role: shopData.Role,
-            logo: logoUrl ? 'Đã upload' : 'Không thay đổi',
-            statusCurrent: currentStatus ? 'Hoạt động' : 'Bảo trì',
-            statusNew: isActive ? 'Hoạt động' : 'Bảo trì'
-        });
-        
-        // Gọi API cập nhật thông tin cơ bản
-        const response = await fetchAPI('/Auth/update-profile', {
+        const isActive = statusValue === 'Active'; // ✅ boolean conversion
+
+        // ✅ GỬI THEO ĐÚNG CẤU TRÚC SellerDto (không thêm fields khác)
+        const sellerData = {
+            sellerID: 0, // Backend sẽ lấy từ token
+            shopName: formData.get('shopName')?.trim(),
+            isActive: isActive, // ✅ bool, không phải object
+            userID: 0, // Backend sẽ lấy từ token  
+            userFullName: formData.get('userFullName')?.trim(),
+            userEmail: formData.get('userEmail')?.trim()
+        };
+
+        console.log('📤 Sending SellerDto data:', sellerData);
+
+        // ✅ GỌI API CẬP NHẬT VỚI ENDPOINT ĐÚNG
+        const response = await fetchAPI('/sellers/update-shop', {
             method: 'PUT',
-            body: JSON.stringify(shopData)
+            body: JSON.stringify(sellerData)
         });
-        
-        if (!response || !response.success) {
-            throw new Error(response?.message || 'Không thể cập nhật thông tin cửa hàng');
-        }
-        
-        // Cập nhật sessionStorage sau khi API thành công
-        const updatedSellerData = { 
-            ...sellerData, 
-            shopName: shopData.shopName,
-            email: shopData.email,
-            phone: shopData.phone,
-            address: shopData.address
-        };
-        
-        if (logoUrl) {
-            updatedSellerData.avatar = logoUrl;
-            updatedSellerData.logo = logoUrl;
-        }
-        
-        // Xử lý chuyển đổi trạng thái nếu có thay đổi
-        let statusChanged = false;
-        if (isActive !== currentStatus) {
-            console.log('Trạng thái đã thay đổi, gọi API toggle-maintenance');
-            
-            try {
-                const toggleResponse = await fetchAPI('/seller/toggle-maintenance', {
-                    method: 'PUT'
-                });
-                
-                if (toggleResponse && toggleResponse.success) {
-                    // Cập nhật token mới nếu có
-                    if (toggleResponse.token) {
-                        sessionStorage.setItem('authToken', toggleResponse.token);
-                    }
-                    
-                    // Cập nhật trạng thái mới
-                    updatedSellerData.isActive = toggleResponse.isActive;
-                    
-                    statusChanged = true;
-                    console.log('Đã chuyển đổi trạng thái thành công');
-                } else {
-                    console.warn('Không thể chuyển đổi trạng thái:', toggleResponse?.message);
-                    showToast(toggleResponse?.message || 'Không thể chuyển đổi trạng thái cửa hàng', 'error');
-                }
-            } catch (toggleError) {
-                console.error('Lỗi khi chuyển đổi trạng thái:', toggleError);
-                showToast('Lỗi khi chuyển đổi trạng thái cửa hàng', 'error');
+
+        if (response && response.success) {
+            console.log('✅ Shop update success:', response);
+
+            // ✅ CẬP NHẬT UI
+            if (response.seller) {
+                updateShopUI(response.seller);
             }
+
+            // ✅ CẬP NHẬT GLOBAL DATA
+            globalShopData = {
+                ...globalShopData,
+                ...response.seller,
+                loaded: true
+            };
+
+            // ✅ ĐÓNG MODAL
+            const modal = document.getElementById('edit-shop-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+
+            showToast(response.message || 'Cập nhật thông tin cửa hàng thành công', 'success');
+
+            // ✅ TẢI LẠI DỮ LIỆU
+            setTimeout(() => {
+                loadShopManagementData();
+            }, 1000);
         }
-        
-        // Lưu dữ liệu đã cập nhật vào sessionStorage
-            sessionStorage.setItem('sellerData', JSON.stringify(updatedSellerData));
-            
-        // Cập nhật userData để đồng bộ
-        const updatedUserData = {
-            ...userData,
-            shopName: shopData.shopName
-        };
-        
-        if (logoUrl) {
-            updatedUserData.avatar = logoUrl;
-        }
-        
-        if (userData.role?.toLowerCase() === 'seller') {
-            updatedUserData.isActive = updatedSellerData.isActive;
-        }
-        
-        sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
-        
-        // ĐẢM BẢO ĐÓNG MODAL sau khi cập nhật
-        const editShopModal = document.getElementById('edit-shop-modal');
-        if (editShopModal) {
-            editShopModal.classList.add('hidden');
-            console.log('Đã đóng modal chỉnh sửa cửa hàng');
-        } else {
-            console.error('Không tìm thấy modal edit-shop-modal');
-        }
-        
-        // Cập nhật UI
-        await loadShopManagementData();
-        await loadSellerInfo();
-        
-        
-        // Hiển thị thông báo thành công
-        if (statusChanged) {
-            showToast(`Đã cập nhật thông tin và chuyển trạng thái cửa hàng thành công`, 'success');
-        } else {
-            showToast('Cập nhật thông tin cửa hàng thành công', 'success');
-        }
-        
+
     } catch (error) {
-        console.error('Lỗi khi cập nhật thông tin cửa hàng:', error);
-        showToast(`Lỗi: ${error.message}`, 'error');
+        console.error('❌ Shop update error:', error);
+        showToast(error.message || 'Có lỗi xảy ra khi cập nhật thông tin cửa hàng', 'error');
     } finally {
         // Khôi phục nút submit
         if (submitButton) {
             submitButton.disabled = false;
-            submitButton.innerHTML = 'Lưu thay đổi';
+            submitButton.textContent = 'Lưu thay đổi';
         }
     }
 }

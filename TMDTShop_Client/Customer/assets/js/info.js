@@ -566,274 +566,232 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Xử lý sự kiện submit form
     
 
-if (profileForm) {
-    profileForm.addEventListener('submit', async function(event) {
-        event.preventDefault();
-        const token = sessionStorage.getItem('token');
-        if (!token) {
-            window.location.href = 'login.html';
-            return;
-        }
-
-        try {
-            // ✅ GET USER DATA and check if social account
-            const userData = parseJwtToken(token);
-            const storedUserData = JSON.parse(sessionStorage.getItem('userData') || '{}');
-            const combinedUserData = { ...storedUserData, ...userData };
-            
-            // ✅ DETECT social account
-            const isSocialAccount = !!(combinedUserData.socialProvider || storedUserData.socialProvider);
-            console.log('Is social account:', isSocialAccount);
-            console.log('Social provider:', combinedUserData.socialProvider || storedUserData.socialProvider);
-            
-            const userId = userData.userId;
-            if (!userId) {
-                throw new Error('Không thể xác định ID người dùng từ token');
-            }
-
-            // ✅ COLLECT form data
-            const fullName = document.getElementById('fullName').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const birthdateInput = document.getElementById('birthdate').value;
-            const genderRadio = document.querySelector('input[name="gender"]:checked');
-            const genderValue = genderRadio ? (genderRadio.value === 'male') : null;
-            const address = document.getElementById('address').value.trim();
-            const role = roleSelect?.value || 'customer';
-            
-            // ✅ VALIDATE required fields for social accounts
-            if (!fullName) {
-                alert('Vui lòng nhập họ tên');
+    if (profileForm) {
+        profileForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const token = sessionStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
                 return;
             }
-            
-            if (!email) {
-                alert('Vui lòng nhập email');
-                return;
-            }
-            
-            // ✅ VALIDATE email format
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                alert('Định dạng email không hợp lệ');
-                return;
-            }
-            
-            // ✅ VALIDATE birthday
-            let formattedBirthday = '';
-            if (birthdateInput) {
-                const date = new Date(birthdateInput);
-                if (isNaN(date.getTime())) {
-                    alert('Định dạng ngày sinh không hợp lệ');
+    
+            try {
+                const userData = parseJwtToken(token);
+                const storedUserData = JSON.parse(sessionStorage.getItem('userData') || '{}');
+                const combinedUserData = { ...storedUserData, ...userData };
+                
+                const isSocialAccount = !!(combinedUserData.socialProvider || storedUserData.socialProvider);
+                console.log('Is social account:', isSocialAccount);
+                
+                const userId = userData.userId;
+                if (!userId) {
+                    throw new Error('Không thể xác định ID người dùng từ token');
+                }
+    
+                // ✅ COLLECT form data
+                const fullName = document.getElementById('fullName').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const phone = document.getElementById('phone').value.trim();
+                const birthdateInput = document.getElementById('birthdate').value;
+                const genderRadio = document.querySelector('input[name="gender"]:checked');
+                const genderValue = genderRadio ? (genderRadio.value === 'male') : null;
+                const address = document.getElementById('address').value.trim();
+                const role = roleSelect?.value || 'customer';
+                
+                // ✅ VALIDATE required fields
+                if (!fullName) {
+                    alert('Vui lòng nhập họ tên');
                     return;
                 }
-                if (date > new Date()) {
-                    alert('Ngày sinh không thể là ngày trong tương lai');
+                
+                if (!email) {
+                    alert('Vui lòng nhập email');
                     return;
                 }
-                formattedBirthday = date.toISOString().split('T')[0];
-            }
-
-            // ✅ VALIDATE phone if provided
-            if (phone && !/^[0-9+\-\s\(\)]*$/.test(phone)) {
-                alert('Số điện thoại chỉ được chứa số và ký tự đặc biệt');
-                return;
-            }
-
-            // ✅ BUILD request body with social account info
-            let body = {
-                fullName: fullName,
-                email: email,
-                phone: phone || null,
-                birthday: formattedBirthday || null,
-                gender: genderValue,
-                address: address || null,
-                role: role
-            };
-            
-            // ✅ INCLUDE social account identifiers for backend
-            if (isSocialAccount) {
-                body.socialProvider = combinedUserData.socialProvider || storedUserData.socialProvider;
-                body.socialID = combinedUserData.socialID || storedUserData.socialID;
-                console.log('Adding social account info to request:', {
-                    socialProvider: body.socialProvider,
-                    socialID: body.socialID
-                });
-            }
-
-            // ✅ HANDLE seller role with proper shop name logic
-            if (role === 'seller') {
-                let shopName = '';
                 
-                const shopNameInput = document.getElementById('shopName');
-                if (shopNameInput) {
-                    shopName = shopNameInput.value.trim();
-                    
-                    
-                    
-                    if (!shopName && combinedUserData.shopName) {
-                        shopName = combinedUserData.shopName;
-                    }
-                    
-                    if (!shopName) {
-                        alert('Vui lòng nhập tên cửa hàng');
+                // ✅ VALIDATE email format
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    alert('Định dạng email không hợp lệ');
+                    return;
+                }
+                
+                // ✅ VALIDATE birthday
+                let formattedBirthday = '';
+                if (birthdateInput) {
+                    const date = new Date(birthdateInput);
+                    if (isNaN(date.getTime())) {
+                        alert('Định dạng ngày sinh không hợp lệ');
                         return;
                     }
-                }
-                
-                const hasSellerId = combinedUserData.sellerId && combinedUserData.sellerId > 0;
-                console.log('Seller info check:', {
-                    hasSellerId: hasSellerId,
-                    sellerId: combinedUserData.sellerId,
-                    shopName: shopName,
-                    isSocialAccount: isSocialAccount
-                });
-                
-                if (hasSellerId) {
-                    // ✅ Existing seller - just update
-                    body.shopName = shopName;
-                    body.sellerId = combinedUserData.sellerId;
-                    console.log('Updating existing seller profile for social account');
-                } else {
-                    // ✅ New seller - create seller profile first
-                    try {
-                        console.log('Creating new seller profile for social account');
-                        const convertResponse = await fetch(`${API_BASE}/seller/convert-to-seller`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ 
-                                UserId: userId, 
-                                ShopName: shopName 
-                            })
-                        });
-
-                        if (!convertResponse.ok) {
-                            const errorData = await convertResponse.json();
-                            throw new Error(errorData.message || 'Chuyển đổi thành Seller thất bại');
-                        }
-
-                        const result = await convertResponse.json();
-                        body.shopName = shopName;
-                        body.sellerId = result.SellerId;
-                        console.log('Created seller profile for social account:', result);
-                    } catch (error) {
-                        console.error('Error converting social account to seller:', error);
-                        alert('Lỗi khi chuyển đổi thành seller: ' + error.message);
+                    if (date > new Date()) {
+                        alert('Ngày sinh không thể là ngày trong tương lai');
                         return;
                     }
+                    formattedBirthday = date.toISOString().split('T')[0];
                 }
-            } else {
-                // ✅ Customer role - preserve existing shop info for social accounts
-                if (combinedUserData.shopName) {
-                    body.shopName = combinedUserData.shopName;
-                    console.log('Preserving shop name for social account switching to customer');
+    
+                // ✅ VALIDATE phone if provided
+                if (phone && !/^[0-9+\-\s\(\)]*$/.test(phone)) {
+                    alert('Số điện thoại chỉ được chứa số và ký tự đặc biệt');
+                    return;
                 }
-            }
-
-            // ✅ LOG request data for debugging
-            console.log('📤 Sending update request for social account:', {
-                url: `${API_BASE}/Auth/update-profile`,
-                method: 'PUT',
-                isSocialAccount: isSocialAccount,
-                body: body
-            });
-
-            // ✅ SEND API request
-            const response = await fetch(`${API_BASE}/Auth/update-profile`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(body),
-            });
-
-            // ✅ ENHANCED error handling for social accounts
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ API Error Response for social account:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: Object.fromEntries(response.headers.entries()),
-                    body: errorText,
-                    isSocialAccount: isSocialAccount
-                });
+    
+                // ✅ BUILD request body
+                let body = {
+                    fullName: fullName,
+                    email: email,
+                    phone: phone || null,
+                    birthday: formattedBirthday || null,
+                    gender: genderValue,
+                    address: address || null,
+                    role: role
+                };
                 
-                try {
-                    const errorData = JSON.parse(errorText);
-                    console.error('❌ Parsed error data for social account:', errorData);
+                // ✅ INCLUDE social account identifiers
+                if (isSocialAccount) {
+                    body.socialProvider = combinedUserData.socialProvider || storedUserData.socialProvider;
+                    body.socialID = combinedUserData.socialID || storedUserData.socialID;
+                    console.log('Adding social account info to request:', {
+                        socialProvider: body.socialProvider,
+                        socialID: body.socialID
+                    });
+                }
+    
+                // ✅ SELLER LOGIC - CHỈ GỬI SHOPNAME, BACKEND XỬ LÝ TẤT CẢ
+                if (role === 'seller') {
+                    let shopName = '';
                     
-                    // ✅ ENHANCED: Log detailed validation errors
-                    if (errorData.errors) {
-                        console.error('🔍 Detailed validation errors:', errorData.errors);
+                    const shopNameInput = document.getElementById('shopName');
+                    if (shopNameInput) {
+                        shopName = shopNameInput.value.trim();
                         
-                        // ✅ Format validation errors for user display
-                        let errorMessages = [];
-                        for (const [field, fieldErrors] of Object.entries(errorData.errors)) {
-                            if (Array.isArray(fieldErrors)) {
-                                fieldErrors.forEach(error => {
-                                    errorMessages.push(`${field}: ${error}`);
-                                });
-                            } else {
-                                errorMessages.push(`${field}: ${fieldErrors}`);
+                        // Fallback to existing shopName if input is empty
+                        if (!shopName && combinedUserData.shopName) {
+                            shopName = combinedUserData.shopName;
+                        }
+                        
+                        // Validate shopName is required for seller
+                        if (!shopName) {
+                            alert('Vui lòng nhập tên cửa hàng');
+                            return;
+                        }
+                    }
+                    
+                    // ✅ CHỈ GỬI shopName - BACKEND SẼ TẠO/CẬP NHẬT SELLERPROFILE
+                    body.shopName = shopName;
+                    console.log('Sending seller data in single request:', {
+                        role: role,
+                        shopName: shopName,
+                        isSocialAccount: isSocialAccount
+                    });
+                } else {
+                    // ✅ Customer role - preserve existing shop info for social accounts
+                    if (combinedUserData.shopName) {
+                        body.shopName = combinedUserData.shopName;
+                        console.log('Preserving shop name for social account switching to customer');
+                    }
+                }
+    
+                // ✅ LOG request data
+                console.log('📤 Sending single update-profile request:', {
+                    url: `${API_BASE}/Auth/update-profile`,
+                    method: 'PUT',
+                    isSocialAccount: isSocialAccount,
+                    body: body
+                });
+    
+                // ✅ SINGLE API CALL - update-profile XỬ LÝ TẤT CẢ
+                const response = await fetch(`${API_BASE}/Auth/update-profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(body),
+                });
+    
+                // ✅ ENHANCED error handling
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ API Error Response:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: Object.fromEntries(response.headers.entries()),
+                        body: errorText,
+                        isSocialAccount: isSocialAccount
+                    });
+                    
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        console.error('❌ Parsed error data:', errorData);
+                        
+                        if (errorData.errors) {
+                            console.error('🔍 Detailed validation errors:', errorData.errors);
+                            
+                            let errorMessages = [];
+                            for (const [field, fieldErrors] of Object.entries(errorData.errors)) {
+                                if (Array.isArray(fieldErrors)) {
+                                    fieldErrors.forEach(error => {
+                                        errorMessages.push(`${field}: ${error}`);
+                                    });
+                                } else {
+                                    errorMessages.push(`${field}: ${fieldErrors}`);
+                                }
+                            }
+                            
+                            if (errorMessages.length > 0) {
+                                const detailedError = `Dữ liệu không hợp lệ:\n${errorMessages.join('\n')}`;
+                                console.error('🎯 Formatted error message:', detailedError);
+                                throw new Error(detailedError);
                             }
                         }
                         
-                        if (errorMessages.length > 0) {
-                            const detailedError = `Dữ liệu không hợp lệ:\n${errorMessages.join('\n')}`;
-                            console.error('🎯 Formatted error message:', detailedError);
-                            throw new Error(detailedError);
-                        }
+                        throw new Error(errorData.message || errorData.title || 'Cập nhật thông tin thất bại');
+                    } catch (parseError) {
+                        console.error('❌ Could not parse error response:', parseError);
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
-                    
-                    throw new Error(errorData.message || errorData.title || 'Cập nhật thông tin thất bại');
-                } catch (parseError) {
-                    console.error('❌ Could not parse error response for social account:', parseError);
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+    
+                const data = await response.json();
+                console.log('✅ Update success:', data);
+    
+                // ✅ Update session storage and UI
+                if (data.token) {
+                    sessionStorage.setItem('token', data.token);
+                    console.log('Updated token');
+                }
+    
+                const updatedUserData = data.user || data;
+                
+                // ✅ PRESERVE social account identifiers
+                if (isSocialAccount) {
+                    updatedUserData.socialProvider = body.socialProvider;
+                    updatedUserData.socialID = body.socialID;
+                    console.log('Preserved social account identifiers:', {
+                        socialProvider: updatedUserData.socialProvider,
+                        socialID: updatedUserData.socialID
+                    });
+                }
+                
+                sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
+    
+                alert('Cập nhật thông tin thành công');
+                
+                // ✅ Reset form state
+                disableFields();
+                actionButtons.style.display = 'none';
+                editToggle.style.display = '';
+                shopNameContainer.classList.add('hidden');
+                updateUserInfo();
+    
+            } catch (error) {
+                console.error('❌ Update profile error:', error);
+                alert(error.message || 'Có lỗi xảy ra khi cập nhật thông tin');
             }
-
-            const data = await response.json();
-            console.log('✅ Update success for social account:', data);
-
-            // ✅ Update session storage and UI for social accounts
-            if (data.token) {
-                sessionStorage.setItem('token', data.token);
-                console.log('Updated token for social account');
-            }
-
-            const updatedUserData = data.user || data;
-            
-            // ✅ PRESERVE social account identifiers
-            if (isSocialAccount) {
-                updatedUserData.socialProvider = body.socialProvider;
-                updatedUserData.socialID = body.socialID;
-                console.log('Preserved social account identifiers:', {
-                    socialProvider: updatedUserData.socialProvider,
-                    socialID: updatedUserData.socialID
-                });
-            }
-            
-            sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
-
-            alert('Cập nhật thông tin thành công');
-            
-            // ✅ Reset form state
-            disableFields();
-            actionButtons.style.display = 'none';
-            editToggle.style.display = '';
-            shopNameContainer.classList.add('hidden');
-            updateUserInfo();
-
-        } catch (error) {
-            console.error('❌ Update profile error for social account:', error);
-            alert(error.message || 'Có lỗi xảy ra khi cập nhật thông tin');
-        }
-    });
-}
+        });
+    }
 
     // === AVATAR UPLOAD ===
     const avatarCamera = document.getElementById('avatarCamera');
