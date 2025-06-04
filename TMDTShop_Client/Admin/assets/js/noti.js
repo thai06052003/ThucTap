@@ -801,7 +801,6 @@ async function searchUsers() {
 }
 
 function confirmUserSelection() {
-    console.log('🎯 [SELECTION] Starting user selection confirmation...');
     console.log('🎯 [SELECTION] Current selectedUsers:', selectedUsers);
     
     if (!selectedUsers || !Array.isArray(selectedUsers) || selectedUsers.length === 0) {
@@ -819,102 +818,66 @@ function confirmUserSelection() {
         return;
     }
     
-    // ✅ FIND TARGET AUDIENCE SELECT WITH MULTIPLE STRATEGIES
-    let targetSelect = null;
+    // ✅ UPDATE GLOBAL STATE FIRST
+    selectedUsers = validUserIds;
     
-    // Strategy 1: Direct form search
+    // ✅ FIND TARGET AUDIENCE SELECT
     const form = document.getElementById('notification-form');
-    if (form) {
-        const selectors = [
-            'select[name="target_audience"]',
-            'select[name="targetAudience"]', 
-            'select[name="target-audience"]',
-            '#target_audience',
-            '#targetAudience',
-            '#target-audience',
-            'select:has(option[value="specific"])', // CSS4 selector
-            'select option[value="specific"]' // Find by option value
-        ];
-        
-        for (const selector of selectors) {
-            try {
-                if (selector.includes('option[value="specific"]')) {
-                    const option = form.querySelector(selector);
-                    targetSelect = option?.closest('select');
-                } else {
-                    targetSelect = form.querySelector(selector);
-                }
-                
-                if (targetSelect) {
-                    console.log('✅ [SELECTION] Found target select with:', selector);
-                    break;
-                }
-            } catch (e) {
-                console.log('⚠️ [SELECTION] Selector failed:', selector, e.message);
-            }
-        }
-    }
+    let targetSelect = form?.querySelector('select[name="target_audience"], #target_audience');
     
-    // Strategy 2: Find by content scanning
     if (!targetSelect) {
-        const allSelects = document.querySelectorAll('select');
-        for (const select of allSelects) {
-            const hasSpecificOption = Array.from(select.options).some(option => 
-                option.value === 'specific' || 
-                option.textContent.toLowerCase().includes('cụ thể') ||
-                option.textContent.toLowerCase().includes('specific')
-            );
-            
-            if (hasSpecificOption) {
-                targetSelect = select;
-                console.log('✅ [SELECTION] Found by option scanning:', select.id || select.name);
-                break;
-            }
-        }
-    }
-    
-    // Strategy 3: Create hidden input as fallback
-    if (!targetSelect) {
-        console.warn('⚠️ [SELECTION] Target select not found, creating hidden input...');
+        console.error('❌ [SELECTION] Target select not found - creating fallback');
         
+        // ✅ CREATE HIDDEN INPUT FALLBACK
         const hiddenInput = document.createElement('input');
         hiddenInput.type = 'hidden';
         hiddenInput.name = 'target_audience';
-        hiddenInput.id = 'target_audience_hidden';
+        hiddenInput.value = 'specific';
+        hiddenInput.id = 'hidden-target-audience';
+        form?.appendChild(hiddenInput);
         
-        // Insert into form
-        if (form) {
-            form.appendChild(hiddenInput);
-            targetSelect = hiddenInput;
-            console.log('✅ [SELECTION] Created hidden input for target audience');
-        } else {
-            showError('Không thể lưu lựa chọn người dùng. Vui lòng thử lại.');
-            return;
+        console.log('✅ [SELECTION] Created hidden input fallback');
+    } else {
+        // ✅ ENSURE 'specific' OPTION EXISTS
+        let specificOption = targetSelect.querySelector('option[value="specific"]');
+        if (!specificOption) {
+            console.log('🔧 [SELECTION] Creating missing specific option');
+            specificOption = document.createElement('option');
+            specificOption.value = 'specific';
+            specificOption.textContent = '🎯 Chọn người dùng cụ thể';
+            targetSelect.appendChild(specificOption);
+        }
+        
+        // ✅ SET VALUE AND FORCE UPDATE
+        targetSelect.value = 'specific';
+        
+        // ✅ FIRE MULTIPLE EVENTS TO ENSURE FORM RECOGNITION
+        ['change', 'input', 'blur'].forEach(eventType => {
+            const event = new Event(eventType, { bubbles: true });
+            targetSelect.dispatchEvent(event);
+        });
+        
+        console.log('✅ [SELECTION] Set target select to "specific"');
+        
+        // ✅ VERIFY FORM VALUE
+        const formData = new FormData(form);
+        const verifyValue = formData.get('target_audience');
+        console.log('🔍 [SELECTION] FormData verification:', verifyValue);
+        
+        if (!verifyValue) {
+            console.warn('⚠️ [SELECTION] FormData still null - using hidden input backup');
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'target_audience';
+            hiddenInput.value = 'specific';
+            form?.appendChild(hiddenInput);
         }
     }
     
-    // ✅ SET VALUE WITH PROPER FORMAT
-    const targetAudienceValue = `specific:${validUserIds.join(',')}`;
-    targetSelect.value = targetAudienceValue;
-    
-    console.log('✅ [SELECTION] Set targetAudience:', targetAudienceValue);
-    console.log('✅ [SELECTION] Element info:', {
-        type: targetSelect.type,
-        id: targetSelect.id,
-        name: targetSelect.name,
-        value: targetSelect.value
-    });
-    
-    // ✅ TRIGGER CHANGE EVENT
-    const changeEvent = new Event('change', { bubbles: true });
-    targetSelect.dispatchEvent(changeEvent);
-    
-    // ✅ UPDATE GLOBAL STATE
-    selectedUsers = validUserIds;
-    
-    // ✅ FORCE UI UPDATE
+    // ✅ UPDATE UI DISPLAYS
     updateTargetAudienceDisplay();
     updateRecipientCount();
+    updateTargetAudienceUI();
     
     // ✅ CLOSE MODAL
     closeUserSelectionModal();
@@ -1920,7 +1883,7 @@ async function saveNotification(event) {
     if (loading) loading.style.display = 'flex';
 
     try {
-        // ✅ VALIDATE FORM
+        // ✅ VALIDATE FORM FIRST
         if (!validateForm()) {
             return;
         }
@@ -1928,18 +1891,59 @@ async function saveNotification(event) {
         const form = document.getElementById('notification-form');
         const formData = new FormData(form);
         
-        // ✅ GET TARGET AUDIENCE FROM FORM
+        // ✅ DEBUG ALL FORM DATA
+        console.log('🔍 [SAVE] All FormData entries:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`  ${key}: "${value}"`);
+        }
+        
+        // ✅ GET TARGET AUDIENCE WITH ENHANCED FALLBACKS
         let targetAudience = formData.get('target_audience');
         console.log('📋 [SAVE] Initial targetAudience from form:', targetAudience);
+        console.log('📋 [SAVE] Current selectedUsers:', selectedUsers);
         
-        // ✅ SPECIAL HANDLING FOR SPECIFIC USER SELECTION
-        if (targetAudience === 'specific' && selectedUsers.length > 0) {
-            // ✅ BUILD PROPER FORMAT: "specific:1,2,3,4"
-            targetAudience = `specific:${selectedUsers.join(',')}`;
-            console.log('✅ [SAVE] Updated targetAudience for specific users:', targetAudience);
-        } else if (targetAudience === 'specific' && selectedUsers.length === 0) {
-            showError('Vui lòng chọn người dùng cụ thể trước khi lưu!');
+        // ✅ FALLBACK 1: CHECK HIDDEN INPUT
+        if (!targetAudience) {
+            const hiddenInput = form.querySelector('input[name="target_audience"]');
+            targetAudience = hiddenInput?.value;
+            console.log('🔍 [SAVE] Fallback from hidden input:', targetAudience);
+        }
+        
+        // ✅ FALLBACK 2: CHECK SELECT ELEMENT DIRECTLY
+        if (!targetAudience) {
+            const selectElement = form.querySelector('#target_audience, select[name="target_audience"]');
+            targetAudience = selectElement?.value;
+            console.log('🔍 [SAVE] Fallback from select element:', targetAudience);
+        }
+        
+        // ✅ FALLBACK 3: INFER FROM SELECTED USERS
+        if (!targetAudience && selectedUsers.length > 0) {
+            console.log('🔧 [SAVE] No targetAudience but selectedUsers exist - forcing "specific"');
+            targetAudience = 'specific';
+        }
+        
+        // ✅ EARLY VALIDATION BEFORE PROCESSING
+        if (!targetAudience || targetAudience.trim() === '') {
+            console.error('❌ [SAVE] CRITICAL: No target audience found anywhere!');
+            console.error('❌ [SAVE] Form element:', form);
+            console.error('❌ [SAVE] Select element:', form.querySelector('#target_audience'));
+            console.error('❌ [SAVE] Hidden input:', form.querySelector('input[name="target_audience"]'));
+            console.error('❌ [SAVE] Selected users count:', selectedUsers.length);
+            
+            showError('Lỗi: Không thể xác định đối tượng nhận thông báo. Vui lòng chọn lại!');
             return;
+        }
+        
+        // ✅ HANDLE SPECIFIC USER SELECTION
+        if (targetAudience === 'specific') {
+            if (selectedUsers.length > 0) {
+                targetAudience = `specific:${selectedUsers.join(',')}`;
+                console.log('✅ [SAVE] Built specific format:', targetAudience);
+            } else {
+                console.error('❌ [SAVE] targetAudience is "specific" but no selectedUsers');
+                showError('Vui lòng chọn người dùng cụ thể trước khi lưu!');
+                return;
+            }
         }
         
         // ✅ BUILD NOTIFICATION DATA
@@ -1950,7 +1954,7 @@ async function saveNotification(event) {
             icon: formData.get('icon'),
             actionText: formData.get('action_text'),
             actionUrl: formData.get('action_url'),
-            targetAudience: targetAudience, // ✅ CORRECT FORMAT
+            targetAudience: targetAudience,
             scheduledAt: formData.get('scheduled_at') || null
         };
         
@@ -1967,11 +1971,6 @@ async function saveNotification(event) {
             return;
         }
         
-        if (!notificationData.targetAudience) {
-            showError('Vui lòng chọn đối tượng nhận thông báo!');
-            return;
-        }
-        
         // ✅ API CALL
         const method = currentNotification ? 'PUT' : 'POST';
         const apiUrl = currentNotification ? 
@@ -1982,6 +1981,9 @@ async function saveNotification(event) {
         
         const response = await apiRequest(apiUrl, {
             method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(notificationData)
         });
 
@@ -1992,24 +1994,15 @@ async function saveNotification(event) {
             'Tạo thông báo thành công!'
         );
         
+        // ✅ CLOSE MODAL AND RELOAD
         closeModal();
-        selectedUsers = []; // Clear selected users
+        selectedUsers = [];
+        currentNotification = null;
         await fetchAdminNotifications(currentPage);
 
     } catch (error) {
         console.error('❌ [SAVE] Error saving notification:', error);
-        
-        let userMessage = 'Lỗi khi lưu thông báo: ';
-        if (error.message.includes('specific')) {
-            userMessage += 'Có lỗi với người dùng được chọn. Vui lòng thử chọn lại.';
-        } else if (error.message.includes('400')) {
-            userMessage += 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.';
-        } else {
-            userMessage += error.message;
-        }
-        
-        showError(userMessage);
-        
+        showError('Lỗi khi lưu thông báo: ' + error.message);
     } finally {
         const loading = document.getElementById('loading');
         if (loading) loading.style.display = 'none';
@@ -2351,8 +2344,8 @@ function validateForm() {
     let isValid = true;
     const fields = [
         { id: 'title', name: 'Tiêu đề', minLength: 5 },
-        { id: 'message', name: 'Nội dung', minLength: 10 },
-        { id: 'target_audience', name: 'Đối tượng', required: true }
+        { id: 'message', name: 'Nội dung', minLength: 10 }
+        // ✅ DON'T validate target_audience here - let saveNotification handle it
     ];
 
     // Clear previous errors
@@ -2376,6 +2369,18 @@ function validateForm() {
         }
     });
 
+    // ✅ SIMPLIFIED TARGET AUDIENCE VALIDATION
+    const targetSelect = form.querySelector('#target_audience');
+    const targetValue = targetSelect?.value;
+    
+    console.log('🔍 [VALIDATE] Target audience validation:', { targetValue, selectedUsers });
+    
+    // Basic validation - detailed validation in saveNotification
+    if (!targetValue) {
+        showFieldError(targetSelect, 'Vui lòng chọn đối tượng nhận thông báo');
+        isValid = false;
+    }
+
     // Validate action URL if action text is provided
     const actionText = form.querySelector('#action_text')?.value?.trim();
     const actionUrl = form.querySelector('#action_url')?.value?.trim();
@@ -2385,6 +2390,7 @@ function validateForm() {
         isValid = false;
     }
 
+    console.log('📋 [VALIDATE] Form validation result:', isValid);
     return isValid;
 }
 
